@@ -10,11 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = {text = "Research use; see repository license status"}
 authors = [{name = "APTDetectionAgent contributors"}]
-dependencies = []
+dependencies = ["pydantic==2.13.4"]
 
 [project.optional-dependencies]
-# Runtime controller pins are intentionally deferred to the Phase 1 dependency
-# audit. Phase 0 governance checks require only the standard library.
 dev = []
 
 [tool.setuptools.packages.find]

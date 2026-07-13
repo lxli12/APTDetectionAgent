@@ -37,6 +37,12 @@ class GovernanceTests(unittest.TestCase):
         pyproject = (ROOT / "pyproject.toml").read_text().lower()
         self.assertNotIn("wandb", pyproject)
 
+    def test_controller_dependency_is_minimal_and_pinned(self) -> None:
+        pyproject = (ROOT / "pyproject.toml").read_text()
+        self.assertIn('dependencies = ["pydantic==2.13.4"]', pyproject)
+        for forbidden in ("torch", "torch_geometric", "vllm", "psycopg2"):
+            self.assertNotIn(forbidden, pyproject.lower())
+
     def test_matrix_has_unique_requirement_rows(self) -> None:
         matrix = (ROOT / "docs/plans/REQUIREMENT_TRACEABILITY.md").read_text()
         row_ids = re.findall(r"(?m)^\| (REQ-[A-Z]+-\d{3}) \|", matrix)
