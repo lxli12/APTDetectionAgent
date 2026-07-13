@@ -1,3 +1,4 @@
 [submodule "PIDSMaker"]
 	path = PIDSMaker
 	url = https://github.com/ubc-provenance/PIDSMaker.git
+	shallow = true
