@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68,<76"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apt-detection-agent"
+version = "0.1.0"
+description = "Causal, tool-driven controller for provenance intrusion detection"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = {text = "Research use; see repository license status"}
+authors = [{name = "APTDetectionAgent contributors"}]
+dependencies = []
+
+[project.optional-dependencies]
+# Runtime controller pins are intentionally deferred to the Phase 1 dependency
+# audit. Phase 0 governance checks require only the standard library.
+dev = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.unittest]
+start-directory = "tests"

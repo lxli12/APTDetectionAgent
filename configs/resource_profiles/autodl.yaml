@@ -1,0 +1,12 @@
+# REQ-RESOURCE-001, REQ-RESOURCE-002
+profile_id: autodl-32vcpu-240g-2x4090-initial
+cpu_vcpus: 32
+memory_gib: 240
+reserved_memory_gib: 24
+gpu_count: 2
+gpu_memory_gib_per_device: 24
+gpu_assignments:
+  vllm: 0
+  pids_gpu_worker: 1
+max_unknown_gpu_pids_per_device: 1
+source: user-confirmed-allocation
