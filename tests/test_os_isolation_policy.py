@@ -35,6 +35,13 @@ class OSIsolationPolicyTests(unittest.TestCase):
         self.assertIn('chown root:apt_pids_worker "$PIDS_SECRET"', script)
         self.assertIn('chown root:apt_hidden_evaluator "$EVALUATOR_SECRET"', script)
 
+    def test_process_runtime_code_is_root_owned_and_group_read_only(self) -> None:
+        script = (ROOT / "scripts" / "run_real_e2e.sh").read_text()
+        self.assertIn('chown -R root:apt_agent_controller "$RUNTIME_ROOT/controller"', script)
+        self.assertIn('chown -R root:apt_pids_worker "$RUNTIME_ROOT/pids"', script)
+        self.assertIn('chown -R root:apt_hidden_evaluator "$RUNTIME_ROOT/evaluator"', script)
+        self.assertIn("-type f -exec chmod 640", script)
+
 
 if __name__ == "__main__":
     unittest.main()

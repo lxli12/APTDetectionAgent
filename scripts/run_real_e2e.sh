@@ -47,9 +47,9 @@ chmod 700 "$PRIVATE_ROOT"
 chown apt_pids_worker:apt_pids_worker "$EXECUTOR_ROOT"
 chmod 700 "$EXECUTOR_ROOT"
 chmod 711 "$RUNTIME_ROOT"
-chown -R apt_agent_controller:apt_agent_controller "$RUNTIME_ROOT/controller"
-chown -R apt_pids_worker:apt_pids_worker "$RUNTIME_ROOT/pids"
-chown -R apt_hidden_evaluator:apt_hidden_evaluator "$RUNTIME_ROOT/evaluator"
+chown -R root:apt_agent_controller "$RUNTIME_ROOT/controller"
+chown -R root:apt_pids_worker "$RUNTIME_ROOT/pids"
+chown -R root:apt_hidden_evaluator "$RUNTIME_ROOT/evaluator"
 find "$RUNTIME_ROOT/controller" "$RUNTIME_ROOT/pids" "$RUNTIME_ROOT/evaluator" -type d -exec chmod 750 {} +
 find "$RUNTIME_ROOT/controller" "$RUNTIME_ROOT/pids" "$RUNTIME_ROOT/evaluator" -type f -exec chmod 640 {} +
 find "$RUNTIME_ROOT/controller/scripts" "$RUNTIME_ROOT/pids/scripts" "$RUNTIME_ROOT/evaluator/scripts" -type f -exec chmod 750 {} +
