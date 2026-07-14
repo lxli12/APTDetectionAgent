@@ -41,3 +41,20 @@ that snapshot.
 
 Primary experimental tiers are strict within-dataset temporal splits followed by
 leave-one-dataset or leave-one-OS/schema-out evaluation selected after inventory.
+
+## Implemented Phase 3 enforcement
+
+- `src/apt_detection_agent/data/stream.py` accepts only deployment-visible events,
+  enforces chronological current-window batches, prohibits skipped/replayed
+  windows, and requires an append-only formal prediction before advancing.
+- The same stream binds each formal prediction to the committed fast-path config;
+  a current-window slow-path result cannot retroactively replace that config.
+- `src/apt_detection_agent/data/causal.py` records fitted-state source split,
+  fit cutoff, freeze time, hash, code commit, and transductive status. Vocabulary,
+  normalization, IDF, statistics, featurizers, embeddings, and models are
+  agent-training products; validation may additionally produce thresholds.
+- Current-graph parameter-free computation is admitted only after the window end
+  and receives only event IDs whose timestamps are within that exact half-open
+  window.
+- Rolling-range sizes are versioned validation candidates rather than controller
+  constants. Validation experiments still determine which candidate is approved.

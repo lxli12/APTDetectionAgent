@@ -22,18 +22,18 @@ venv/
 .idea/
 
 # Data, models and experiments
-data/
-datasets/
-models/
-checkpoints/
-runs/
-outputs/
-logs/
-wandb/
+/data/
+/datasets/
+/models/
+/checkpoints/
+/runs/
+/outputs/
+/logs/
+/wandb/
 *.pt
 *.pth
 *.bin
 *.safetensors
 
 # Machine-specific configuration
-configs/local/
+/configs/local/

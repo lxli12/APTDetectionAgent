@@ -12,18 +12,18 @@ and test path is updated when work lands.
 | REQ-GIT-001 | Tracked code changes locally and reaches server only through push + fast-forward pull | 0 | `AGENTS.md` | remote workflow review | implemented |
 | REQ-GIT-002 | Dirty remote worktree stops synchronization; no destructive Git | 0 | `AGENTS.md` | remote script tests | partial |
 | REQ-GIT-003 | PIDSMaker remains pinned and unmodified | all | `.gitmodules`; commit pin | submodule status check | implemented |
-| REQ-CAUSAL-001 | No future window or event may enter current computation | 3 | planned causal stream | future-event negative tests | planned |
-| REQ-CAUSAL-002 | Vocabulary, normalization, IDF, statistics, embeddings, model, and threshold freeze before held-out | 1/3 | planned provenance schemas | forbidden-refit tests | planned |
-| REQ-CAUSAL-003 | Current-graph parameter-free features are allowed only after that window arrives | 3 | planned featurizer boundary | timestamp boundary tests | planned |
-| REQ-CAUSAL-004 | Transductive runs are labeled compatibility baselines and excluded from main results | 1/2/7 | planned config/result schemas | result-mixing negative test | planned |
-| REQ-LABEL-001 | Agent-visible processes cannot access hidden labels or private mappings | 1/3/7 | strict public schemas; separate evaluator namespace | field leakage tests; later permission tests | partial |
+| REQ-CAUSAL-001 | No future window or event may enter current computation | 3 | `data/stream.py`; `data/causal.py` | future/boundary/ordering negative tests | implemented |
+| REQ-CAUSAL-002 | Vocabulary, normalization, IDF, statistics, embeddings, model, and threshold freeze before held-out | 1/3 | `data/causal.py:FittedStateArtifact` | split/refit/freeze-cutoff tests | implemented |
+| REQ-CAUSAL-003 | Current-graph parameter-free features are allowed only after that window arrives | 3 | `data/causal.py:CausalFeatureBoundary` | arrival and current-event timestamp tests | implemented |
+| REQ-CAUSAL-004 | Transductive runs are labeled compatibility baselines and excluded from main results | 1/2/3/7 | config/result schemas; fitted-state causal-main gate | transductive state rejection; evaluator result-mixing test deferred | partial |
+| REQ-LABEL-001 | Agent-visible processes cannot access hidden labels or private mappings | 1/3/7 | strict public schemas; `VisibleEvent`; separate evaluator namespace | nested event/feature leakage tests; later permission tests | partial |
 | REQ-LABEL-002 | Hidden teacher data is sanitized before student input, rationale, or deployable memory | 1/4/10 | recursive deployable-payload guard | privileged-field negative tests | partial |
 | REQ-LABEL-003 | Held-out evaluator returns no online step reward; only episode metrics | 1/7 | split-constrained feedback schemas | feedback-contract tests | partial |
 | REQ-LABEL-004 | Trace routing uses deployment-visible evidence only | 1/2/5 | AgentAction evidence IDs; payload guard | hidden-annotation rejection tests | partial |
 | REQ-WINDOW-001 | Windows record origin, timezone, size, and `[start,end)` bounds | 1/3 | `schemas/runtime.py:TimeWindow` | alignment/timezone/boundary tests | implemented |
-| REQ-WINDOW-002 | Scenario processing is chronological and predictions are append-only | 3/5 | planned stream/ledger | ordering and rewrite tests | planned |
-| REQ-WINDOW-003 | Current window uses committed fast-path configuration | 1/5 | `CaseState`; `PendingConfiguration` | state-transition tests | partial |
-| REQ-WINDOW-004 | Rolling-range constants are validation candidates, not hard-coded truths | 3/5 | planned trigger config | configuration tests | planned |
+| REQ-WINDOW-002 | Scenario processing is chronological and predictions are append-only | 3/5 | `data/stream.py:CausalWindowStream` | multi-window, skip, advance, replay/rewrite tests | implemented |
+| REQ-WINDOW-003 | Current window uses committed fast-path configuration | 1/3/5 | `CaseState`; `PendingConfiguration`; causal stream | prediction/config mismatch test | implemented |
+| REQ-WINDOW-004 | Rolling-range constants are validation candidates, not hard-coded truths | 3/5 | `data/causal.py:RollingRangeCandidate` | non-validation source rejection | implemented |
 | REQ-CONFIG-001 | Persistent reconfiguration takes effect at the next window | 1/5 | effective-window validators | same-window rejection tests | implemented |
 | REQ-CONFIG-002 | Held-out selects only frozen ApprovedConfig and thresholds | 1/2/5 | `schemas/pids.py`; `pidsmaker/tools.py:ApprovedConfigCatalog` | schema and frozen-catalog rejection tests | implemented |
 | REQ-CONFIG-003 | Threshold records carry method, split, checkpoint, metric, time, and commit provenance | 1 | `ThresholdProvenance` | source/missing-field tests | implemented |
