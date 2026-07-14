@@ -34,10 +34,20 @@ The macOS system Python 3.9 lacks Pydantic and is not an approved project runtim
 its collection failure was diagnostic environment evidence, not a code test result
 and did not trigger dependency installation.
 
-Remote evidence: pending the commit/push/clean-tree/fast-forward workflow. The
-remote smoke will activate the existing `pids` environment and run governance,
-compile, and synthetic tests only. It will not start PostgreSQL, vLLM, an experiment,
-or the real PIDSMaker pipeline.
+Remote evidence on 2026-07-14 at main-project commit
+`46ece3485f4d1c25c58ffb22446b68f7aa7439eb` and PIDSMaker commit
+`32602734bc9f896be5fc0f03f0a185c967cd6624`:
+
+- the pre-pull remote main tree and submodule were clean;
+- a temporary AutoDL academic proxy was used only for the fast-forward pull and
+  proxy variables were cleared in the same SSH shell;
+- existing `pids` environment: Python 3.10.20, Pydantic 2.12.5;
+- governance check: passed with 66 requirements and the pinned submodule;
+- `compileall`: passed;
+- synthetic/unit suite: 73/73 passed in 1.490 seconds.
+
+The smoke did not start PostgreSQL, vLLM, an experiment, or the real PIDSMaker
+pipeline and did not install or modify dependencies.
 
 ## Acceptance matrix
 

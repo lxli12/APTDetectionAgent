@@ -73,6 +73,13 @@ process exit is never sufficient evidence of correctness.
 5. Record the exact main-project and PIDSMaker SHAs for every remote run.
 6. Never directly edit tracked files on the server.
 
+If GitHub access from AutoDL fails, the official academic acceleration service may
+be enabled only inside the SSH shell that performs the pull with
+`source /etc/network_turbo`. Clear lowercase and uppercase HTTP(S) proxy variables
+immediately afterward. Do not persist the proxy or propagate it to tests,
+PIDSMaker, vLLM, PostgreSQL, W&B, or experiments. The service is an optional,
+non-guaranteed Git transport aid, not part of the reproducibility environment.
+
 The first SSH connection in a task must run the approved read-only identity check
 (`hostname`, `whoami`, `pwd`, GPU query, and `df -h`). Installation, service changes,
 database writes, stopping unrelated processes, destructive commands, and unapproved

@@ -15,3 +15,10 @@ justify it.
 All tracked changes originate locally, are committed and pushed, then reach AutoDL
 through a clean-tree `git pull --ff-only`. Remote experiments use owned tmux
 sessions, unique run directories, and exact Git provenance.
+
+When direct GitHub access is unavailable, AutoDL's documented academic acceleration
+may be sourced temporarily in the single SSH shell used for the pull. The shell
+must unset all HTTP(S) proxy variables immediately after the Git operation. The
+proxy is neither persistent configuration nor an experiment dependency and must
+not be inherited by runtime services. Reference:
+<https://www.autodl.com/docs/network_turbo/>.
