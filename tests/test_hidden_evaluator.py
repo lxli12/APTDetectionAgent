@@ -185,6 +185,9 @@ class HiddenMetricTests(unittest.TestCase):
             ),
             universe_entity_ids=("node-a", "node-c"),
             malicious_node_window_occurrences=(),
+            campaign_detection_delay_seconds={"campaign-1": 10.0},
+            window_alert_counts={},
+            window_score_means={},
         )
         record = HiddenEvaluator().evaluate(request).record
         self.assertEqual(record.p_at_c_100, 0.5)
