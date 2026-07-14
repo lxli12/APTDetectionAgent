@@ -66,8 +66,11 @@ class CheckpointDescriptor(StrictModel):
                 raise ValueError("available checkpoint requires hash and relative path")
             if self.unavailable_reason:
                 raise ValueError("available checkpoint cannot have unavailable_reason")
-        elif self.availability == AvailabilityStatus.UNAVAILABLE and not self.unavailable_reason:
-            raise ValueError("unavailable checkpoint requires unavailable_reason")
+        elif self.availability in {
+            AvailabilityStatus.UNAVAILABLE,
+            AvailabilityStatus.BLOCKED,
+        } and not self.unavailable_reason:
+            raise ValueError("unavailable or blocked checkpoint requires unavailable_reason")
         return self
 
 
@@ -113,9 +116,12 @@ class PIDSCapability(StrictModel):
 
     @model_validator(mode="after")
     def availability_has_reason(self) -> "PIDSCapability":
-        if self.current_availability_status == AvailabilityStatus.UNAVAILABLE:
+        if self.current_availability_status in {
+            AvailabilityStatus.UNAVAILABLE,
+            AvailabilityStatus.BLOCKED,
+        }:
             if not self.unavailable_reason:
-                raise ValueError("unavailable PIDS must remain registered with a reason")
+                raise ValueError("unavailable or blocked PIDS must remain registered with a reason")
         elif self.unavailable_reason:
             raise ValueError("only unavailable PIDS may carry unavailable_reason")
         return self

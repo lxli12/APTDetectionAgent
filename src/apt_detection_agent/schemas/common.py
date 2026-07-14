@@ -56,6 +56,7 @@ class AvailabilityStatus(str, Enum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     UNVERIFIED = "unverified"
+    BLOCKED = "blocked"
 
 
 class ExperimentClass(str, Enum):

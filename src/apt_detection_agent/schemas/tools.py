@@ -16,6 +16,15 @@ from .evaluation import assert_deployable_payload
 
 
 class ToolName(str, Enum):
+    INSPECT_DETECTOR_CAPABILITY = "inspect_detector_capability"
+    INSPECT_ACTIVE_DETECTION_STATE = "inspect_active_detection_state"
+    RUN_ADDITIONAL_DETECTOR = "run_additional_detector"
+    COMPARE_DETECTOR_RESULTS = "compare_detector_results"
+    SELECT_VALIDATED_THRESHOLD = "select_validated_threshold"
+    LOAD_APPROVED_CONFIG = "load_approved_config"
+    SWITCH_DETECTOR = "switch_detector"
+    RETRAIN_DETECTOR = "retrain_detector"
+    SELECT_RESOURCE_PRESET = "select_resource_preset"
     LIST_PIDS_CAPABILITIES = "list_pids_capabilities"
     INSPECT_PIDS_AVAILABILITY = "inspect_pids_availability"
     VALIDATE_PIDS_REQUEST = "validate_pids_request"
