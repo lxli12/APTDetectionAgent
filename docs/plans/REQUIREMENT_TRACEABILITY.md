@@ -25,18 +25,18 @@ and test path is updated when work lands.
 | REQ-WINDOW-003 | Current window uses committed fast-path configuration | 1/5 | `CaseState`; `PendingConfiguration` | state-transition tests | partial |
 | REQ-WINDOW-004 | Rolling-range constants are validation candidates, not hard-coded truths | 3/5 | planned trigger config | configuration tests | planned |
 | REQ-CONFIG-001 | Persistent reconfiguration takes effect at the next window | 1/5 | effective-window validators | same-window rejection tests | implemented |
-| REQ-CONFIG-002 | Held-out selects only frozen ApprovedConfig and thresholds | 1/2/5 | frozen `ApprovedConfig`/threshold schemas | catalog rejection tests in Phase 2 | partial |
+| REQ-CONFIG-002 | Held-out selects only frozen ApprovedConfig and thresholds | 1/2/5 | `schemas/pids.py`; `pidsmaker/tools.py:ApprovedConfigCatalog` | schema and frozen-catalog rejection tests | implemented |
 | REQ-CONFIG-003 | Threshold records carry method, split, checkpoint, metric, time, and commit provenance | 1 | `ThresholdProvenance` | source/missing-field tests | implemented |
-| REQ-PIDS-001 | Registry covers every PIDS/variant at the pinned commit | 2 | planned discovery registry | config/code/test parity | planned |
-| REQ-PIDS-002 | Unavailable PIDS remain registered with explicit reasons | 1/2 | `PIDSCapability` availability fields | unavailable retention test | partial |
+| REQ-PIDS-001 | Registry covers every PIDS/variant at the pinned commit | 2 | `pidsmaker/discovery.py`; `docs/pidsmaker/MODEL_INVENTORY.md` | dynamic config/dataset/variant parity tests | implemented |
+| REQ-PIDS-002 | Unavailable PIDS remain registered with explicit reasons | 1/2 | `PIDSCapability`; discovery checkpoint inventory | missing-root retains all entries test | implemented |
 | REQ-PIDS-003 | ORTHRUS fixed/non-snooped are variants, not new methods | 1/2 | normalized `PIDSRef` | identity negative tests | implemented |
-| REQ-PIDS-004 | `feat_inference` is traced internally unless a real Agent decision justifies a tool | 2 | planned pipeline map | stage trace tests | planned |
+| REQ-PIDS-004 | `feat_inference` is traced internally unless a real Agent decision justifies a tool | 2 | `docs/pidsmaker/PIPELINE_MAP.md`; discovery stage map | internal-stage registry test | implemented |
 | REQ-PIDS-005 | PIDSMaker submodule is never directly modified | all | adapter boundary | submodule diff check | implemented |
 | REQ-TOOL-001 | LLM emits typed requests and never constructs shell commands | 1/2/5 | `AgentAction`; `ToolRequest` recursive guard | executor-field/unknown-field tests | implemented |
-| REQ-TOOL-002 | Executor validates parameter/path/resource allowlists and builds argv | 2 | planned adapter/executor | injection/path escape tests | planned |
-| REQ-TOOL-003 | Every tool call records validated args, config/checkpoint, command manifest, timing, output, and artifacts | 1/2 | `ToolResult`; `CommandManifest`; `StageTrace` | schema completeness tests; Phase 2 runtime tests | partial |
-| REQ-TOOL-004 | Parallel PIDS selection is scheduled by executor, never CUDA-selected by LLM | 2/5 | planned scheduler | resource admission tests | planned |
-| REQ-TOOL-005 | Timeout, nonzero exit, malformed output, and missing artifact fail closed | 2 | planned executor | fake-runner failure tests | planned |
+| REQ-TOOL-002 | Executor validates parameter/path/resource allowlists and builds argv | 2 | `pidsmaker/adapter.py` | override, path, checkpoint, shell-boundary tests | implemented |
+| REQ-TOOL-003 | Every tool call records validated args, config/checkpoint, command manifest, timing, output, and artifacts | 1/2 | `ToolResult`; `CommandManifest`; Phase 2 adapter | synthetic runtime artifact tests; real stage trace deferred | partial |
+| REQ-TOOL-004 | Parallel PIDS selection is scheduled by executor, never CUDA-selected by LLM | 2/5 | `pidsmaker/tools.py` initial scheduler | GPU serialization and hidden CUDA rejection tests | partial |
+| REQ-TOOL-005 | Timeout, nonzero exit, malformed output, and missing artifact fail closed | 2 | `pidsmaker/adapter.py` | nonzero/start-error/missing-artifact fake-runner tests; typed output parser deferred | partial |
 | REQ-MEMORY-001 | Working, episode memory, and case state reset at split/scenario boundaries | 1/4 | explicit split/scenario/episode scope | scope tests; Phase 4 reset tests | partial |
 | REQ-MEMORY-002 | Train memory cannot enter validation; validation cannot enter held-out | 1/4 | planned namespace policy | cross-split negative tests | planned |
 | REQ-MEMORY-003 | Frozen deployable static LTM may cross splits only as a sanitized training artifact | 1/4 | `StaticLTMSnapshot` release contract | signature/review tests | partial |
@@ -51,8 +51,8 @@ and test path is updated when work lands.
 | REQ-EVAL-005 | Validation calibrates coverage constraints using agent-level hidden campaigns | 7 | planned evaluator | benign-only rejection test | planned |
 | REQ-EVAL-006 | Evaluation cannot feed hidden config search during held-out | 5/7 | planned IPC boundary | feedback leakage tests | planned |
 | REQ-ARTIFACT-001 | Every artifact records source config, checkpoint hash, code commit, and producing stage | 1/2 | artifact and run manifests | hash/path/provenance tests | implemented |
-| REQ-ARTIFACT-002 | Missing checkpoints produce unavailable status, never fabricated artifacts | 1/2/8 | checkpoint availability schema | missing-checkpoint tests | partial |
-| REQ-ARTIFACT-003 | Raw PIDSMaker artifacts are mapped and validated before becoming Agent contracts | 2 | planned artifact map/adapter | malformed artifact tests | planned |
+| REQ-ARTIFACT-002 | Missing checkpoints produce unavailable status, never fabricated artifacts | 1/2/8 | checkpoint schema; discovery availability | missing-checkpoint retention tests | implemented |
+| REQ-ARTIFACT-003 | Raw PIDSMaker artifacts are mapped and validated before becoming Agent contracts | 2 | `docs/pidsmaker/ARTIFACT_AND_CHECKPOINT_MAP.md`; adapter manifest | missing-artifact fail-closed test; per-PIDS parsers deferred | partial |
 | REQ-RESOURCE-001 | Scheduler uses explicit 32 vCPU/240 GiB/2×24 GiB profile | 0/5 | AutoDL profile | profile validation | partial |
 | REQ-RESOURCE-002 | Initial profile uses GPU 0 for vLLM and one GPU PIDS on GPU 1 | 0/5/8 | AutoDL profile | scheduling tests | partial |
 | REQ-RESOURCE-003 | Same-GPU concurrency waits for per-PIDS smoke profiles | 5/8 | planned capability profiles | admission rejection test | planned |
@@ -63,7 +63,7 @@ and test path is updated when work lands.
 | REQ-DB-001 | Admin, PIDS worker, hidden evaluator, and controller have distinct DB privileges | 0/7 | security ADR | role/connection tests | partial |
 | REQ-DB-002 | Controller has no private-label database access | 7 | planned evaluator topology | permission test | planned |
 | REQ-DB-003 | PostgreSQL 17 data is never auto-migrated, rebuilt, or modified by runtime | 0/2 | AGENTS and ADR | command allowlist test | implemented |
-| REQ-WANDB-001 | W&B is disabled, makes no network request, and is not a project dependency | 0/2 | AGENTS; planned compatibility audit | dependency/source tests | partial |
+| REQ-WANDB-001 | W&B is disabled, makes no network request, and is not a project dependency | 0/2 | AGENTS; `docs/pidsmaker/WANDB_AUDIT.md`; disabled adapter environment | dependency/source/argv tests; upstream import compatibility remains | partial |
 | REQ-REPRO-001 | Runs record exact code, environment, data, config, checkpoint, threshold, command, seed, timing, resources, metrics, and failures | 0/1/5 | experiment protocol; planned manifests | completeness tests | partial |
 | REQ-REPRO-002 | Every run has a unique non-overwriting run ID and required local files | 5/8 | planned remote scripts | collision/manifest tests | planned |
 | REQ-REPRO-003 | Long runs use owned tmux sessions and leave status/tail/recovery instructions | 5/8 | planned remote scripts | remote smoke | planned |
