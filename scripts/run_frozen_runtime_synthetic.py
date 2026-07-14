@@ -11,14 +11,13 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from apt_detection_agent.controller import (
+from apt_detection_agent.runtime import (
     CanonicalObservationInputs,
     CommittedExecutionBundle,
     CommittedResultLedger,
     DeterministicCanonicalObservationBuilder,
     DeterministicPromptBuilder,
     DeterministicTriggerPolicy,
-    FrozenMemoryProtocol,
     FrozenRuntimeConfig,
     FrozenRuntimeController,
     FrozenTransactionLogger,
@@ -26,6 +25,7 @@ from apt_detection_agent.controller import (
     PromptBuilderConfig,
     prepare_case_for_window,
 )
+from apt_detection_agent.memory import FrozenMemoryProtocol
 from apt_detection_agent.schemas import (
     AvailabilityStatus,
     CacheReuseClass,

@@ -1,0 +1,6 @@
+schema_version: sft-build-config-v1
+requirement_ids: [REQ-SFT-001, REQ-SFT-002, REQ-SFT-003, REQ-SFT-004]
+canonical_model: canonical-demonstration-trajectory-v1
+partition_unit: trajectory-group
+export_format: openai-compatible-messages
+synthetic_formal_training_approved: false

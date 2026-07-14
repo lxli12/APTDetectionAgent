@@ -10,7 +10,7 @@ import argparse
 import os
 from pathlib import Path
 
-from apt_detection_agent.evaluator.synthetic_fixture import build_synthetic_hidden_input
+from apt_detection_agent.evaluation.fixtures import build_synthetic_hidden_input
 
 
 def main() -> int:

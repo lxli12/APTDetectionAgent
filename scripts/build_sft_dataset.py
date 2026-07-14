@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from apt_detection_agent.sft.builder import build_dataset
-from apt_detection_agent.sft.teacher import HiddenTeacherRecord
+from apt_detection_agent.sft.compat.teacher import HiddenTeacherRecord
 
 
 def _under(path: Path, root: Path) -> bool:

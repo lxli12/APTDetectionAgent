@@ -26,6 +26,12 @@ def copy_package(source: Path, destination: Path, components: tuple[str, ...]) -
         )
 
 
+def copy_module_files(source: Path, destination: Path, files: tuple[str, ...]) -> None:
+    destination.mkdir(parents=True)
+    for name in files:
+        shutil.copy2(source / name, destination / name)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-root", type=Path, required=True)
@@ -45,6 +51,11 @@ def main() -> int:
         output / "controller" / "src" / "apt_detection_agent",
         ("schemas",),
     )
+    copy_module_files(
+        source / "evaluation",
+        output / "controller" / "src" / "apt_detection_agent" / "evaluation",
+        ("__init__.py", "public.py"),
+    )
     copy_package(
         source,
         output / "pids" / "src" / "apt_detection_agent",
@@ -53,7 +64,7 @@ def main() -> int:
     copy_package(
         source,
         output / "evaluator" / "src" / "apt_detection_agent",
-        ("schemas", "evaluator", "memory"),
+        ("schemas", "evaluation", "memory"),
     )
     scripts = project / "scripts"
     script_map = {
@@ -91,7 +102,7 @@ def main() -> int:
         "schema_version": "apt-process-runtimes-v1",
         "code_commit": commit,
         "tree_hash": digest.hexdigest(),
-        "controller_excludes": ["apt_detection_agent.evaluator", "private campaign builder"],
+        "controller_excludes": ["apt_detection_agent.evaluation.private", "private campaign builder"],
         "identities": sorted(script_map),
     }
     (output / "runtime_manifest.json").write_text(

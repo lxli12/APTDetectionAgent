@@ -16,7 +16,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from apt_detection_agent.evaluator.synthetic_fixture import build_synthetic_hidden_input
+from apt_detection_agent.evaluation.fixtures import build_synthetic_hidden_input
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -129,6 +129,7 @@ class SyntheticEndToEndTests(unittest.TestCase):
             node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
         }
         self.assertFalse(any(name.startswith("apt_detection_agent.evaluator") for name in imports))
+        self.assertNotIn("apt_detection_agent.evaluation.private", imports)
 
     def test_synthetic_run_directory_is_never_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

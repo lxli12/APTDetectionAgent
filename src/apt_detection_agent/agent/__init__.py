@@ -5,5 +5,8 @@ Requirements: REQ-RUNTIME-003, REQ-TOOL-001..005, REQ-LABEL-001..004.
 """
 
 from .policy import AgentPolicy, PolicyOutput
+from .client import ChatMessage, ChatResponse, VLLMClient, VLLMConfig
 
-__all__ = ["AgentPolicy", "PolicyOutput"]
+__all__ = [
+    "AgentPolicy", "ChatMessage", "ChatResponse", "PolicyOutput", "VLLMClient", "VLLMConfig"
+]

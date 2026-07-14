@@ -11,7 +11,7 @@ import urllib.error
 
 from pydantic import ValidationError
 
-from apt_detection_agent.llm import ChatMessage, VLLMClient, VLLMConfig
+from apt_detection_agent.agent import ChatMessage, VLLMClient, VLLMConfig
 
 
 ENV = {
@@ -122,7 +122,7 @@ class VLLMClientTests(unittest.TestCase):
         self.assertNotIn("sensitive endpoint detail", str(raised.exception))
 
     def test_no_vllm_or_torch_runtime_import(self) -> None:
-        import apt_detection_agent.llm.vllm_client as module
+        import apt_detection_agent.agent.client as module
 
         source_names = set(module.__dict__)
         self.assertNotIn("vllm", source_names)

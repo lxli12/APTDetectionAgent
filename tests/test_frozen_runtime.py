@@ -11,7 +11,7 @@ import unittest
 from datetime import timedelta
 from pathlib import Path
 
-from apt_detection_agent.controller import (
+from apt_detection_agent.runtime import (
     ActionExecutionEnvelope,
     CommittedExecutionBundle,
     CommittedResultLedger,

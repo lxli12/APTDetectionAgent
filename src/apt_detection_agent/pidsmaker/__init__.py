@@ -3,25 +3,15 @@
 Requirements: REQ-PIDS-001..005, REQ-TOOL-001..005.
 """
 
-from .discovery import DiscoveryError, PIDSMakerDiscovery
+from .registry import DiscoveryError, PIDSMakerDiscovery
 from .adapter import ExecutionOutcome, PIDSDetectionRequest, PIDSMakerAdapter
-from .tools import (
-    ApprovedConfigCatalog,
-    PIDSToolService,
-    ResultComparison,
-    TraceResult,
-    VisibleTraceGraph,
-)
+from .admission import PIDSAdmissionRegistry
 
 __all__ = [
     "DiscoveryError",
-    "ApprovedConfigCatalog",
     "ExecutionOutcome",
     "PIDSDetectionRequest",
     "PIDSMakerAdapter",
+    "PIDSAdmissionRegistry",
     "PIDSMakerDiscovery",
-    "PIDSToolService",
-    "ResultComparison",
-    "TraceResult",
-    "VisibleTraceGraph",
 ]

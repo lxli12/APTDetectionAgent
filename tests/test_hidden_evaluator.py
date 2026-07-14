@@ -16,13 +16,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from apt_detection_agent.evaluator import (
-    CampaignManifest,
-    DatabaseRolePolicy,
-    EvaluatorIPCPaths,
-    HiddenEvaluationInput,
-    HiddenEvaluator,
-    ScoredEntity,
+from apt_detection_agent.evaluation.private import CampaignManifest
+from apt_detection_agent.evaluation.ipc import DatabaseRolePolicy, EvaluatorIPCPaths
+from apt_detection_agent.evaluation.metrics import HiddenEvaluationInput, HiddenEvaluator, ScoredEntity
+from apt_detection_agent.evaluation.calibration import (
     ValidationCoverageCalibrationInput,
     ValidationCoverageCalibrator,
     ValidationEntityScore,

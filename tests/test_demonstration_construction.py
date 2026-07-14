@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from apt_detection_agent.evaluator import StrictTeacherSelectionParser
+from apt_detection_agent.evaluation.teacher import StrictTeacherSelectionParser
 from apt_detection_agent.schemas import (
     AvailabilityStatus,
     DataSplit,
@@ -32,7 +32,7 @@ from apt_detection_agent.sft import (
     build_offline_run_record,
     build_trajectory,
 )
-from apt_detection_agent.sft.demonstration import (
+from apt_detection_agent.sft.models import (
     DemonstrationTrainingUse,
     GraphConstructionManifest,
     HistoricalEvidenceContext,
@@ -45,7 +45,7 @@ from apt_detection_agent.sft.demonstration import (
     VisibleEvidenceGrounding,
     VisibleFailureCondition,
 )
-from apt_detection_agent.tooling.runtime_tools import DetectorCapabilityView
+from apt_detection_agent.sft.models import DetectorCapabilitySnapshot
 from tests.test_agent_runtime_contract import NOW
 from tests.test_frozen_sft import frozen_teacher
 
@@ -55,8 +55,8 @@ GIT_SHA = "b" * 40
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def capability(pids_id: str = "velox") -> DetectorCapabilityView:
-    return DetectorCapabilityView(
+def capability(pids_id: str = "velox") -> DetectorCapabilitySnapshot:
+    return DetectorCapabilitySnapshot(
         pids=PIDSRef(pids_id=pids_id),
         purpose="Inspect deployment-visible provenance behavior.",
         capability_type="event-surprise",

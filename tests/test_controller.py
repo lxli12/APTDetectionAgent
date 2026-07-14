@@ -11,14 +11,12 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from apt_detection_agent.controller import (
+from apt_detection_agent.experiment.legacy_controller import (
     Controller,
     ControllerConfig,
-    ResourceProfile,
-    ResourceRequest,
-    ResourceScheduler,
-    TrajectoryLogger,
-    WorkloadKind,
+)
+from apt_detection_agent.runtime import (
+    ResourceProfile, ResourceRequest, ResourceScheduler, TrajectoryLogger, WorkloadKind,
 )
 from apt_detection_agent.schemas import (
     ActionType,

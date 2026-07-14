@@ -1,0 +1,7 @@
+schema_version: sft-training-config-v1
+requirement_ids: [REQ-SFT-005, REQ-SFT-006, REQ-SFT-007, REQ-SFT-008]
+trainer_interface: apt_detection_agent.training
+dataset_input: exported-public-sft
+adapter_format: lora
+formal_dataset_required: true
+rl_enabled: false

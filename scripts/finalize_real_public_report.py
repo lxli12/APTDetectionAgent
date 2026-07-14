@@ -35,7 +35,11 @@ def main() -> int:
         raise ValueError("bounded real E2E is validation evidence, never held-out evidence")
     if result.threshold != threshold:
         raise ValueError("public threshold and detection result disagree")
-    if any(name.startswith("apt_detection_agent.evaluator") for name in sys.modules):
+    if any(
+        name.startswith("apt_detection_agent.evaluator")
+        or name.startswith("apt_detection_agent.evaluation.private")
+        for name in sys.modules
+    ):
         raise RuntimeError("controller report process imported the hidden evaluator namespace")
     payload = {
         "schema_version": "real-bounded-public-report-v1",

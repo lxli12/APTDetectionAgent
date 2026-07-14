@@ -38,7 +38,7 @@ from apt_detection_agent.sft import (
     build_trajectory,
     corpus_digest,
 )
-from apt_detection_agent.sft.demonstration import (
+from apt_detection_agent.sft.models import (
     DemonstrationTrainingUse,
     GraphConstructionManifest,
     HistoricalEvidenceContext,
@@ -51,15 +51,15 @@ from apt_detection_agent.sft.demonstration import (
     VisibleEvidenceGrounding,
     VisibleFailureCondition,
 )
-from apt_detection_agent.tooling.runtime_tools import DetectorCapabilityView
+from apt_detection_agent.sft.models import DetectorCapabilitySnapshot
 
 
 def _jsonl(values) -> str:
     return "".join(item.model_dump_json() + "\n" for item in values)
 
 
-def _capability_view(capability) -> DetectorCapabilityView:
-    return DetectorCapabilityView(
+def _capability_view(capability) -> DetectorCapabilitySnapshot:
+    return DetectorCapabilitySnapshot(
         pids=capability.pids,
         purpose="Inspect deployment-visible provenance anomaly behavior.",
         capability_type=f"registered-{capability.pids.pids_id}-capability",

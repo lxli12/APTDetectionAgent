@@ -27,15 +27,14 @@ from apt_detection_agent.schemas import (
     TimeWindow,
 )
 from apt_detection_agent.sft import (
-    BLOCKED_BY_SFT_DATASET,
     HiddenTeacherRecord,
-    RLCandidate,
-    SFTCheckpointManifest,
     SFTDatasetValidator,
     SFTSanitizer,
-    SFTTrainingConfig,
 )
-from apt_detection_agent.sft.builder import build_dataset
+from apt_detection_agent.sft.compat.builder import build_dataset
+from apt_detection_agent.training import (
+    BLOCKED_BY_SFT_DATASET, SFTCheckpointManifest, SFTTrainingConfig,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -149,21 +148,10 @@ class SFTBoundaryTests(unittest.TestCase):
                 formal_training_approved=True,
             )
 
-    def test_future_rl_step_reward_is_training_only_and_bounded(self) -> None:
-        obs = observation()
-        candidate = RLCandidate(
-            candidate_id="rl-candidate-1",
-            source_example_id="student-teacher-one",
-            source_split=DataSplit.AGENT_TRAINING,
-            action=action(obs),
-            sanitized_reward=0.25,
-            signal_id="bounded-signal-v1",
-        )
-        self.assertEqual(candidate.sanitized_reward, 0.25)
-        with self.assertRaises(ValidationError):
-            candidate.model_copy(update={"source_split": DataSplit.HELD_OUT}, deep=True).__class__.model_validate(
-                {**candidate.model_dump(), "source_split": DataSplit.HELD_OUT}
-            )
+    def test_future_rl_is_not_exposed_as_a_current_sft_implementation(self) -> None:
+        import apt_detection_agent.sft as public_sft
+
+        self.assertFalse(hasattr(public_sft, "RLCandidate"))
 
     def test_checkpoint_manifest_rejects_unsafe_adapter_path(self) -> None:
         with self.assertRaises(ValidationError):

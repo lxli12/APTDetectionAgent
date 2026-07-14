@@ -17,10 +17,10 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from apt_detection_agent.pidsmaker import (
-    ApprovedConfigCatalog,
     PIDSDetectionRequest,
     PIDSMakerAdapter,
 )
+from apt_detection_agent.tools.pids import ApprovedConfigCatalog
 from apt_detection_agent.schemas import DataSplit, PIDSRef, TimeWindow
 
 

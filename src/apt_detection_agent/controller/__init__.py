@@ -1,54 +1,11 @@
-"""Frozen-policy controller and explicit resource scheduler."""
+"""Deprecated compatibility import; use :mod:`apt_detection_agent.runtime`.
 
-from .core import Controller, ControllerConfig, ControllerStepResult, TriggerDecision
-from .frozen_runtime import (
-    ActionExecutionEnvelope,
-    CommittedExecutionBundle,
-    CommittedFastPathInferenceRequest,
-    CommittedResultLedger,
-    FrozenRuntimeConfig,
-    FrozenRuntimeController,
-    FrozenTransactionLogger,
-    FrozenWindowStepResult,
-    prepare_case_for_window,
-)
-from .observation_builders import (
-    CanonicalObservationInputs,
-    DeterministicCanonicalObservationBuilder,
-    DeterministicPromptBuilder,
-    DeterministicTriggerPolicy,
-    FrozenTriggerProfile,
-    PromptBuilderConfig,
-)
-from .memory_protocol import FrozenMemoryProtocol
-from .scheduler import ResourceProfile, ResourceRequest, ResourceScheduler, WorkloadKind
-from .trajectory import TrajectoryLogger, TrajectoryStep
+Requirements: REQ-GOV-003, REQ-RUNTIME-001..006.
+"""
 
-__all__ = [
-    "Controller",
-    "ControllerConfig",
-    "ControllerStepResult",
-    "ActionExecutionEnvelope",
-    "CommittedExecutionBundle",
-    "CommittedFastPathInferenceRequest",
-    "CommittedResultLedger",
-    "CanonicalObservationInputs",
-    "DeterministicCanonicalObservationBuilder",
-    "DeterministicPromptBuilder",
-    "DeterministicTriggerPolicy",
-    "FrozenRuntimeConfig",
-    "FrozenRuntimeController",
-    "FrozenMemoryProtocol",
-    "FrozenTriggerProfile",
-    "FrozenTransactionLogger",
-    "FrozenWindowStepResult",
-    "PromptBuilderConfig",
-    "ResourceProfile",
-    "ResourceRequest",
-    "ResourceScheduler",
-    "TrajectoryLogger",
-    "TrajectoryStep",
-    "TriggerDecision",
-    "prepare_case_for_window",
-    "WorkloadKind",
-]
+from apt_detection_agent.runtime import *  # noqa: F401,F403
+from apt_detection_agent.runtime import __all__ as _runtime_all
+from apt_detection_agent.experiment.legacy_controller import (
+    Controller, ControllerConfig, ControllerStepResult, TriggerDecision,
+)
+__all__ = [*_runtime_all, "Controller", "ControllerConfig", "ControllerStepResult", "TriggerDecision"]

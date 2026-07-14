@@ -19,13 +19,11 @@ from zoneinfo import ZoneInfo
 from pydantic import ValidationError
 
 from apt_detection_agent.pidsmaker import (
-    ApprovedConfigCatalog,
     PIDSDetectionRequest,
     PIDSMakerAdapter,
     PIDSMakerDiscovery,
-    PIDSToolService,
-    VisibleTraceGraph,
 )
+from apt_detection_agent.tools.pids import ApprovedConfigCatalog, PIDSToolService, VisibleTraceGraph
 from apt_detection_agent.schemas import (
     ApprovedConfig,
     DataSplit,

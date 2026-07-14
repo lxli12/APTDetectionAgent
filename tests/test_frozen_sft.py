@@ -28,9 +28,9 @@ from apt_detection_agent.sft import (
     FrozenHiddenTeacherRecord,
     FrozenSFTDatasetValidator,
     FrozenSFTSanitizer,
-    SFTTrainingConfig,
 )
-from apt_detection_agent.sft.frozen_builder import build_frozen_dataset
+from apt_detection_agent.sft.compat.frozen_builder import build_frozen_dataset
+from apt_detection_agent.training import SFTTrainingConfig
 from tests.test_agent_runtime_contract import NOW, canonical_payload, content_hash
 from tests.test_frozen_runtime import action, prompt, trigger
 from tests.test_pids_admission import record as admission_payload

@@ -28,7 +28,7 @@ from apt_detection_agent.schemas import (
     ThresholdSourceSplit,
     ToolName,
 )
-from apt_detection_agent.tooling import (
+from apt_detection_agent.tools import (
     ApprovedDetectorCandidate,
     ApprovedResourcePreset,
     ApprovedThresholdCandidate,

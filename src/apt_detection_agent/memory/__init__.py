@@ -10,9 +10,11 @@ from .store import (
     StaticLTMSanitizer,
     normalized_content_hash,
 )
+from .protocol import FrozenMemoryProtocol
 
 __all__ = [
     "MemoryNamespace",
+    "FrozenMemoryProtocol",
     "CaseMemoryStore",
     "MemoryQuery",
     "MemoryStore",

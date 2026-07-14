@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from pydantic import ValidationError
 
-from apt_detection_agent.controller import (
+from apt_detection_agent.runtime import (
     CanonicalObservationInputs,
     DeterministicCanonicalObservationBuilder,
     DeterministicPromptBuilder,

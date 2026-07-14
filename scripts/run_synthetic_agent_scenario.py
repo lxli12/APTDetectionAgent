@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from apt_detection_agent.validation import SyntheticScenarioConfig, SyntheticScenarioRunner
+from apt_detection_agent.experiment import SyntheticScenarioConfig, SyntheticScenarioRunner
 
 
 def main() -> int:

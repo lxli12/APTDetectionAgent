@@ -9,13 +9,13 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from apt_detection_agent.controller import (
+from apt_detection_agent.runtime import (
     CommittedResultLedger,
-    FrozenMemoryProtocol,
     FrozenRuntimeConfig,
     FrozenRuntimeController,
     FrozenTransactionLogger,
 )
+from apt_detection_agent.memory import FrozenMemoryProtocol
 from apt_detection_agent.schemas import (
     DataSplit,
     FrozenActionType,

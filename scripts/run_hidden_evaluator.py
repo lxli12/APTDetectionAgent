@@ -9,7 +9,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from apt_detection_agent.evaluator import EvaluatorIPCPaths, HiddenEvaluationInput, HiddenEvaluator
+from apt_detection_agent.evaluation.ipc import EvaluatorIPCPaths
+from apt_detection_agent.evaluation.metrics import HiddenEvaluationInput, HiddenEvaluator
 
 
 def main() -> int:

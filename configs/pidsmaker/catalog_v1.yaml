@@ -1,0 +1,6 @@
+schema_version: pidsmaker-catalog-config-v1
+requirement_ids: [REQ-PIDS-001, REQ-PIDS-005, REQ-PIDS-006]
+pidsmaker_commit: 32602734bc9f896be5fc0f03f0a185c967cd6624
+registry_mode: dynamic-from-pinned-source
+formal_use_requires_all_eight_gates: true
+unverified_entries_remain_registered: true

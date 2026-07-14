@@ -1,0 +1,6 @@
+schema_version: agent-eval-v2
+requirement_ids: [REQ-EVAL-001, REQ-EVAL-002, REQ-EVAL-003, REQ-EVAL-006]
+private_process_required: true
+public_feedback: episode-level-only
+heldout_step_reward_enabled: false
+result_storage: append-only-experiment-run

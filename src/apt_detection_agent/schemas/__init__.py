@@ -5,6 +5,7 @@ Requirements: REQ-GOV-001 and all Phase 1 schema requirements.
 
 from .agent_runtime import (
     ACTION_TO_TOOL,
+    ActionExecutionEnvelope,
     ActiveDetectionSummary,
     AdditionalDetectorRequest,
     AdditionalDetectorResult,
@@ -93,6 +94,7 @@ from .tools import (
 
 __all__ = [
     "ACTION_TO_TOOL",
+    "ActionExecutionEnvelope",
     "AdmittedUse",
     "AdmissionGate",
     "AdmissionGateResult",

@@ -1,0 +1,7 @@
+schema_version: apt-runtime-config-v1
+requirement_ids: [REQ-RUNTIME-001, REQ-RUNTIME-002, REQ-RUNTIME-003, REQ-RUNTIME-004]
+trigger_profile_id: validated-trigger-v1
+trigger_source_split: validation
+additional_cycle_budget_policy_id: unresolved-requires-experiment
+max_additional_detector_cycles: 1
+require_frozen_memory_protocol: true

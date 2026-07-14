@@ -10,12 +10,14 @@ import argparse
 import json
 from pathlib import Path
 
-from apt_detection_agent.sft import (
+from apt_detection_agent.training import (
     BLOCKED_BY_SFT_DATASET,
-    SFTDataset,
-    SFTDatasetValidator,
     SFTTrainingConfig,
     SFTTrainingResult,
+)
+from apt_detection_agent.sft import (
+    SFTDataset,
+    SFTDatasetValidator,
     FrozenSFTDataset,
     FrozenSFTDatasetValidator,
 )

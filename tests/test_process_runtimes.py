@@ -38,9 +38,9 @@ class ProcessRuntimeTests(unittest.TestCase):
                     self.assertEqual(builder.main(), 0)
             controller = output / "controller"
             evaluator = output / "evaluator"
-            self.assertFalse(
-                (controller / "src" / "apt_detection_agent" / "evaluator").exists()
-            )
+            evaluation = controller / "src" / "apt_detection_agent" / "evaluation"
+            self.assertTrue((evaluation / "public.py").is_file())
+            self.assertFalse((evaluation / "private.py").exists())
             self.assertFalse(
                 (controller / "scripts" / "build_real_hidden_request.py").exists()
             )
@@ -52,6 +52,9 @@ class ProcessRuntimeTests(unittest.TestCase):
             )
             self.assertTrue(
                 (evaluator / "src" / "apt_detection_agent" / "memory").is_dir()
+            )
+            self.assertTrue(
+                (evaluator / "src" / "apt_detection_agent" / "evaluation" / "private.py").is_file()
             )
             self.assertFalse(
                 (controller / "src" / "apt_detection_agent" / "memory").exists()

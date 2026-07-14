@@ -8,7 +8,7 @@ from .causal import (
     ParameterFreeFeatureResult,
     RollingRangeCandidate,
 )
-from .stream import CausalWindowStream, VisibleEvent, WindowBatch
+from .windows import CausalWindowStream, VisibleEvent, WindowBatch
 
 __all__ = [
     "CausalFeatureBoundary",

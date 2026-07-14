@@ -47,7 +47,7 @@ from apt_detection_agent.schemas import (
     TransductiveStatus,
     assert_deployable_payload,
 )
-from apt_detection_agent.evaluator import CampaignManifest
+from apt_detection_agent.evaluation.private import CampaignManifest
 from apt_detection_agent.evaluation.public import EpisodeMetricsFeedback, TrainingStepFeedback
 import apt_detection_agent.schemas as public_schemas
 

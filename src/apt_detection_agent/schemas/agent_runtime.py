@@ -558,6 +558,17 @@ class HighLevelToolOutcome(StrictModel):
         return self
 
 
+class ActionExecutionEnvelope(StrictModel):
+    """Tool-to-runtime result without a runtime implementation dependency.
+
+    Requirements: REQ-RUNTIME-003, REQ-TOOL-003..005.
+    """
+
+    outcome: HighLevelToolOutcome
+    additional_result: AdditionalDetectorResult | None = None
+    pending_state: PendingDetectionState | None = None
+
+
 class FrozenWindowTransactionRecord(StrictModel):
     schema_version: str = "frozen-window-transaction-v1"
     transaction_id: Identifier

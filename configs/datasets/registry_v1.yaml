@@ -1,0 +1,6 @@
+schema_version: apt-dataset-registry-v1
+requirement_ids: [REQ-CAUSAL-001, REQ-LABEL-001, REQ-SFT-001]
+registry_source: docs/dataset_inventory.md
+split_policy: scenario-and-campaign-disjoint
+canonical_window_semantics: half-open
+private_ground_truth_visible_to_agent: false

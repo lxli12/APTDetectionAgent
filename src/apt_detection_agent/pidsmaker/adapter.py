@@ -35,7 +35,7 @@ from apt_detection_agent.schemas import (
 )
 from apt_detection_agent.schemas.common import StrictModel
 
-from .discovery import PIDSMakerDiscovery
+from .registry import PIDSMakerDiscovery
 from .results import require_standardized_result_parser, standardize_frozen_test_scores
 
 

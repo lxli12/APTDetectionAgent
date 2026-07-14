@@ -20,7 +20,7 @@ from apt_detection_agent.schemas import (
     ToolName,
     ToolRequest,
 )
-from apt_detection_agent.tooling import MemoryCaseToolService
+from apt_detection_agent.tools import MemoryCaseToolService
 
 
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)

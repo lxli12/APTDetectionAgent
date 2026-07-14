@@ -1,89 +1,32 @@
-"""Offline SFT dataset contracts; no runtime training dependency."""
+"""Canonical SFT dataset construction boundary.
 
-from .contracts import (
-    BLOCKED_BY_SFT_DATASET,
-    RLCandidate,
-    SFTCheckpointManifest,
-    SFTDataset,
-    SFTDatasetManifest,
-    SFTDatasetValidator,
-    SFTTrainingConfig,
-    SFTTrainingResult,
-    StudentSFTExample,
-)
-from .sanitizer import SFTSanitizer
-from .teacher import HiddenTeacherRecord
-from .frozen_contracts import (
-    FrozenSFTDataset,
-    FrozenSFTDatasetManifest,
-    FrozenSFTDatasetValidator,
-    FrozenStudentSFTExample,
-)
-from .frozen_sanitizer import FrozenSFTSanitizer
-from .frozen_teacher import FrozenHiddenTeacherRecord
-from .demonstration import (
-    CanonicalDemonstrationTrajectory,
-    CoverageClass,
-    DemonstrationDatasetManifest,
-    DemonstrationExecutionMatrixRow,
-    DemonstrationExchange,
-    ExecutionDisposition,
+Current implementation is demonstration-based. Legacy/frozen symbols are
+temporarily re-exported for stored artifacts and old entrypoints only.
+Requirements: REQ-SFT-001..010, REQ-LABEL-002..004.
+"""
+
+from .models import (
+    CanonicalDemonstrationTrajectory, CoverageClass, DemonstrationDatasetManifest,
+    DemonstrationExecutionMatrixRow, DemonstrationExchange, ExecutionDisposition,
     PublicOfflineRunRecord,
 )
-from .demonstration_builder import (
-    DemonstrationCorpusManifest,
-    DemonstrationCorpusValidator,
-    DemonstrationCoverageReport,
-    build_coverage_report,
-    build_dataset_manifest,
-    build_execution_matrix,
-    build_offline_run_record,
-    build_trajectory,
-    corpus_digest,
+from .builder import (
+    DemonstrationCorpusManifest, DemonstrationCorpusValidator,
+    DemonstrationCoverageReport, build_coverage_report, build_dataset_manifest,
+    build_execution_matrix, build_offline_run_record, build_trajectory, corpus_digest,
 )
-from .demonstration_exporter import (
-    DemonstrationExporter,
-    LossAwareMessage,
-    OpenAICompatibleTrajectory,
+from .exporters import DemonstrationExporter, LossAwareMessage, OpenAICompatibleTrajectory
+from .validators import DemonstrationSanitizer
+from .datasets import load_trajectory_jsonl
+# Compatibility surface for pre-demonstration artifacts. No new code may depend on it.
+from .compat.contracts import SFTDataset, SFTDatasetManifest, SFTDatasetValidator, StudentSFTExample
+from .compat.sanitizer import SFTSanitizer
+from .compat.teacher import HiddenTeacherRecord
+from .compat.frozen_contracts import (
+    FrozenSFTDataset, FrozenSFTDatasetManifest, FrozenSFTDatasetValidator,
+    FrozenStudentSFTExample,
 )
-from .demonstration_sanitizer import DemonstrationSanitizer
+from .compat.frozen_sanitizer import FrozenSFTSanitizer
+from .compat.frozen_teacher import FrozenHiddenTeacherRecord
 
-__all__ = [
-    "BLOCKED_BY_SFT_DATASET",
-    "HiddenTeacherRecord",
-    "FrozenHiddenTeacherRecord",
-    "FrozenSFTDataset",
-    "FrozenSFTDatasetManifest",
-    "FrozenSFTDatasetValidator",
-    "FrozenSFTSanitizer",
-    "FrozenStudentSFTExample",
-    "CanonicalDemonstrationTrajectory",
-    "CoverageClass",
-    "DemonstrationCorpusManifest",
-    "DemonstrationCorpusValidator",
-    "DemonstrationCoverageReport",
-    "DemonstrationDatasetManifest",
-    "DemonstrationExecutionMatrixRow",
-    "DemonstrationExchange",
-    "DemonstrationExporter",
-    "DemonstrationSanitizer",
-    "ExecutionDisposition",
-    "LossAwareMessage",
-    "OpenAICompatibleTrajectory",
-    "PublicOfflineRunRecord",
-    "RLCandidate",
-    "SFTCheckpointManifest",
-    "SFTDataset",
-    "SFTDatasetManifest",
-    "SFTDatasetValidator",
-    "SFTSanitizer",
-    "SFTTrainingConfig",
-    "SFTTrainingResult",
-    "StudentSFTExample",
-    "build_coverage_report",
-    "build_dataset_manifest",
-    "build_execution_matrix",
-    "build_offline_run_record",
-    "build_trajectory",
-    "corpus_digest",
-]
+__all__ = [name for name in globals() if not name.startswith("_")]

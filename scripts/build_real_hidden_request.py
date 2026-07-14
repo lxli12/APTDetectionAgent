@@ -15,9 +15,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from apt_detection_agent.evaluator import HiddenEvaluationInput, ScoredEntity
+from apt_detection_agent.evaluation.metrics import HiddenEvaluationInput, ScoredEntity
 from apt_detection_agent.schemas import StandardizedDetectionResult
-from apt_detection_agent.evaluator.contracts import CampaignManifest
+from apt_detection_agent.evaluation.private import CampaignManifest
 
 
 def child(path: Path, root: Path, description: str) -> Path:

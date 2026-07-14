@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from apt_detection_agent.validation import finalize_public_report
+from apt_detection_agent.evaluation.reporting import finalize_public_report
 
 
 def main() -> int:
