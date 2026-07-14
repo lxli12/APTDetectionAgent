@@ -360,6 +360,27 @@ class CaseMemoryStore(MemoryStore):
             raise KeyError(case_id)
         return CaseState.model_validate_json(row["state_json"])
 
+    def update_case(self, state: CaseState) -> None:
+        """Persist same-window controller state without changing lifecycle identity."""
+
+        current = self.get_case(state.case_id)
+        immutable_identity = (
+            "split",
+            "scenario_id",
+            "episode_id",
+            "memory_namespace",
+            "current_window_sequence",
+        )
+        if any(getattr(state, name) != getattr(current, name) for name in immutable_identity):
+            raise ValueError("same-window case update cannot change lifecycle identity or sequence")
+        if state.updated_at < current.updated_at:
+            raise ValueError("case update time cannot move backward")
+        with self.connection:
+            self.connection.execute(
+                "UPDATE cases SET state_json=? WHERE case_id=?",
+                (state.model_dump_json(), state.case_id),
+            )
+
     def advance_case(self, case_id: str, *, next_sequence: int, updated_at: datetime) -> CaseState:
         current = self.get_case(case_id)
         if next_sequence != current.current_window_sequence + 1:

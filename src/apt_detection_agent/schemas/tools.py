@@ -26,6 +26,10 @@ class ToolName(str, Enum):
     COMPARE_PIDS_RESULTS = "compare_pids_results"
     BACKWARD_TRACE = "backward_trace"
     FORWARD_TRACE = "forward_trace"
+    RETRIEVE_MEMORY = "retrieve_memory"
+    WRITE_MEMORY = "write_memory"
+    UPDATE_CASE = "update_case"
+    GENERATE_REPORT = "generate_report"
 
 
 class ActionType(str, Enum):

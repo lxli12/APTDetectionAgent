@@ -268,6 +268,25 @@ class CaseMemoryStoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.create_case(self.case(memory_namespace="heldout-wrong"))
 
+    def test_same_window_update_persists_pending_config_without_advancing(self) -> None:
+        initial = self.case(pending_configuration=None)
+        self.store.create_case(initial)
+        scheduled = self.case()
+        self.store.update_case(scheduled)
+        loaded = self.store.get_case("case-1")
+        self.assertEqual(loaded.current_window_sequence, 4)
+        self.assertEqual(loaded.committed_config_id, "config-old")
+        self.assertEqual(loaded.pending_configuration.config_id, "config-new")
+
+    def test_same_window_update_rejects_sequence_or_namespace_change(self) -> None:
+        self.store.create_case(self.case(pending_configuration=None))
+        with self.assertRaises(ValueError):
+            self.store.update_case(
+                self.case(current_window_sequence=5, pending_configuration=None)
+            )
+        with self.assertRaises(ValueError):
+            self.store.update_case(self.case(memory_namespace="runtime:held_out:other:other"))
+
     def test_episode_reset_removes_case_and_runtime_memory_but_not_static_ltm(self) -> None:
         self.store.create_case(self.case(pending_configuration=None))
         self.store.write_runtime(record("runtime state"), self.ns)
