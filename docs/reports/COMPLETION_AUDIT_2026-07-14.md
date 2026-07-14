@@ -7,22 +7,21 @@ REQ-WANDB-001, REQ-REPRO-001..003, REQ-SFT-001..004.
 
 ## Revised disposition
 
-All implementation and bounded validation work possible before the formal SFT
-trajectory dataset is complete. The earlier Phase 8/9 infrastructure blockers are
-closed: tmux is installed; least-privilege PostgreSQL roles and separate OS
-identities are live; a versioned compatibility patch runs outside the clean pinned
-submodule; exact windows, causal checkpointing, W&B-free training, frozen
-featurization, standardized scores, hidden evaluation, and new-window inference
-have real AutoDL evidence. The Agent-facing typed tool path now also reaches that
-causal backend through the isolated `apt_pids_worker` runtime; it is no longer only
-a synthetic adapter contract.
+The original Phase 8/9 infrastructure blockers are closed: tmux, least-privilege
+PostgreSQL/OS identities, the isolated compatibility patch, exact windows, causal
+checkpointing, W&B-free training, frozen featurization, standardized scores,
+hidden evaluation, and new-window inference have bounded real AutoDL evidence.
+However, the later frozen-runtime design review exposed a distinct formal-
+trajectory contract that the earlier real runs did not implement. That contract is
+now implemented and synthetically accepted, but no real PIDS combination has yet
+passed its eight-gate admission record.
 
 | Phase | Disposition | Scope limit |
 |---|---|---|
 | 0–7 | accepted | metrics and policy contracts remain subject to later empirical validation |
 | 8 | bounded causal smoke accepted | VELOX/CADETS validation only; other registry entries remain unavailable/unverified |
-| 9 | bounded real validation accepted | no held-out or formal performance claim |
-| 10 | pre-SFT complete | formal SFT, deployable static LTM, and deployment bundle blocked by missing dataset/approval |
+| 9 | bounded legacy real validation plus frozen-runtime synthetic acceptance | earlier real run is not a formal frozen-runtime trajectory |
+| 10 | frozen v2 interfaces accepted | formal SFT, static LTM, and deployment blocked by dataset and real PIDS admission |
 
 ## Evidence
 
@@ -48,6 +47,10 @@ a synthetic adapter contract.
   `/root/autodl-tmp/apt-agent/memory-sensitivity-runs/memory-sensitivity-synthetic-20260714-001`;
 - formal pre-SFT gate run:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-pre-sft-gate-20260714-002`.
+- frozen-runtime synthetic run:
+  `/root/autodl-tmp/apt-agent/frozen-runtime-runs/frozen-runtime-synthetic-20260714-001`;
+- AutoDL commit `5b5bfa583ef0e6d0f1a32e9560137f39c1561360`:
+  268/268 tests passed.
 
 The later-window run produced 8,394 label-free scores with the exact frozen hashes,
 `featurizer_fit_on_current_window=false`, `test_labels_loaded=false`, and
@@ -84,6 +87,10 @@ unvalidated until a formal validation query manifest and review rule exist.
 5. Transductive executions, when run, remain separate compatibility experiments;
    result schemas and comparison gates prevent them from entering causal-main
    aggregates. Retrieval/trigger sensitivity still requires formal validation data.
+6. At least one exact PIDS/variant/config/dataset/use must pass causal config,
+   checkpoint, threshold, parser, resource, state/reset, real-smoke, and provenance
+   review before formal real trajectories can be collected.
 
-Accordingly “pre-SFT implementation complete” is accurate. “Formal training
-complete,” “held-out validated,” and “deployment ready” are not yet accurate.
+Accordingly “frozen runtime and SFT interfaces implemented” is accurate.
+“Pre-SFT real trajectory evidence complete,” “formal training complete,”
+“held-out validated,” and “deployment ready” are not yet accurate.

@@ -1,4 +1,4 @@
-# Phase 10 acceptance report — pre-SFT complete, formal SFT blocked
+# Phase 10 acceptance report — frozen interfaces accepted, formal SFT blocked
 
 Requirements: REQ-SFT-001..004, REQ-LABEL-002..004,
 REQ-ARTIFACT-001..003, REQ-REPRO-001..003.
@@ -42,3 +42,17 @@ No formal trajectory dataset, SFT update, adapter checkpoint, deployable static
 LTM, or held-out performance claim exists. These stages remain
 `BLOCKED_BY_SFT_DATASET` (and deployment additionally by held-out approval) until
 the user-provided dataset passes deployability and split checks.
+
+## Frozen runtime v2 addendum
+
+The earlier v1 SFT schemas remain synthetic compatibility fixtures. Formal input is
+now defined by `sft/frozen_*`: canonical and rendered-prompt hashes, frozen
+two-turn memory exchange, exact frozen target action, group-disjoint train/
+validation partitions, and scoped admission records are mandatory. Synthetic v2
+fixtures explicitly carry non-admitted evidence and cannot claim real smoke.
+
+At commit `5b5bfa583ef0e6d0f1a32e9560137f39c1561360`, AutoDL passed the full
+268-test suite. This establishes interface readiness only. Formal SFT remains
+blocked by the missing user dataset and by the absence of any real all-eight-gates
+PIDS admission; no weights, checkpoint, static LTM, or deployment bundle were
+created.

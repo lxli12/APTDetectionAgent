@@ -59,3 +59,16 @@ deferred here: `structured-adapter-20260714-007` records validated arguments,
 frozen config/checkpoint, executor-built argv, timing, artifacts, standardized
 observation, and five internal stages. This does not convert the Phase 5 synthetic
 policy into a formal learned policy or held-out result.
+
+## Runtime-freeze addendum
+
+The earlier `Controller` is now explicitly a legacy compatibility path. The
+normative frozen path is implemented in `controller/frozen_runtime.py` with three
+observation layers, automatic committed inference, harness-default untriggered
+keep, exact frozen actions, separate additional results, two-turn memory exchange,
+typed high-level tools, and future-only pending activation. See
+`FROZEN_RUNTIME_ACCEPTANCE_2026-07-14.md` for commit and AutoDL evidence.
+
+This addendum accepts the implementation and synthetic transaction protocol. It
+does not claim a real-PIDS formal trajectory because no scoped candidate has passed
+all eight admission gates.

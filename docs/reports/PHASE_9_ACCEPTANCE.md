@@ -33,3 +33,12 @@ held-out performance. Private campaign mappings and TP/FP/FN details remain outs
 Agent-visible artifacts. Promotion to held-out/deployment still requires the full
 agent-level validation campaign set, frozen routing/policy, and a held-out-approved
 bundle.
+
+## Runtime-freeze qualification
+
+The real run above predates the later frozen action/observation/memory contract and
+must not be relabeled as a formal frozen-runtime trajectory. The new path passed a
+two-window synthetic protocol smoke at
+`/root/autodl-tmp/apt-agent/frozen-runtime-runs/frozen-runtime-synthetic-20260714-001`.
+It makes no formal or performance claim. A real replay becomes eligible only after
+the exact detector/config/dataset/use passes the eight-gate admission record.

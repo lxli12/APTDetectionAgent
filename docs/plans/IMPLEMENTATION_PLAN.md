@@ -5,11 +5,13 @@ Design baseline: `docs/design/APT_Detection_Agent_Design_v0.4.md` plus accepted
 decisions in `docs/decisions/`
 PIDSMaker baseline: `32602734bc9f896be5fc0f03f0a185c967cd6624`
 
-Implementation snapshot (2026-07-14): Phases 0–9 have scoped acceptance, including
-a bounded causal VELOX/CADETS smoke, frozen new-window inference, real validation
-integration, and live OS/PostgreSQL isolation. Phase 10 is complete through the
-pre-SFT freeze/validation boundary; formal training remains
-`BLOCKED_BY_SFT_DATASET`.
+Implementation snapshot (2026-07-14): the original Phases 0–9 retain scoped
+acceptance, and the later runtime-freeze review has now produced strict three-layer
+observations, committed/additional separation, eight frozen actions, two-turn
+memory exchange, all-eight-gates admission, unified high-level tools, and frozen
+SFT v2 interfaces. This newer path has unit and synthetic AutoDL acceptance only.
+No real PIDS is yet admitted for formal trajectory collection. Formal training
+remains `BLOCKED_BY_SFT_DATASET` and by scoped PIDS admission evidence.
 
 This plan is requirement-driven. A phase is complete only when its mapped
 requirements have implementation and test evidence in
@@ -104,6 +106,12 @@ next-window persistent changes, trace-informed routing, bounded retries, schedul
 failure recovery, and complete trajectory logging. Hidden evidence is excluded from
 routing by construction.
 
+Runtime-freeze addendum: `controller/frozen_runtime.py` is the normative new path.
+It commits inference before any trigger/LLM decision, skips the LLM entirely when
+untriggered, persists memory exchanges separately, and activates admitted pending
+state only at a later window. `controller/core.py` is retained as a legacy
+compatibility path and is not a formal trajectory source.
+
 ## Phase 6 — vLLM interface
 
 Requirements: REQ-ENV-001..004, REQ-RESOURCE-001..003, REQ-TOOL-001.
@@ -145,6 +153,10 @@ Accepted scope: bounded real validation with evaluator-private campaign data and
 live process permission checks. Held-out/deployment remains a later frozen-bundle
 promotion gate.
 
+The bounded real run predates the runtime-freeze contract. The new frozen path has
+a nonformal two-window synthetic smoke; it still requires an admitted real-PIDS
+replay before it can become formal real-trajectory evidence.
+
 ## Phase 10 — SFT interfaces
 
 Requirements: REQ-SFT-001..004, REQ-LABEL-002..004, REQ-REPRO-001..003.
@@ -153,6 +165,10 @@ Implement trajectory/teacher boundaries, sanitizer, dataset validator, split
 manifest, dataset-builder and trainer interfaces, dry-run fixtures, and checkpoint
 manifest. Formal dataset construction and training remain
 `BLOCKED_BY_SFT_DATASET` until authorized data exists.
+
+The v2 interface additionally requires exact canonical/prompt hashes, the frozen
+memory exchange, exact frozen action, group-disjoint partitions, and referenced
+all-eight-gates admissions. Legacy v1 synthetic fixtures remain compatibility-only.
 
 Before the dataset arrives, freeze and independently validate the causal PIDS,
 featurizer, threshold, and ApprovedConfig inputs. Do not promote that validation

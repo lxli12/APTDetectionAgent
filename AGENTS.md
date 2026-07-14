@@ -55,6 +55,25 @@ process exit is never sufficient evidence of correctness.
 
 ## Runtime and resources
 
+- A window transaction runs the committed fast path and durably records exactly
+  one result before trigger or LLM work. A failed committed inference is a typed
+  committed failure, never an empty benign prediction.
+- Raw executor state, complete canonical Agent-visible observation, and
+  token-budgeted model prompt are separate hashed schemas. Only the prompt layer
+  may be truncated, and only by a validation-approved policy.
+- An untriggered window records harness-default `KEEP_CURRENT_CONFIG` without a
+  prompt, memory exchange, policy call, or fabricated assistant turn.
+- Triggered diagnosis uses the exact frozen action taxonomy and opaque catalog
+  choices. `RUN_ADDITIONAL_DETECTOR` is supplemental and can never replace the
+  current committed result. Persistent changes activate only at a future window.
+- Formal real trajectories require an all-eight-gates admission record for the
+  exact PIDS/variant/config/dataset/use. Synthetic success and zero exit status do
+  not satisfy causal config, checkpoint, threshold, parser, resource, state/reset,
+  real-smoke, or provenance admission.
+- The frozen memory turn shape is read request, deterministic retrieval result,
+  memory-use decision plus action, and optional write candidate. Even
+  `needed=false` receives a deterministic empty tool result.
+
 - Allocation comes from an explicit resource profile, not host-visible capacity.
 - AutoDL baseline: 32 vCPU, 240 GiB RAM, two RTX 4090 GPUs, at most 24 GiB per GPU.
 - Initial profile reserves GPU 0 for vLLM and permits one PIDSMaker GPU process on
