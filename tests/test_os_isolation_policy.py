@@ -32,6 +32,8 @@ class OSIsolationPolicyTests(unittest.TestCase):
         self.assertIn("os_isolation=already-provisioned", script)
         self.assertIn("pids_worker.env", script)
         self.assertIn("hidden_evaluator.env", script)
+        self.assertIn('chown root:root "$BASE/secrets"', script)
+        self.assertIn('chmod 711 "$BASE/secrets"', script)
         self.assertIn('chown root:apt_pids_worker "$PIDS_SECRET"', script)
         self.assertIn('chown root:apt_hidden_evaluator "$EVALUATOR_SECRET"', script)
 

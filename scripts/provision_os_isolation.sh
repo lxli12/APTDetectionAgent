@@ -24,6 +24,8 @@ usermod -a -G apt_eval_exchange apt_hidden_evaluator
 BASE=/root/autodl-tmp/apt-agent
 mkdir -p "$BASE/runtime/controller" "$BASE/runtime/pids" "$BASE/evaluator-private" \
   "$BASE/feedback-exchange" "$BASE/secrets"
+chown root:root "$BASE/secrets"
+chmod 711 "$BASE/secrets"
 chown apt_agent_controller:apt_agent_controller "$BASE/runtime/controller"
 chmod 750 "$BASE/runtime/controller"
 chown apt_pids_worker:apt_pids_worker "$BASE/runtime/pids"

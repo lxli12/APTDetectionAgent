@@ -258,7 +258,7 @@ class PIDSMakerAdapter:
             argv.extend(("--override", f"{key}={rendered}"))
         return tuple(argv)
 
-    def execution_environment(self) -> dict[str, str]:
+    def execution_environment(self, run_directory: Path | None = None) -> dict[str, str]:
         environment = {"PATH": os.environ.get("PATH", "")}
         environment["WANDB_MODE"] = "disabled"
         environment["WANDB_SILENT"] = "true"
@@ -270,6 +270,10 @@ class PIDSMakerAdapter:
         environment.update(self.database_environment)
         if self.frozen_bundle_root is not None:
             environment["APT_PRE_SFT_BUNDLE_ROOT"] = str(self.frozen_bundle_root)
+        if run_directory is not None:
+            environment["APT_PIDS_ARTIFACT_ROOT"] = str(
+                run_directory / "pids_artifacts"
+            )
         return environment
 
     def execute(self, request: PIDSDetectionRequest) -> ExecutionOutcome:
@@ -284,11 +288,12 @@ class PIDSMakerAdapter:
         started_at = datetime.now(timezone.utc)
         command_path = run_directory / "command.txt"
         command_path.write_text(shlex.join(argv) + "\n")
+        execution_environment = self.execution_environment(run_directory)
         try:
             completed = self.runner(
                 argv,
                 cwd=str(self.project_root),
-                env=self.execution_environment(),
+                env=execution_environment,
                 timeout=request.timeout_seconds,
             )
             exit_code = completed.returncode
@@ -402,7 +407,7 @@ class PIDSMakerAdapter:
             injected_environment_keys=tuple(
                 sorted(
                     key
-                    for key in self.execution_environment()
+                    for key in execution_environment
                     if not any(token in key.upper() for token in ("PASSWORD", "SECRET", "TOKEN"))
                 )
             ),

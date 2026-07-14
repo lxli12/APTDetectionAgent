@@ -307,6 +307,11 @@ class PIDSMakerAdapterTests(unittest.TestCase):
         self.assertEqual(called_kwargs["env"]["WANDB_MODE"], "disabled")
         self.assertEqual(called_kwargs["env"]["CUDA_VISIBLE_DEVICES"], "1")
         self.assertEqual(called_kwargs["env"]["APT_PIDS_CPU_THREADS"], "16")
+        self.assertTrue(
+            called_kwargs["env"]["APT_PIDS_ARTIFACT_ROOT"].endswith(
+                "pids_artifacts"
+            )
+        )
         self.assertEqual(called_kwargs["env"]["PIDS_DB_PASSWORD"], "unit-test-only")
         self.assertTrue(
             all(
