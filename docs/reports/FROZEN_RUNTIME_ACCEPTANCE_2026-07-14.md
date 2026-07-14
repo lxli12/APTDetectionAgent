@@ -1,7 +1,7 @@
 # Frozen runtime contract acceptance — 2026-07-14
 
 Requirements: REQ-RUNTIME-001..006, REQ-PIDS-006, REQ-TOOL-001..005,
-REQ-CONFIG-001..003, REQ-LABEL-001..004, REQ-SFT-001..004.
+REQ-CONFIG-001..003, REQ-LABEL-001..004, REQ-SFT-001..010.
 
 ## Accepted implementation scope
 
@@ -33,6 +33,9 @@ Implemented contract evidence:
 - `sft/frozen_*`: v2 student/teacher, group partition, admission, sanitizer, hash,
   and trainer dry-run contracts tied to the same canonical/prompt/memory/action
   schemas.
+- `sft/demonstration*` and evaluator-private construction contracts: public/private
+  manifests, dynamic admission-aware matrix, OfflineRunRecord, evidence-closed
+  transcript, strict ambiguity handling, assistant-only loss export, and coverage.
 
 ## AutoDL evidence
 
@@ -65,3 +68,10 @@ constants, memory retrieval limits, additional-cycle limits, resource presets,
 state warm-up, retries, and real-smoke bounds remain validation decisions rather
 than claimed optimal defaults. The user-provided formal SFT dataset must then pass
 the frozen v2 validator; no weight update or deployment promotion is claimed here.
+
+At commit `0e1955d0d93e1137174398da890652219a580dbc`, AutoDL passed
+275/275 tests in 14.741 seconds. The warning-free construction smoke is
+`/root/autodl-tmp/apt-agent/demonstration-runs/demonstration-contract-20260714-002`.
+It dynamically discovered 10 source-config/variant identities spanning the eight
+canonical PIDS and emitted 10 capability-only matrix/offline rows. It records zero
+admissions and zero successful tool-use examples, so it is contract evidence only.

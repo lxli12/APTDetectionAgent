@@ -1,6 +1,6 @@
 """Canonical pre-SFT demonstration construction contracts and validators.
 
-Requirements: REQ-RUNTIME-001..006, REQ-PIDS-006, REQ-SFT-001..004,
+Requirements: REQ-RUNTIME-001..006, REQ-PIDS-006, REQ-SFT-001..010,
 REQ-LABEL-001..004, REQ-REPRO-001..003.
 """
 

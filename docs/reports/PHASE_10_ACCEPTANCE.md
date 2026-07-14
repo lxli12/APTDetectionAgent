@@ -1,6 +1,6 @@
 # Phase 10 acceptance report — frozen interfaces accepted, formal SFT blocked
 
-Requirements: REQ-SFT-001..004, REQ-LABEL-002..004,
+Requirements: REQ-SFT-001..010, REQ-LABEL-002..004,
 REQ-ARTIFACT-001..003, REQ-REPRO-001..003.
 
 The privileged teacher, deployment-visible student, recursive sanitizer, dataset
@@ -56,3 +56,17 @@ At commit `5b5bfa583ef0e6d0f1a32e9560137f39c1561360`, AutoDL passed the full
 blocked by the missing user dataset and by the absence of any real all-eight-gates
 PIDS admission; no weights, checkpoint, static LTM, or deployment bundle were
 created.
+
+## Demonstration construction addendum
+
+The pre-SFT construction machinery now includes public/private manifests, a
+dynamic admission-aware matrix, public OfflineRunRecords, evidence-closed
+multi-turn trajectories, strict private teacher selection, semantic sanitization,
+assistant-only-loss exports, and coverage/rejection reports. At commit
+`0e1955d0d93e1137174398da890652219a580dbc`, AutoDL passed 275/275 tests.
+
+The synthetic run
+`/root/autodl-tmp/apt-agent/demonstration-runs/demonstration-contract-20260714-002`
+covers every dynamically discovered source config as capability-only. It has no
+real admission and claims no successful PIDS tool example. Real pilot construction
+and all weight updates remain blocked exactly as above.

@@ -21,7 +21,7 @@ passed its eight-gate admission record.
 | 0–7 | accepted | metrics and policy contracts remain subject to later empirical validation |
 | 8 | bounded causal smoke accepted | VELOX/CADETS validation only; other registry entries remain unavailable/unverified |
 | 9 | bounded legacy real validation plus frozen-runtime synthetic acceptance | earlier real run is not a formal frozen-runtime trajectory |
-| 10 | frozen v2 interfaces accepted | formal SFT, static LTM, and deployment blocked by dataset and real PIDS admission |
+| 10 | frozen v2 plus pre-SFT construction interfaces accepted | real demonstration pilot, formal SFT, static LTM, and deployment blocked by dataset and real PIDS admission |
 
 ## Evidence
 
@@ -51,6 +51,10 @@ passed its eight-gate admission record.
   `/root/autodl-tmp/apt-agent/frozen-runtime-runs/frozen-runtime-synthetic-20260714-001`;
 - AutoDL commit `5b5bfa583ef0e6d0f1a32e9560137f39c1561360`:
   268/268 tests passed.
+- warning-free demonstration construction smoke:
+  `/root/autodl-tmp/apt-agent/demonstration-runs/demonstration-contract-20260714-002`;
+- AutoDL commit `0e1955d0d93e1137174398da890652219a580dbc`:
+  275/275 tests passed.
 
 The later-window run produced 8,394 label-free scores with the exact frozen hashes,
 `featurizer_fit_on_current_window=false`, `test_labels_loaded=false`, and
@@ -91,6 +95,7 @@ unvalidated until a formal validation query manifest and review rule exist.
    checkpoint, threshold, parser, resource, state/reset, real-smoke, and provenance
    review before formal real trajectories can be collected.
 
-Accordingly “frozen runtime and SFT interfaces implemented” is accurate.
+Accordingly “frozen runtime, pre-SFT construction, and SFT interfaces implemented”
+is accurate.
 “Pre-SFT real trajectory evidence complete,” “formal training complete,”
 “held-out validated,” and “deployment ready” are not yet accurate.

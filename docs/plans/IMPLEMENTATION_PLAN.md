@@ -9,9 +9,13 @@ Implementation snapshot (2026-07-14): the original Phases 0–9 retain scoped
 acceptance, and the later runtime-freeze review has now produced strict three-layer
 observations, committed/additional separation, eight frozen actions, two-turn
 memory exchange, all-eight-gates admission, unified high-level tools, and frozen
-SFT v2 interfaces. This newer path has unit and synthetic AutoDL acceptance only.
-No real PIDS is yet admitted for formal trajectory collection. Formal training
-remains `BLOCKED_BY_SFT_DATASET` and by scoped PIDS admission evidence.
+SFT v2 interfaces. The pre-SFT construction layer now also has public/private
+manifests, a dynamic admission-aware execution matrix, public OfflineRunRecords,
+causal multi-turn validation, strict private teacher selection, semantic
+sanitization, assistant-only loss export, and coverage/rejection reports. This
+newer path has unit and synthetic AutoDL acceptance only. No real PIDS is yet
+admitted for formal trajectory collection. Formal training remains
+`BLOCKED_BY_SFT_DATASET` and by scoped PIDS admission evidence.
 
 This plan is requirement-driven. A phase is complete only when its mapped
 requirements have implementation and test evidence in
@@ -159,7 +163,7 @@ replay before it can become formal real-trajectory evidence.
 
 ## Phase 10 — SFT interfaces
 
-Requirements: REQ-SFT-001..004, REQ-LABEL-002..004, REQ-REPRO-001..003.
+Requirements: REQ-SFT-001..010, REQ-LABEL-002..004, REQ-REPRO-001..003.
 
 Implement trajectory/teacher boundaries, sanitizer, dataset validator, split
 manifest, dataset-builder and trainer interfaces, dry-run fixtures, and checkpoint
@@ -169,6 +173,19 @@ manifest. Formal dataset construction and training remain
 The v2 interface additionally requires exact canonical/prompt hashes, the frozen
 memory exchange, exact frozen action, group-disjoint partitions, and referenced
 all-eight-gates admissions. Legacy v1 synthetic fixtures remain compatibility-only.
+
+The formal construction boundary is implemented in `sft/demonstration*` and
+`evaluator/demonstration.py`. Dynamic PIDSMaker source configs enter an execution
+matrix, but a row is executable only after an exact all-eight-gates admission and
+frozen configuration join. Public trajectories contain only causally available
+deployment-visible evidence. Ambiguous public evidence is rejected rather than
+turned into an oracle target. Canonical/OpenAI JSONL exports have explicit
+assistant-only loss masks and separate capability, failure, and success coverage.
+
+The synthetic construction smoke covers every discovered source config as
+capability-only and deliberately contains zero admitted/successful PIDS examples.
+Per-PIDS real parsers, real successful/failure demonstrations, the multi-dataset
+pilot, and formal SFT remain gated on real admission and user-provided data.
 
 Before the dataset arrives, freeze and independently validate the causal PIDS,
 featurizer, threshold, and ApprovedConfig inputs. Do not promote that validation
