@@ -23,7 +23,9 @@ class ProcessRuntimeTests(unittest.TestCase):
     def test_builder_source_declares_disjoint_runtime_surfaces(self) -> None:
         text = (ROOT / "scripts" / "build_process_runtimes.py").read_text()
         self.assertIn('"controller": ("finalize_real_public_report.py"', text)
-        self.assertIn('"evaluator": ("build_real_hidden_request.py"', text)
+        self.assertIn('"evaluator": (', text)
+        self.assertIn('"build_real_hidden_request.py"', text)
+        self.assertIn('"run_memory_retrieval_sensitivity.py"', text)
         self.assertIn('("schemas",)', text)
 
     def test_controller_runtime_excludes_evaluator_namespace(self) -> None:

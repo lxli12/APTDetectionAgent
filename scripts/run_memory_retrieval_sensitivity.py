@@ -4,8 +4,6 @@
 Requirements: REQ-MEMORY-003..007, REQ-LABEL-001..004, REQ-REPRO-001..002.
 """
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
