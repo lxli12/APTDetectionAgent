@@ -35,7 +35,7 @@ and test path is updated when work lands.
 | REQ-TOOL-001 | LLM emits typed requests and never constructs shell commands | 1/2/5 | `AgentAction`; `ToolRequest` recursive guard | executor-field/unknown-field tests | implemented |
 | REQ-TOOL-002 | Executor validates parameter/path/resource allowlists and builds argv | 2 | `pidsmaker/adapter.py` | override, path, checkpoint, shell-boundary tests | implemented |
 | REQ-TOOL-003 | Every tool call records validated args, config/checkpoint, command manifest, timing, output, and artifacts | 1/2 | `ToolResult`; `CommandManifest`; Phase 2 adapter | synthetic runtime artifact tests; real stage trace deferred | partial |
-| REQ-TOOL-004 | Parallel PIDS selection is scheduled by executor, never CUDA-selected by LLM | 2/5 | `pidsmaker/tools.py` initial scheduler | GPU serialization and hidden CUDA rejection tests | partial |
+| REQ-TOOL-004 | Parallel PIDS selection is scheduled by executor, never CUDA-selected by LLM | 2/5 | PIDSMaker tool scheduler; `controller/scheduler.py` | GPU assignment/serialization and hidden CUDA tests | implemented |
 | REQ-TOOL-005 | Timeout, nonzero exit, malformed output, and missing artifact fail closed | 2 | `pidsmaker/adapter.py` | nonzero/start-error/missing-artifact fake-runner tests; typed output parser deferred | partial |
 | REQ-MEMORY-001 | Working, episode memory, and case state reset at split/scenario boundaries | 1/4 | `memory/store.py:CaseMemoryStore`; scoped schemas | exact episode reset tests | implemented |
 | REQ-MEMORY-002 | Train memory cannot enter validation; validation cannot enter held-out | 1/4 | `MemoryNamespace`; runtime write scope gate | cross-split/scenario negative tests | implemented |
@@ -53,9 +53,9 @@ and test path is updated when work lands.
 | REQ-ARTIFACT-001 | Every artifact records source config, checkpoint hash, code commit, and producing stage | 1/2 | artifact and run manifests | hash/path/provenance tests | implemented |
 | REQ-ARTIFACT-002 | Missing checkpoints produce unavailable status, never fabricated artifacts | 1/2/8 | checkpoint schema; discovery availability | missing-checkpoint retention tests | implemented |
 | REQ-ARTIFACT-003 | Raw PIDSMaker artifacts are mapped and validated before becoming Agent contracts | 2 | `docs/pidsmaker/ARTIFACT_AND_CHECKPOINT_MAP.md`; adapter manifest | missing-artifact fail-closed test; per-PIDS parsers deferred | partial |
-| REQ-RESOURCE-001 | Scheduler uses explicit 32 vCPU/240 GiB/2×24 GiB profile | 0/5 | AutoDL profile | profile validation | partial |
-| REQ-RESOURCE-002 | Initial profile uses GPU 0 for vLLM and one GPU PIDS on GPU 1 | 0/5/8 | AutoDL profile | scheduling tests | partial |
-| REQ-RESOURCE-003 | Same-GPU concurrency waits for per-PIDS smoke profiles | 5/8 | planned capability profiles | admission rejection test | planned |
+| REQ-RESOURCE-001 | Scheduler uses explicit 32 vCPU/240 GiB/2×24 GiB profile | 0/5 | AutoDL YAML; `controller/scheduler.py` | profile load and quota rejection tests | implemented |
+| REQ-RESOURCE-002 | Initial profile uses GPU 0 for vLLM and one GPU PIDS on GPU 1 | 0/5/8 | explicit executor assignments | separate-device lease test | implemented |
+| REQ-RESOURCE-003 | Same-GPU concurrency waits for per-PIDS smoke profiles | 5/8 | one-unknown-workload admission gate | second same-GPU PIDS rejection | implemented |
 | REQ-ENV-001 | `pids` and `vllm` environments remain separate and pinned | 0/6 | ADR and resource profile | environment manifest | implemented |
 | REQ-ENV-002 | Controller communicates through subprocess and localhost HTTP, not cross-imports | 1/2/6 | planned adapters | import-boundary tests | planned |
 | REQ-ENV-003 | vLLM host, port, base URL, and model path are environment-driven | 6 | planned client config | no-hardcoded-port test | planned |
