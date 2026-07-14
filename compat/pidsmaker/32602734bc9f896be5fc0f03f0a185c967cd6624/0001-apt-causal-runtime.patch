@@ -388,3 +388,10 @@
          dropout = cfg.experiment.uncertainty.mc_dropout.dropout
          add_dropout_to_model(model, p=dropout)
  
+--- a/pidsmaker/model.py
++++ b/pidsmaker/model.py
+@@ -15 +14,0 @@
+-from pidsmaker.experiments.uncertainty import activate_dropout_inference
+@@ -215,0 +215,2 @@
++            from pidsmaker.experiments.uncertainty import activate_dropout_inference
++

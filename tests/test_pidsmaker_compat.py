@@ -45,6 +45,10 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
         self.assertIn("test_data_used_for_selection", patch_text)
         self.assertIn("-import wandb", patch_text)
         self.assertNotIn("+import wandb", patch_text)
+        self.assertIn(
+            "from pidsmaker.experiments.uncertainty import activate_dropout_inference",
+            patch_text,
+        )
 
     def test_build_applies_patch_outside_clean_submodule_and_never_overwrites(self) -> None:
         source = ROOT / "PIDSMaker"
@@ -61,6 +65,7 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
             / "detection"
             / "training_methods"
             / "training_loop.py",
+            source / "pidsmaker" / "model.py",
         )
         before = tuple(digest(path) for path in tracked)
         with tempfile.TemporaryDirectory() as temp:
@@ -85,6 +90,7 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
                 / "build_graph_methods"
                 / "build_default_graphs.py"
             ).read_text()
+            patched_model = (output / "pidsmaker" / "model.py").read_text()
             marker_exists = (output / ".apt-pidsmaker-compat.json").is_file()
             git_marker_exists = (output / ".git").exists()
         self.assertEqual(marker["upstream_commit"], builder.PINNED_COMMIT)
@@ -93,6 +99,11 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
         self.assertNotIn("import wandb", patched_training)
         self.assertNotIn('split="all"', patched_training)
         self.assertNotIn('split="test"', patched_training)
+        self.assertNotIn(
+            "from pidsmaker.experiments.uncertainty import activate_dropout_inference\n\n\nclass",
+            patched_model,
+        )
+        self.assertIn("if self.is_running_mc_dropout:", patched_model)
         self.assertIn("cur.execute(sql, (start_ns_timestamp, end_ns_timestamp))", patched_query)
         self.assertEqual(before, tuple(digest(path) for path in tracked))
 
