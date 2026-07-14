@@ -38,8 +38,10 @@ have real AutoDL evidence.
   `9fd5b64fd65f71faea65b037294dca537c75ab902a4ad92f04bb84315c0f54a2`;
 - featurizer hash:
   `965911178ec53c3c6dc2efc61eb1e365b4c253168ee38df586d44582b4e58cab`;
-- AutoDL commit `3fa5ec07df92993bdf7bb58c53a1b06ddc94b963`:
-  211/211 tests passed.
+- AutoDL commit `39c360856362e35143916690a9e428aa79a72699`:
+  213/213 tests passed;
+- formal pre-SFT gate run:
+  `/root/autodl-tmp/apt-agent/experiments/runs/phase10-pre-sft-gate-20260714-002`.
 
 The later-window run produced 8,394 label-free scores with the exact frozen hashes,
 `featurizer_fit_on_current_window=false`, `test_labels_loaded=false`, and

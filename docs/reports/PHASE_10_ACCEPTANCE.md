@@ -21,12 +21,18 @@ Pre-SFT runtime assets are now frozen and independently exercised:
   validation-only, non-deployment, and contains neither SFT data nor static LTM;
 - `scripts/run_frozen_pidsmaker_smoke.sh` proved new-window inference without
   featurizer refit, checkpoint selection, labels, W&B, or configuration drift;
-- AutoDL commit `3fa5ec07df92993bdf7bb58c53a1b06ddc94b963` passed 211 tests.
+- AutoDL commit `39c360856362e35143916690a9e428aa79a72699` passed 213 tests.
 
 `scripts/train_agent.sh` no longer reports obsolete Phase 8 blockers. With
 `APT_PRE_SFT_BUNDLE` and `APT_PRE_SFT_BUNDLE_ROOT` set, its PIDS/threshold/config
 stages validate frozen evidence; trajectory construction, SFT, SFT validation,
 static LTM, and deployment freeze remain explicitly gated.
+
+The formal gate run
+`/root/autodl-tmp/apt-agent/experiments/runs/phase10-pre-sft-gate-20260714-002`
+confirmed this disposition: the first six stages succeeded; trajectory build,
+SFT train/validation, static LTM, and deployment freeze emitted their explicit
+blocked reasons and the append-only run terminated with status `blocked`.
 
 No formal trajectory dataset, SFT update, adapter checkpoint, deployable static
 LTM, or held-out performance claim exists. These stages remain
