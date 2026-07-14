@@ -179,7 +179,7 @@ class MemoryCaseToolService:
                 top_k=arguments.top_k,
             )
         )
-        records = tuple(record.model_dump(mode="json") for record in result.records)
+        records = [record.model_dump(mode="json") for record in result.records]
         return (
             {
                 "records": records,
