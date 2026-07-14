@@ -33,6 +33,13 @@ Focused tests cover:
 - token/candidate budgets without capacity eviction;
 - Case State persistence and next-window-only configuration activation.
 
-Remote evidence is pending clean-tree fast-forward synchronization and the full
-suite in the existing `pids` environment. No database service, PIDSMaker pipeline,
-vLLM service, or experiment is required for this SQLite synthetic smoke.
+Remote evidence on 2026-07-14 at main-project commit
+`f78af969cea752870fee08f18fee63d9f2b255c9` and pinned PIDSMaker commit:
+
+- pre-pull remote tree was clean and synchronization was fast-forward only;
+- the temporary AutoDL academic proxy was cleared in the same SSH shell;
+- governance and `compileall` passed in the existing `pids` environment;
+- full suite: 108/108 passed in 1.639 seconds.
+
+No PostgreSQL service, PIDSMaker pipeline, vLLM service, or experiment was started;
+no dependency or Conda environment was modified.
