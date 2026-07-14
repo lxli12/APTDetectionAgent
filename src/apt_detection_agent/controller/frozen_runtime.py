@@ -405,8 +405,13 @@ class FrozenRuntimeController:
                 ):
                     raise ValueError("executor outcome does not match approved action")
                 if action.action_type == FrozenActionType.RUN_ADDITIONAL_DETECTOR:
-                    if envelope.pending_state or not envelope.additional_result:
-                        raise ValueError("additional detector must return separate evidence result")
+                    if envelope.pending_state:
+                        raise ValueError("additional detector cannot create pending state")
+                    additional_outcomes.append(outcome)
+                    if envelope.additional_result is None:
+                        if outcome.status == RunStatus.SUCCEEDED:
+                            raise ValueError("successful additional call requires evidence result")
+                        break
                     result = envelope.additional_result
                     if (
                         result.result_id != outcome.result_id
@@ -416,7 +421,6 @@ class FrozenRuntimeController:
                         or result.status != outcome.status
                     ):
                         raise ValueError("additional detector result identity/status mismatch")
-                    additional_outcomes.append(outcome)
                     additional_results.append(result)
                     if outcome.status != RunStatus.SUCCEEDED:
                         break

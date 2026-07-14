@@ -365,6 +365,35 @@ class FrozenRuntimeTests(unittest.TestCase):
         )
         self.assertFalse(result.record.additional_detector_results[0].committed)
 
+    def test_additional_preflight_rejection_is_typed_without_fabricated_result(self) -> None:
+        request_action = action(
+            FrozenActionType.RUN_ADDITIONAL_DETECTOR,
+            action_id="action-preflight-blocked",
+        )
+        outcome = HighLevelToolOutcome(
+            outcome_id="outcome-preflight-blocked",
+            action_id=request_action.action_id,
+            tool_name=ToolName.RUN_ADDITIONAL_DETECTOR,
+            status=RunStatus.BLOCKED,
+            approved_choice_id="candidate-2",
+            sanitized_failure_code="catalog-admission-or-state-rejected",
+            provenance_id="provenance-preflight-blocked",
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            result = self.controller(
+                Path(temp),
+                triggered=True,
+                policy=lambda *args: request_action,
+                executor=lambda *args: ActionExecutionEnvelope(outcome=outcome),
+            ).run_window(
+                case=case(), window=window(), started_at=NOW, ended_at=NOW
+            )
+        self.assertEqual(result.record.additional_detector_results, ())
+        self.assertEqual(
+            result.record.additional_detector_tool_calls[0].status,
+            RunStatus.BLOCKED,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -316,6 +316,22 @@ class RuntimeToolTests(unittest.TestCase):
                 admissions=(self.velox_admission,), detector_candidates=(bad,)
             )
 
+    def test_unavailable_choice_returns_sanitized_blocked_outcome_at_boundary(self) -> None:
+        blocked = self.service.execute_action(
+            decision(
+                FrozenActionType.RUN_ADDITIONAL_DETECTOR,
+                "candidate-unverified",
+                ToolName.RUN_ADDITIONAL_DETECTOR,
+                effective=None,
+            )
+        )
+        self.assertEqual(blocked.outcome.status, RunStatus.BLOCKED)
+        self.assertEqual(
+            blocked.outcome.sanitized_failure_code,
+            "catalog-admission-or-state-rejected",
+        )
+        self.assertIsNone(blocked.additional_result)
+
     def test_additional_tool_accepts_only_opaque_candidate_and_never_commits(self) -> None:
         result = self.service.run_additional_detector(
             decision(

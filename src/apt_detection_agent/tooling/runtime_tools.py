@@ -669,9 +669,23 @@ class RuntimeToolService:
             FrozenActionType.SELECT_RESOURCE_PRESET: self.select_resource_preset,
         }
         try:
-            return handlers[action.action_type](action)
+            handler = handlers[action.action_type]
         except KeyError as exc:
             raise ValueError("terminal action has no high-level tool") from exc
+        try:
+            return handler(action)
+        except (ValueError, KeyError):
+            return ActionExecutionEnvelope(
+                outcome=HighLevelToolOutcome(
+                    outcome_id=f"outcome-{action.action_id}",
+                    action_id=action.action_id,
+                    tool_name=action.requested_tool,
+                    status=RunStatus.BLOCKED,
+                    approved_choice_id=str(action.approved_choice_id),
+                    sanitized_failure_code="catalog-admission-or-state-rejected",
+                    provenance_id=f"tool-rejection-{action.action_id}",
+                )
+            )
 
     def _case(self, case_id: str) -> FrozenCaseState:
         try:

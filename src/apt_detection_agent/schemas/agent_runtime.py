@@ -604,8 +604,19 @@ class FrozenWindowTransactionRecord(StrictModel):
                     raise ValueError("legacy trace cannot claim memory exchanges")
             else:
                 raise ValueError("unknown memory protocol status")
-        if len(self.additional_detector_tool_calls) != len(self.additional_detector_results):
-            raise ValueError("each additional detector call requires a separate result")
+        result_ids = {item.result_id for item in self.additional_detector_results}
+        outcome_result_ids = {
+            item.result_id
+            for item in self.additional_detector_tool_calls
+            if item.result_id is not None
+        }
+        if result_ids != outcome_result_ids:
+            raise ValueError("additional result IDs must match completed tool outcomes")
+        if any(
+            item.status == RunStatus.SUCCEEDED and item.result_id is None
+            for item in self.additional_detector_tool_calls
+        ):
+            raise ValueError("successful additional call requires separate detector result")
         if any(result.committed for result in self.additional_detector_results):
             raise ValueError("additional detector result cannot replace committed result")
         return self
