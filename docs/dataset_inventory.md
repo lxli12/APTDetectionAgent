@@ -51,7 +51,9 @@ mapping, and an independent smoke profile.
 - No PIDS checkpoint was found outside the excluded dataset and PostgreSQL trees;
   the only matching model file was the unrelated Llama weight
   `/root/autodl-tmp/llm-models/Llama-3.1-8B/original/consolidated.00.pth`.
-- PostgreSQL has only the `postgres` login role. Live `pids_worker` and
-  `hidden_evaluator` role isolation therefore remains unverified and unimplemented.
+- The measured dataset-to-database mapping is versioned in
+  `configs/database/autodl.yaml`. Role provisioning and live verification use
+  `scripts/postgres/provision_roles.sh` and `verify_role_policy.sh`; acceptance
+  status is recorded in the Phase 8 report rather than inferred from this inventory.
 - Estimated runtime and peak resources require bounded smoke runs; host-visible
   resources may not replace `configs/resources/autodl.yaml` quotas.

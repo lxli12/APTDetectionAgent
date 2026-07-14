@@ -1,0 +1,26 @@
+schema_version: autodl-database-manifest-v1
+postgresql_version: "17.9"
+host: 127.0.0.1
+port: 5432
+data_directory: /root/autodl-tmp/postgresql/17/main
+dataset_to_database:
+  CADETS_E3: cadets_e3
+  CLEARSCOPE_E3: clearscope_e3
+  CLEARSCOPE_E5: clearscope_e5
+  optc_h201: optc_h201
+  THEIA_E3: theia_e3
+provenance_schema: public
+provenance_tables:
+  - event_table
+  - file_node_table
+  - netflow_node_table
+  - subject_node_table
+private_label_schema:
+  name: apt_hidden_labels
+  availability: absent
+  reason: not provisioned; hidden evaluator receives no provenance database access
+roles:
+  admin: db_admin
+  pids_worker: pids_worker
+  hidden_evaluator: hidden_evaluator
+  agent_controller: agent_controller
