@@ -24,6 +24,12 @@ from .engine import (
     ScoredEntity,
 )
 from .ipc import DatabaseRolePolicy, EvaluatorIPCPaths
+from .demonstration import (
+    HiddenOfflineRunEvaluationLink,
+    PrivateDatasetCompanionManifest,
+    PrivateTeacherSelectionRecord,
+    StrictTeacherSelectionParser,
+)
 
 __all__ = [
     "CALIBRATION_DEFINITION_VERSION",
@@ -36,9 +42,13 @@ __all__ = [
     "HiddenEvaluator",
     "HiddenGroundTruth",
     "METRIC_DEFINITION_VERSION",
+    "HiddenOfflineRunEvaluationLink",
+    "PrivateDatasetCompanionManifest",
     "PrivateCoverageCalibrationResult",
+    "PrivateTeacherSelectionRecord",
     "ScoredEntity",
     "ValidationCoverageCalibrationInput",
     "ValidationCoverageCalibrator",
     "ValidationEntityScore",
+    "StrictTeacherSelectionParser",
 ]

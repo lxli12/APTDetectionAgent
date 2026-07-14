@@ -21,6 +21,30 @@ from .frozen_contracts import (
 )
 from .frozen_sanitizer import FrozenSFTSanitizer
 from .frozen_teacher import FrozenHiddenTeacherRecord
+from .demonstration import (
+    CanonicalDemonstrationTrajectory,
+    CoverageClass,
+    DemonstrationDatasetManifest,
+    DemonstrationExchange,
+    ExecutionDisposition,
+    PublicOfflineRunRecord,
+)
+from .demonstration_builder import (
+    DemonstrationCorpusManifest,
+    DemonstrationCorpusValidator,
+    DemonstrationCoverageReport,
+    build_coverage_report,
+    build_dataset_manifest,
+    build_offline_run_record,
+    build_trajectory,
+    corpus_digest,
+)
+from .demonstration_exporter import (
+    DemonstrationExporter,
+    LossAwareMessage,
+    OpenAICompatibleTrajectory,
+)
+from .demonstration_sanitizer import DemonstrationSanitizer
 
 __all__ = [
     "BLOCKED_BY_SFT_DATASET",
@@ -31,6 +55,19 @@ __all__ = [
     "FrozenSFTDatasetValidator",
     "FrozenSFTSanitizer",
     "FrozenStudentSFTExample",
+    "CanonicalDemonstrationTrajectory",
+    "CoverageClass",
+    "DemonstrationCorpusManifest",
+    "DemonstrationCorpusValidator",
+    "DemonstrationCoverageReport",
+    "DemonstrationDatasetManifest",
+    "DemonstrationExchange",
+    "DemonstrationExporter",
+    "DemonstrationSanitizer",
+    "ExecutionDisposition",
+    "LossAwareMessage",
+    "OpenAICompatibleTrajectory",
+    "PublicOfflineRunRecord",
     "RLCandidate",
     "SFTCheckpointManifest",
     "SFTDataset",
@@ -40,4 +77,9 @@ __all__ = [
     "SFTTrainingConfig",
     "SFTTrainingResult",
     "StudentSFTExample",
+    "build_coverage_report",
+    "build_dataset_manifest",
+    "build_offline_run_record",
+    "build_trajectory",
+    "corpus_digest",
 ]
