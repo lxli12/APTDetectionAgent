@@ -26,11 +26,11 @@ def main() -> int:
     if artifact_path.exists() or status_path.exists():
         raise FileExistsError("terminal run manifests are append-only")
     artifacts = []
-    for path in sorted(item for item in run_dir.iterdir() if item.is_file()):
+    for path in sorted(item for item in run_dir.rglob("*") if item.is_file()):
         content = path.read_bytes()
         artifacts.append(
             {
-                "relative_path": path.name,
+                "relative_path": path.relative_to(run_dir).as_posix(),
                 "sha256": hashlib.sha256(content).hexdigest(),
                 "size_bytes": len(content),
             }
