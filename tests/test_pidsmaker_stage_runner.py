@@ -10,7 +10,9 @@ import importlib.util
 import tempfile
 import unittest
 from argparse import Namespace
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +23,20 @@ runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
 
+def window(date: str) -> tuple[int, int]:
+    start = int(
+        datetime.strptime(date, "%Y-%m-%d")
+        .replace(tzinfo=ZoneInfo("America/New_York"))
+        .timestamp()
+        * 1_000_000_000
+    )
+    return start, start + 900 * 1_000_000_000
+
+
 def request(root: Path, artifact: Path, **updates: object) -> Namespace:
+    train_start, train_end = window("2018-04-02")
+    val_start, val_end = window("2018-04-03")
+    test_start, test_end = window("2018-04-06")
     values: dict[str, object] = {
         "source_config_id": "velox",
         "dataset_id": "CADETS_E3",
@@ -30,6 +45,16 @@ def request(root: Path, artifact: Path, **updates: object) -> Namespace:
         "stop_after": "construction",
         "override": [],
         "cpu": True,
+        "window_size_seconds": 900,
+        "train_date": "2018-04-02",
+        "train_window_start_ns": train_start,
+        "train_window_end_ns": train_end,
+        "val_date": "2018-04-03",
+        "val_window_start_ns": val_start,
+        "val_window_end_ns": val_end,
+        "test_date": "2018-04-06",
+        "test_window_start_ns": test_start,
+        "test_window_end_ns": test_end,
     }
     values.update(updates)
     return Namespace(**values)
@@ -49,12 +74,13 @@ def environment(artifact_root: Path, **updates: str) -> dict[str, str]:
 
 
 class StageRunnerContractTests(unittest.TestCase):
-    def test_upstream_password_is_internal_not_runner_argv(self) -> None:
+    def test_upstream_password_is_environment_only_and_never_in_argv(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             artifact_root = Path(temp)
             args = request(ROOT / "PIDSMaker", artifact_root / "run-1")
             argv = runner.upstream_argv(args, Path(args.artifact_dir), environment(artifact_root))
-        self.assertIn("unit-test-secret", argv)
+        self.assertNotIn("unit-test-secret", argv)
+        self.assertNotIn("--database_password", argv)
         self.assertNotIn("unit-test-secret", vars(args).values())
 
     def test_requires_disabled_wandb(self) -> None:
@@ -97,7 +123,13 @@ class StageRunnerContractTests(unittest.TestCase):
 
     def test_resolved_config_excludes_credentials_and_label_metadata(self) -> None:
         args = request(ROOT / "PIDSMaker", Path("/tmp/run-1"))
-        rendered = runner.sanitized_resolved_config(args, "a" * 40)
+        rendered = runner.sanitized_resolved_config(
+            args,
+            {
+                "upstream_commit": "a" * 40,
+                "patch_series_hash": "b" * 64,
+            },
+        )
         text = repr(rendered)
         self.assertNotIn("password", text.lower())
         self.assertNotIn("unit-test-secret", text)
@@ -105,6 +137,33 @@ class StageRunnerContractTests(unittest.TestCase):
             rendered["excluded_privileged_fields"],
             ["ground_truth_relative_path", "attack_to_time_window"],
         )
+        self.assertEqual(rendered["split_windows"]["train"]["boundary"], "[start,end)")
+
+    def test_windows_are_equal_aligned_chronological_and_date_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            artifact_root = Path(temp)
+            valid = request(ROOT / "PIDSMaker", artifact_root / "valid")
+            runner.validate_inputs(valid, environment(artifact_root))
+            with self.assertRaisesRegex(runner.StageRunnerError, "chronological"):
+                runner.validate_inputs(
+                    request(
+                        ROOT / "PIDSMaker",
+                        artifact_root / "bad-order",
+                        test_date=valid.train_date,
+                        test_window_start_ns=valid.train_window_start_ns,
+                        test_window_end_ns=valid.train_window_end_ns,
+                    ),
+                    environment(artifact_root),
+                )
+            with self.assertRaisesRegex(runner.StageRunnerError, "disagrees"):
+                runner.validate_inputs(
+                    request(
+                        ROOT / "PIDSMaker",
+                        artifact_root / "bad-date",
+                        train_date="2018-04-03",
+                    ),
+                    environment(artifact_root),
+                )
 
     def test_safe_stage_list_stops_before_training_evaluation_and_triage(self) -> None:
         self.assertEqual(
@@ -115,6 +174,18 @@ class StageRunnerContractTests(unittest.TestCase):
 
     def test_pinned_submodule_commit_is_verified_without_git_command(self) -> None:
         self.assertEqual(runner.pinned_commit(ROOT / "PIDSMaker"), runner.PINNED_PIDSMaker_COMMIT)
+
+    def test_isolated_compatibility_marker_is_accepted_without_git_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / ".apt-pidsmaker-compat.json").write_text(
+                "{\"schema_version\":\"apt-pidsmaker-compat-v1\","
+                f"\"upstream_commit\":\"{runner.PINNED_PIDSMaker_COMMIT}\","
+                f"\"patch_series_hash\":\"{'a' * 64}\","
+                "\"source_submodule_modified\":false}"
+            )
+            identity = runner.source_identity(root)
+        self.assertEqual(identity["patch_series_hash"], "a" * 64)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,390 @@
+--- a/pidsmaker/config/pipeline.py
++++ b/pidsmaker/config/pipeline.py
+@@ -38,6 +38,34 @@
+     cfg._artifact_dir = args.artifact_dir
+ 
+     cfg._test_mode = args.test_mode
++    compat_values = (
++        args.compat_train_start_ns,
++        args.compat_train_end_ns,
++        args.compat_val_start_ns,
++        args.compat_val_end_ns,
++        args.compat_test_start_ns,
++        args.compat_test_end_ns,
++    )
++    compat_dates = (
++        args.compat_train_date,
++        args.compat_val_date,
++        args.compat_test_date,
++    )
++    if any(value is not None for value in compat_values) and not all(
++        value is not None for value in compat_values
++    ):
++        raise ValueError("compatibility intervals require train/validation/test bounds")
++    if any(value is not None for value in compat_values) and not all(compat_dates):
++        raise ValueError("compatibility intervals require train/validation/test dates")
++    cfg._compat_intervals = []
++    if all(value is not None for value in compat_values):
++        cfg._compat_intervals = [
++            (args.compat_train_start_ns, args.compat_train_end_ns),
++            (args.compat_val_start_ns, args.compat_val_end_ns),
++            (args.compat_test_start_ns, args.compat_test_end_ns),
++        ]
++        if any(start >= end for start, end in cfg._compat_intervals):
++            raise ValueError("compatibility intervals must be increasing")
+     cfg._debug = not args.wandb
+     cfg._is_running_mc_dropout = False
+ 
+@@ -58,11 +86,17 @@
+     cfg.database = CN()
+     cfg.database.host = args.database_host
+     cfg.database.user = args.database_user
+-    cfg.database.password = args.database_password
++    cfg.database.password = args.database_password or os.environ.get("PIDS_DB_PASSWORD")
++    if not cfg.database.password:
++        raise ValueError("database password must be injected by PIDS_DB_PASSWORD")
+     cfg.database.port = args.database_port
+ 
+     # Dataset: we simply create variables for all configurations described in the dict
+     set_dataset_cfg(cfg, args.dataset)
++    if cfg._compat_intervals:
++        cfg.dataset.train_dates = [args.compat_train_date]
++        cfg.dataset.val_dates = [args.compat_val_date]
++        cfg.dataset.test_dates = [args.compat_test_date]
+ 
+     # Tasks: we create nested None variables for all arguments
+     def create_cfg_recursive(cfg, task_args_dict: dict):
+@@ -140,7 +174,9 @@
+         "--database_user", default="postgres", help="Database user to connect to the database"
+     )
+     parser.add_argument(
+-        "--database_password", default="postgres", help="The password to the database user"
++        "--database_password",
++        default=None,
++        help="Deprecated compatibility input; prefer PIDS_DB_PASSWORD",
+     )
+     parser.add_argument(
+         "--database_port", default="5432", help="The port number for Postgres (default: 5432)"
+@@ -154,6 +190,15 @@
+         action="store_true",
+         help="Whether to run the framework as in functional tests.",
+     )
++    parser.add_argument("--compat_train_start_ns", type=int, default=None)
++    parser.add_argument("--compat_train_end_ns", type=int, default=None)
++    parser.add_argument("--compat_val_start_ns", type=int, default=None)
++    parser.add_argument("--compat_val_end_ns", type=int, default=None)
++    parser.add_argument("--compat_test_start_ns", type=int, default=None)
++    parser.add_argument("--compat_test_end_ns", type=int, default=None)
++    parser.add_argument("--compat_train_date", default=None)
++    parser.add_argument("--compat_val_date", default=None)
++    parser.add_argument("--compat_test_date", default=None)
+ 
+     # Script-specific args
+     parser.add_argument("--show_attack", type=int, help="Number of attack for plotting", default=0)
+--- a/pidsmaker/preprocessing/build_graph_methods/build_default_graphs.py
++++ b/pidsmaker/preprocessing/build_graph_methods/build_default_graphs.py
+@@ -234,6 +234,17 @@
+             stop = timestamps[i + 1]
+             start_ns_timestamp = datetime_to_ns_time_US(start)
+             end_ns_timestamp = datetime_to_ns_time_US(stop)
++            if cfg._compat_intervals:
++                matching_intervals = [
++                    (compat_start, compat_end)
++                    for compat_start, compat_end in cfg._compat_intervals
++                    if compat_start >= start_ns_timestamp and compat_end <= end_ns_timestamp
++                ]
++                if not matching_intervals:
++                    continue
++                if len(matching_intervals) != 1:
++                    raise ValueError("each dataset date must map to exactly one compatibility interval")
++                start_ns_timestamp, end_ns_timestamp = matching_intervals[0]
+ 
+             attack_index = 0
+             mimicry_events = []
+@@ -254,10 +265,10 @@
+             sql = """
+             select * from event_table
+             where
+-                  timestamp_rec>'%s' and timestamp_rec<'%s'
++                  timestamp_rec >= %s and timestamp_rec < %s
+                    ORDER BY timestamp_rec, event_uuid;
+-            """ % (start_ns_timestamp, end_ns_timestamp)
+-            cur.execute(sql)
++            """
++            cur.execute(sql, (start_ns_timestamp, end_ns_timestamp))
+             events = cur.fetchall()
+ 
+             if len(events) == 0:
+--- a/pidsmaker/utils/data_utils.py
++++ b/pidsmaker/utils/data_utils.py
+@@ -146,6 +146,47 @@
+     return train_data, val_data, test_data, max_node
+ 
+ 
++def _prepare_loaded_datasets(train_data, val_data, test_data, cfg, device):
++    included = [dataset for dataset in (train_data, val_data, test_data) if dataset]
++    if not included:
++        raise ValueError("at least one split is required")
++    full_data = get_full_data(included)
++    max_node = torch.cat([full_data.src, full_data.dst]).max().item() + 1
++    print(f"Max node in {cfg.dataset.name}: {max_node}")
++    graph_reindexer = GraphReindexer(
++        device=device,
++        num_nodes=max_node,
++        fix_buggy_graph_reindexer=cfg.batching.fix_buggy_graph_reindexer,
++    )
++    datasets = run_global_batching(train_data, val_data, test_data, cfg, device)
++    datasets = run_intra_graph_batching(
++        datasets, full_data, device, max_node, cfg, graph_reindexer
++    )
++    datasets = run_reindexing_preprocessing(datasets, graph_reindexer, device, cfg)
++    datasets = run_inter_graph_batching(datasets, cfg)
++    return (*datasets, max_node)
++
++
++def load_train_validation_datasets(cfg, device):
++    """Prepare train/validation without loading or fitting against the test split."""
++    multi_dataset = cfg.batching.multi_dataset_training
++    train_data = load_data_set(cfg, split="train", multi_dataset=multi_dataset)
++    val_data = load_data_set(cfg, split="val", multi_dataset=multi_dataset)
++    train_data, val_data, _test_data, max_node = _prepare_loaded_datasets(
++        train_data, val_data, [], cfg, device
++    )
++    return train_data, val_data, max_node
++
++
++def load_test_dataset(cfg, device):
++    """Prepare only the frozen-model inference split."""
++    test_data = load_data_set(cfg, split="test", multi_dataset=False)
++    _train_data, _val_data, test_data, max_node = _prepare_loaded_datasets(
++        [], [], test_data, cfg, device
++    )
++    return test_data, max_node
++
++
+ def load_data_list(path, split, cfg):
+     data_list = []
+     for f in sorted(os.listdir(os.path.join(path, split))):
+@@ -898,12 +939,18 @@
+     """
+     Loads weights and tensors from disk into a model.
+     """
+-    model.load_state_dict(torch.load(os.path.join(path, "state_dict.pkl")))
++    model.load_state_dict(
++        torch.load(os.path.join(path, "state_dict.pkl"), map_location=map_location)
++    )
+ 
+     if isinstance(model.encoder, TGNEncoder):
+-        model.encoder.neighbor_loader = torch.load(os.path.join(path, "neighbor_loader.pkl"))
++        model.encoder.neighbor_loader = torch.load(
++            os.path.join(path, "neighbor_loader.pkl"), map_location=map_location
++        )
+         if cfg.training.encoder.tgn.use_memory or "time_encoding" in cfg.batching.edge_features:
+-            model.encoder.memory = torch.load(os.path.join(path, "memory.pkl"))
++            model.encoder.memory = torch.load(
++                os.path.join(path, "memory.pkl"), map_location=map_location
++            )
+ 
+     return model
+ 
+--- a/pidsmaker/detection/training_methods/training_loop.py
++++ b/pidsmaker/detection/training_methods/training_loop.py
+@@ -10,19 +10,20 @@
+ """
+ 
+ import copy
++import json
++import os
+ import tracemalloc
+ from time import perf_counter as timer
+ 
+ import numpy as np
+ import torch
+-import wandb
+ 
+ from pidsmaker.factory import (
+     build_model,
+     optimizer_factory,
+     optimizer_few_shot_factory,
+ )
+-from pidsmaker.tasks.batching import get_preprocessed_graphs
++from pidsmaker.utils.data_utils import load_train_validation_datasets, save_model
+ from pidsmaker.utils.utils import get_device, log, log_start, log_tqdm, set_seed
+ 
+ from . import inference_loop
+@@ -54,7 +55,7 @@
+         torch.cuda.reset_peak_memory_stats(device=device)
+     tracemalloc.start()
+ 
+-    train_data, val_data, test_data, max_node_num = get_preprocessed_graphs(cfg)
++    train_data, val_data, max_node_num = load_train_validation_datasets(cfg, device)
+ 
+     model = build_model(
+         data_sample=train_data[0][0], device=device, cfg=cfg, max_node_num=max_node_num
+@@ -72,11 +73,13 @@
+     epoch_times = []
+     peak_train_cpu_mem = 0
+     peak_train_gpu_mem = 0
+-    test_stats = None
+     patience = cfg.training.patience
+     patience_counter = 0
+-    all_test_stats = []
+     global_best_val_score = float("-inf")
++    best_val_score = float("-inf")
++    best_model = None
++    best_epoch = None
++    validation_stats = []
+     use_few_shot = cfg.training.decoder.use_few_shot
+     grad_acc = cfg.training.grad_accumulation
+ 
+@@ -84,8 +87,6 @@
+         num_epochs += 1  # in few-shot, the first epoch is without ssl training
+ 
+     for epoch in range(0, num_epochs):
+-        best_val_score, best_model, best_epoch = float("-inf"), None, None
+-
+         if not use_few_shot or (use_few_shot and epoch > 0):
+             start = timer()
+             tracemalloc.start()
+@@ -187,7 +188,7 @@
+                     cfg=cfg,
+                     model=model,
+                     val_data=val_data,
+-                    test_data=test_data,
++                    test_data=(),
+                     epoch=epoch,
+                     split="val",
+                     logging=False,
+@@ -218,62 +219,62 @@
+             model.load_state_dict(best_model)
+             model.to_device(device)
+ 
+-        # model_path = os.path.join(gnn_models_dir, f"model_epoch_{epoch}")
+-        # save_model(model, model_path, cfg)
+-
+-        # Test
+-        if (epoch + 1) % 2 == 0 or epoch == 0:
+-            test_stats = inference_loop.main(
+-                cfg=cfg,
+-                model=model,
+-                val_data=val_data,
+-                test_data=test_data,
+-                epoch=epoch,
+-                split="all",
+-            )
+-            all_test_stats.append(test_stats)
+-
+-            wandb.log(
+-                {
+-                    "epoch": epoch,
+-                    "train_epoch": epoch,
+-                    "train_loss": round(tot_loss, 4),
+-                    "val_score": round(test_stats["val_score"], 4),
+-                    "val_loss": round(test_stats["val_loss"], 4),
+-                    "test_loss": round(test_stats["test_loss"], 4),
+-                }
+-            )
+-
+-    # After training
+-    if best_epoch_mode:
+-        model.load_state_dict(best_model)
+-        test_stats = inference_loop.main(
++        val_stats = inference_loop.main(
+             cfg=cfg,
+             model=model,
+             val_data=val_data,
+-            test_data=test_data,
+-            epoch=best_epoch,
+-            split="test",
++            test_data=(),
++            epoch=epoch,
++            split="val",
++            logging=False,
+         )
++        validation_stats.append(val_stats)
++        val_score = val_stats["val_score"]
++        if val_score > global_best_val_score:
++            global_best_val_score = val_score
++            best_val_score = val_score
++            best_epoch = epoch
++            best_model = copy.deepcopy({k: v.cpu() for k, v in model.state_dict().items()})
++            patience_counter = 0
++        else:
++            patience_counter += 1
++        log(
++            f"[@epoch{epoch:02d}] Validation-only checkpoint selection - "
++            f"Val Loss: {val_stats['val_loss']:.4f}",
++            return_line=True,
++        )
++        if patience_counter >= patience:
++            log(f"Early stopping: best validation score is {best_val_score:.4f}")
++            break
+ 
+-    wandb.log(
+-        {
+-            "best_epoch": best_epoch,
+-            "train_epoch_time": round(np.mean(epoch_times), 2),
+-            "val_score": round(best_val_score, 5),
+-            "peak_train_cpu_memory": round(peak_train_cpu_mem, 3),
+-            "peak_train_gpu_memory": round(peak_train_gpu_mem, 3),
+-            "peak_inference_cpu_memory": round(
+-                np.max([d["peak_inference_cpu_memory"] for d in all_test_stats]), 3
+-            ),
+-            "peak_inference_gpu_memory": round(
+-                np.max([d["peak_inference_gpu_memory"] for d in all_test_stats]), 3
+-            ),
+-            "time_per_batch_inference": round(
+-                np.mean([d["time_per_batch_inference"] for d in all_test_stats]), 3
+-            ),
+-        }
+-    )
++    # After training
++    if best_model is None or best_epoch is None:
++        raise RuntimeError("training produced no validation-selected checkpoint")
++    model.load_state_dict(best_model)
++    checkpoint_dir = os.path.join(cfg.training._trained_models_dir, "frozen_validation_checkpoint")
++    save_model(model, checkpoint_dir, cfg)
++    metrics = {
++        "selection_split": "validation",
++        "best_epoch": best_epoch,
++        "train_epoch_time": round(np.mean(epoch_times), 2) if epoch_times else 0.0,
++        "val_score": round(best_val_score, 5),
++        "peak_train_cpu_memory": round(peak_train_cpu_mem, 3),
++        "peak_train_gpu_memory": round(peak_train_gpu_mem, 3),
++        "peak_inference_cpu_memory": round(
++            np.max([d["peak_inference_cpu_memory"] for d in validation_stats]), 3
++        ),
++        "peak_inference_gpu_memory": round(
++            np.max([d["peak_inference_gpu_memory"] for d in validation_stats]), 3
++        ),
++        "time_per_batch_inference": round(
++            np.mean([d["time_per_batch_inference"] for d in validation_stats]), 3
++        ),
++        "test_data_used_for_selection": False,
++        "wandb_used": False,
++    }
++    with open(os.path.join(checkpoint_dir, "training_metrics.json"), "w") as stream:
++        json.dump(metrics, stream, indent=2, sort_keys=True)
++        stream.write("\n")
+ 
+     return best_val_score
+ 
+--- a/pidsmaker/factory.py
++++ b/pidsmaker/factory.py
+@@ -11,7 +11,6 @@
+ from pidsmaker.config import decoder_matches_objective
+ from pidsmaker.decoders import *
+ from pidsmaker.encoders import *
+-from pidsmaker.experiments.uncertainty import add_dropout_to_model
+ from pidsmaker.losses import *
+ from pidsmaker.model import Model
+ from pidsmaker.objectives import *
+@@ -54,6 +53,8 @@
+     model = model_factory(encoder, objectives, objective_few_shot, cfg, device=device)
+ 
+     if cfg._is_running_mc_dropout:
++        from pidsmaker.experiments.uncertainty import add_dropout_to_model
++
+         dropout = cfg.experiment.uncertainty.mc_dropout.dropout
+         add_dropout_to_model(model, p=dropout)
+ 

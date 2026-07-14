@@ -20,8 +20,10 @@ import os
 import re
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from types import ModuleType
+from zoneinfo import ZoneInfo
 
 
 PINNED_PIDSMaker_COMMIT = "32602734bc9f896be5fc0f03f0a185c967cd6624"
@@ -60,6 +62,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--stop-after", choices=SAFE_STAGES, required=True)
     parser.add_argument("--override", action="append", default=[])
     parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--window-size-seconds", type=int, default=900)
+    for split in ("train", "val", "test"):
+        parser.add_argument(f"--{split}-date", required=True)
+        parser.add_argument(f"--{split}-window-start-ns", type=int, required=True)
+        parser.add_argument(f"--{split}-window-end-ns", type=int, required=True)
     return parser.parse_args(argv)
 
 
@@ -92,6 +99,8 @@ def validate_inputs(args: argparse.Namespace, environ: dict[str, str]) -> tuple[
     if environ.get("WANDB_MODE") != "disabled":
         raise StageRunnerError("WANDB_MODE=disabled is mandatory")
 
+    validate_window_contract(args)
+
     for override in args.override:
         if not SAFE_OVERRIDE.fullmatch(override):
             raise StageRunnerError("override has invalid syntax")
@@ -101,8 +110,45 @@ def validate_inputs(args: argparse.Namespace, environ: dict[str, str]) -> tuple[
     return root, artifact_dir
 
 
-def pinned_commit(root: Path) -> str:
+def validate_window_contract(args: argparse.Namespace) -> None:
+    if args.window_size_seconds <= 0:
+        raise StageRunnerError("window size must be positive")
+    window_size_ns = args.window_size_seconds * 1_000_000_000
+    previous_end = None
+    for split in ("train", "val", "test"):
+        date = getattr(args, f"{split}_date")
+        start = getattr(args, f"{split}_window_start_ns")
+        end = getattr(args, f"{split}_window_end_ns")
+        try:
+            parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise StageRunnerError("split date must use YYYY-MM-DD") from exc
+        if end - start != window_size_ns or start % window_size_ns != 0:
+            raise StageRunnerError("split windows must be equally sized and epoch-aligned")
+        local_date = datetime.fromtimestamp(
+            start / 1_000_000_000, ZoneInfo("America/New_York")
+        ).date()
+        if parsed_date != local_date:
+            raise StageRunnerError("split date disagrees with America/New_York window start")
+        if previous_end is not None and start < previous_end:
+            raise StageRunnerError("train/validation/test windows must be chronological")
+        previous_end = end
+
+
+def source_identity(root: Path) -> dict[str, object]:
     """Read the submodule commit without invoking a shell or Git executable."""
+
+    compatibility_marker = root / ".apt-pidsmaker-compat.json"
+    if compatibility_marker.is_file():
+        identity = json.loads(compatibility_marker.read_text())
+        if (
+            identity.get("schema_version") != "apt-pidsmaker-compat-v1"
+            or identity.get("upstream_commit") != PINNED_PIDSMaker_COMMIT
+            or not re.fullmatch(r"[0-9a-f]{64}", str(identity.get("patch_series_hash", "")))
+            or identity.get("source_submodule_modified") is not False
+        ):
+            raise StageRunnerError("invalid compatibility build marker")
+        return identity
 
     git_marker = root / ".git"
     if git_marker.is_file():
@@ -117,7 +163,16 @@ def pinned_commit(root: Path) -> str:
         head = (git_dir / head.removeprefix("ref: ")).read_text().strip()
     if head != PINNED_PIDSMaker_COMMIT:
         raise StageRunnerError(f"PIDSMaker commit mismatch: {head}")
-    return head
+    return {
+        "schema_version": "upstream-submodule-v1",
+        "upstream_commit": head,
+        "patch_series_hash": None,
+        "source_submodule_modified": False,
+    }
+
+
+def pinned_commit(root: Path) -> str:
+    return str(source_identity(root)["upstream_commit"])
 
 
 def upstream_argv(args: argparse.Namespace, artifact_dir: Path, environ: dict[str, str]) -> list[str]:
@@ -132,10 +187,26 @@ def upstream_argv(args: argparse.Namespace, artifact_dir: Path, environ: dict[st
         environ["PIDS_DB_HOST"],
         "--database_user",
         environ["PIDS_DB_USER"],
-        "--database_password",
-        environ["PIDS_DB_PASSWORD"],
         "--database_port",
         environ["PIDS_DB_PORT"],
+        "--compat_train_date",
+        args.train_date,
+        "--compat_train_start_ns",
+        str(args.train_window_start_ns),
+        "--compat_train_end_ns",
+        str(args.train_window_end_ns),
+        "--compat_val_date",
+        args.val_date,
+        "--compat_val_start_ns",
+        str(args.val_window_start_ns),
+        "--compat_val_end_ns",
+        str(args.val_window_end_ns),
+        "--compat_test_date",
+        args.test_date,
+        "--compat_test_start_ns",
+        str(args.test_window_start_ns),
+        "--compat_test_end_ns",
+        str(args.test_window_end_ns),
     ]
     if args.cpu:
         values.append("--cpu")
@@ -156,16 +227,30 @@ def load_stage_module(root: Path, stage: str) -> ModuleType:
     return module
 
 
-def sanitized_resolved_config(args: argparse.Namespace, commit: str) -> dict[str, object]:
+def sanitized_resolved_config(
+    args: argparse.Namespace, identity: dict[str, object]
+) -> dict[str, object]:
     return {
         "source_config_id": args.source_config_id,
         "dataset_id": args.dataset_id,
         "stop_after": args.stop_after,
         "cpu": args.cpu,
         "overrides": sorted(args.override),
-        "pidsmaker_commit": commit,
+        "pidsmaker_commit": identity["upstream_commit"],
+        "compatibility_patch_series_hash": identity["patch_series_hash"],
         "wandb_mode": "disabled",
         "database": {"injected_by_environment": True},
+        "timezone": "America/New_York",
+        "window_size_seconds": args.window_size_seconds,
+        "split_windows": {
+            split: {
+                "date": getattr(args, f"{split}_date"),
+                "start_ns": getattr(args, f"{split}_window_start_ns"),
+                "end_ns": getattr(args, f"{split}_window_end_ns"),
+                "boundary": "[start,end)",
+            }
+            for split in ("train", "val", "test")
+        },
         "excluded_privileged_fields": ["ground_truth_relative_path", "attack_to_time_window"],
     }
 
@@ -173,7 +258,8 @@ def sanitized_resolved_config(args: argparse.Namespace, commit: str) -> dict[str
 def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> int:
     environ = dict(os.environ if environ is None else environ)
     root, artifact_dir = validate_inputs(args, environ)
-    commit = pinned_commit(root)
+    identity = source_identity(root)
+    commit = str(identity["upstream_commit"])
     sys.path.insert(0, str(root))
 
     from pidsmaker.config import get_runtime_required_args, get_yml_cfg, set_task_to_done
@@ -194,7 +280,7 @@ def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> int:
     # JSON is a strict YAML subset; using it here avoids adding a new runtime
     # dependency while preserving the required resolved_config.yaml artifact.
     (artifact_dir / "resolved_config.yaml").write_text(
-        json.dumps(sanitized_resolved_config(args, commit), indent=2, sort_keys=True) + "\n"
+        json.dumps(sanitized_resolved_config(args, identity), indent=2, sort_keys=True) + "\n"
     )
 
     completed: list[dict[str, object]] = []
@@ -216,6 +302,7 @@ def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> int:
     summary = {
         "schema_version": "pidsmaker-stage-smoke-v1",
         "pidsmaker_commit": commit,
+        "compatibility_patch_series_hash": identity["patch_series_hash"],
         "completed_stages": completed,
         "artifact_tree_hash": artifact_tree_hash(artifact_dir),
     }
