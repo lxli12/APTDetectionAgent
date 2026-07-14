@@ -85,6 +85,7 @@ class TraceResult(StrictModel):
 
 
 class ResultComparison(StrictModel):
+    experiment_class: str
     tool_call_ids: tuple[str, ...]
     successful_calls: int = Field(ge=0)
     failed_calls: int = Field(ge=0)
@@ -151,7 +152,15 @@ class PIDSToolService:
 
     @staticmethod
     def compare_pids_results(results: tuple[ToolResult, ...]) -> ResultComparison:
+        if not results:
+            raise ValueError("PIDS comparison requires at least one result")
+        experiment_classes = {
+            result.validated_arguments.get("experiment_class") for result in results
+        }
+        if None in experiment_classes or len(experiment_classes) != 1:
+            raise ValueError("causal and compatibility results require separate comparisons")
         return ResultComparison(
+            experiment_class=str(next(iter(experiment_classes))),
             tool_call_ids=tuple(result.tool_call_id for result in results),
             successful_calls=sum(result.status.value == "succeeded" for result in results),
             failed_calls=sum(result.status.value == "failed" for result in results),

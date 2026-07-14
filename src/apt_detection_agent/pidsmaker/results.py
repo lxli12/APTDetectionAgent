@@ -20,11 +20,13 @@ from apt_detection_agent.schemas import (
     DataSplit,
     DetectionUnit,
     EntityAnomalyScore,
+    ExperimentClass,
     PIDSRef,
     StandardizedDetectionResult,
     ThresholdProvenance,
     ThresholdSourceSplit,
     TimeWindow,
+    TransductiveStatus,
 )
 
 
@@ -92,6 +94,8 @@ def standardize_frozen_test_scores(
     split: DataSplit = DataSplit.VALIDATION,
     pids: PIDSRef | None = None,
     window: TimeWindow | None = None,
+    experiment_class: ExperimentClass = ExperimentClass.CAUSAL_MAIN,
+    transductive_status: TransductiveStatus = TransductiveStatus.CAUSAL,
 ) -> StandardizedDetectionResult:
     run = pids_run.resolve()
     pipeline = run / "pids_artifacts" / "pipeline"
@@ -147,6 +151,8 @@ def standardize_frozen_test_scores(
         pids=pids or PIDSRef(pids_id="velox"),
         dataset_id=str(checkpoint["dataset_id"]),
         source_config_id=str(checkpoint["source_config_id"]),
+        experiment_class=experiment_class,
+        transductive_status=transductive_status,
         checkpoint_hash=str(checkpoint["checkpoint_hash"]),
         threshold=threshold,
         window=window

@@ -443,6 +443,24 @@ class PIDSToolServiceTests(unittest.TestCase):
             comparison = service.compare_pids_results((outcome.tool_result,))
         self.assertEqual(comparison.successful_calls, 1)
         self.assertEqual(comparison.failed_calls, 0)
+        self.assertEqual(comparison.experiment_class, "causal_main")
+
+    def test_causal_and_transductive_results_cannot_share_comparison(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            service = self.service(Path(temp), FakeRunner())
+            causal = service.run_pids_detection(request()).tool_result
+            compatibility = causal.model_copy(
+                update={
+                    "tool_call_id": "compatibility-call",
+                    "validated_arguments": {
+                        **causal.validated_arguments,
+                        "experiment_class": "compatibility_baseline",
+                        "transductive_status": "transductive",
+                    },
+                }
+            )
+            with self.assertRaisesRegex(ValueError, "separate comparisons"):
+                service.compare_pids_results((causal, compatibility))
 
     def test_forward_and_backward_trace_visible_graph_only(self) -> None:
         graph = VisibleTraceGraph(

@@ -345,6 +345,8 @@ class PIDSMakerAdapter:
                     split=request.split,
                     pids=request.pids,
                     window=request.window,
+                    experiment_class=request.approved_config.experiment_class,
+                    transductive_status=request.approved_config.transductive_status,
                 )
                 detection_path = run_directory / "detection_result.json"
                 detection_path.write_text(detection.model_dump_json(indent=2) + "\n")
@@ -428,6 +430,8 @@ class PIDSMakerAdapter:
                 "dataset_id": request.dataset_id,
                 "run_id": request.run_id,
                 "cpu_only": request.cpu_only,
+                "experiment_class": request.approved_config.experiment_class.value,
+                "transductive_status": request.approved_config.transductive_status.value,
             },
             approved_config_id=request.approved_config.config_id,
             checkpoint_hash=request.approved_config.checkpoint_hash,

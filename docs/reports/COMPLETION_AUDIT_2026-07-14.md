@@ -70,8 +70,9 @@ manifest contains environment key names but no credentials.
    routing policy, PIDS selection, or deployment bundle is frozen.
 4. Other PIDS remain in the capability registry with explicit unavailable reasons
    until independent data/checkpoint/resource smokes pass.
-5. Transductive baselines and retrieval/trigger sensitivity experiments remain
-   separate empirical work and cannot be relabeled as the causal main result.
+5. Transductive executions, when run, remain separate compatibility experiments;
+   result schemas and comparison gates prevent them from entering causal-main
+   aggregates. Retrieval/trigger sensitivity still requires formal validation data.
 
 Accordingly “pre-SFT implementation complete” is accurate. “Formal training
 complete,” “held-out validated,” and “deployment ready” are not yet accurate.

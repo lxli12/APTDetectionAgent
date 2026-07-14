@@ -8,7 +8,16 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .common import DataSplit, DetectionUnit, Identifier, Sha256, StrictModel, Timestamp
+from .common import (
+    DataSplit,
+    DetectionUnit,
+    ExperimentClass,
+    Identifier,
+    Sha256,
+    StrictModel,
+    Timestamp,
+    TransductiveStatus,
+)
 from .pids import PIDSRef, ThresholdProvenance
 from .runtime import TimeWindow
 
@@ -22,12 +31,14 @@ class EntityAnomalyScore(StrictModel):
 
 
 class StandardizedDetectionResult(StrictModel):
-    schema_version: str = "deployment-detection-result-v1"
+    schema_version: str = "deployment-detection-result-v2"
     result_id: Identifier
     split: DataSplit
     pids: PIDSRef
     dataset_id: Identifier
     source_config_id: Identifier
+    experiment_class: ExperimentClass
+    transductive_status: TransductiveStatus
     checkpoint_hash: Sha256
     threshold: ThresholdProvenance
     window: TimeWindow
@@ -44,4 +55,9 @@ class StandardizedDetectionResult(StrictModel):
             raise ValueError("threshold and detection checkpoint identities differ")
         if not self.scored_entities or not self.raw_artifact_hashes:
             raise ValueError("standardized detection requires scores and raw artifact evidence")
+        if self.experiment_class == ExperimentClass.CAUSAL_MAIN:
+            if self.transductive_status != TransductiveStatus.CAUSAL:
+                raise ValueError("causal main result cannot be transductive or unknown")
+        elif self.transductive_status != TransductiveStatus.TRANSDUCTIVE:
+            raise ValueError("compatibility result must be explicitly transductive")
         return self

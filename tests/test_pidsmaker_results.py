@@ -12,7 +12,12 @@ from apt_detection_agent.pidsmaker.results import (
     calibrate_validation_quantile,
     standardize_frozen_test_scores,
 )
-from apt_detection_agent.schemas import DataSplit, ThresholdSourceSplit
+from apt_detection_agent.schemas import (
+    DataSplit,
+    ExperimentClass,
+    ThresholdSourceSplit,
+    TransductiveStatus,
+)
 
 
 class PIDSMakerResultTests(unittest.TestCase):
@@ -69,6 +74,8 @@ class PIDSMakerResultTests(unittest.TestCase):
         self.assertEqual(threshold.source_split, ThresholdSourceSplit.VALIDATION)
         self.assertEqual(threshold.value, 1.0)
         self.assertEqual(result.split, DataSplit.VALIDATION)
+        self.assertEqual(result.experiment_class.value, "causal_main")
+        self.assertEqual(result.transductive_status.value, "causal")
         self.assertEqual({item.entity_id for item in result.scored_entities}, {"2", "4", "5"})
         self.assertTrue(next(item for item in result.scored_entities if item.entity_id == "2").alerted)
 
@@ -77,6 +84,18 @@ class PIDSMakerResultTests(unittest.TestCase):
             run = self.fixture(Path(temp), label_column=True)
             with self.assertRaisesRegex(ValueError, "privileged"):
                 calibrate_validation_quantile(run, quantile=0.5)
+
+    def test_causal_result_rejects_transductive_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            run = self.fixture(Path(temp))
+            threshold = calibrate_validation_quantile(run, quantile=0.5)
+            with self.assertRaisesRegex(ValueError, "causal main result"):
+                standardize_frozen_test_scores(
+                    run,
+                    threshold,
+                    experiment_class=ExperimentClass.CAUSAL_MAIN,
+                    transductive_status=TransductiveStatus.TRANSDUCTIVE,
+                )
 
 
 if __name__ == "__main__":
