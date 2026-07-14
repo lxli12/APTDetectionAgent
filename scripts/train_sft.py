@@ -7,6 +7,7 @@ Requirements: REQ-SFT-001..004, REQ-ARTIFACT-002, REQ-REPRO-001..003.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from apt_detection_agent.sft import (
@@ -15,6 +16,8 @@ from apt_detection_agent.sft import (
     SFTDatasetValidator,
     SFTTrainingConfig,
     SFTTrainingResult,
+    FrozenSFTDataset,
+    FrozenSFTDatasetValidator,
 )
 
 
@@ -45,8 +48,14 @@ def main() -> int:
         )
         return 3
 
-    dataset = SFTDataset.model_validate_json(args.dataset.read_text())
-    SFTDatasetValidator.validate(dataset)
+    raw_dataset = json.loads(args.dataset.read_text())
+    manifest_version = raw_dataset.get("manifest", {}).get("schema_version")
+    if manifest_version == "frozen-sft-dataset-manifest-v2":
+        dataset = FrozenSFTDataset.model_validate(raw_dataset)
+        FrozenSFTDatasetValidator.validate(dataset)
+    else:
+        dataset = SFTDataset.model_validate(raw_dataset)
+        SFTDatasetValidator.validate(dataset)
     if (
         config.dataset_id != dataset.manifest.dataset_id
         or config.dataset_hash != dataset.manifest.dataset_hash
