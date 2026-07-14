@@ -53,7 +53,7 @@ def main() -> int:
     copy_package(
         source,
         output / "evaluator" / "src" / "apt_detection_agent",
-        ("schemas", "evaluator"),
+        ("schemas", "evaluator", "memory"),
     )
     scripts = project / "scripts"
     script_map = {

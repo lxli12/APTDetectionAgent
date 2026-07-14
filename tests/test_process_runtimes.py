@@ -51,6 +51,12 @@ class ProcessRuntimeTests(unittest.TestCase):
                 (evaluator / "scripts" / "run_memory_retrieval_sensitivity.py").is_file()
             )
             self.assertTrue(
+                (evaluator / "src" / "apt_detection_agent" / "memory").is_dir()
+            )
+            self.assertFalse(
+                (controller / "src" / "apt_detection_agent" / "memory").exists()
+            )
+            self.assertTrue(
                 (output / "pids" / "scripts" / "run_structured_pids_adapter_smoke.py").is_file()
             )
             self.assertFalse(
