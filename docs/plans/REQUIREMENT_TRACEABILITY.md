@@ -37,13 +37,13 @@ and test path is updated when work lands.
 | REQ-TOOL-003 | Every tool call records validated args, config/checkpoint, command manifest, timing, output, and artifacts | 1/2 | `ToolResult`; `CommandManifest`; Phase 2 adapter | synthetic runtime artifact tests; real stage trace deferred | partial |
 | REQ-TOOL-004 | Parallel PIDS selection is scheduled by executor, never CUDA-selected by LLM | 2/5 | `pidsmaker/tools.py` initial scheduler | GPU serialization and hidden CUDA rejection tests | partial |
 | REQ-TOOL-005 | Timeout, nonzero exit, malformed output, and missing artifact fail closed | 2 | `pidsmaker/adapter.py` | nonzero/start-error/missing-artifact fake-runner tests; typed output parser deferred | partial |
-| REQ-MEMORY-001 | Working, episode memory, and case state reset at split/scenario boundaries | 1/4 | explicit split/scenario/episode scope | scope tests; Phase 4 reset tests | partial |
-| REQ-MEMORY-002 | Train memory cannot enter validation; validation cannot enter held-out | 1/4 | planned namespace policy | cross-split negative tests | planned |
-| REQ-MEMORY-003 | Frozen deployable static LTM may cross splits only as a sanitized training artifact | 1/4 | `StaticLTMSnapshot` release contract | signature/review tests | partial |
-| REQ-MEMORY-004 | Runtime held-out memory cannot update static LTM | 1/4 | planned read-only snapshot | write rejection tests | planned |
-| REQ-MEMORY-005 | Initial backend is SQLite FTS5 with normalized-hash exact dedup | 4 | planned memory store | retrieval/dedup tests | planned |
-| REQ-MEMORY-006 | Conflicts coexist with environment, time, and evidence provenance | 4 | planned conflict records | conflict retention tests | planned |
-| REQ-MEMORY-007 | Retrieval budget and candidate cap are validation-tuned engineering defaults | 4/9 | planned retrieval config | sensitivity protocol | planned |
+| REQ-MEMORY-001 | Working, episode memory, and case state reset at split/scenario boundaries | 1/4 | `memory/store.py:CaseMemoryStore`; scoped schemas | exact episode reset tests | implemented |
+| REQ-MEMORY-002 | Train memory cannot enter validation; validation cannot enter held-out | 1/4 | `MemoryNamespace`; runtime write scope gate | cross-split/scenario negative tests | implemented |
+| REQ-MEMORY-003 | Frozen deployable static LTM may cross splits only as a sanitized training artifact | 1/4 | `StaticLTMSnapshot`; `StaticLTMSanitizer` | signature/review/schema/leakage tests | implemented |
+| REQ-MEMORY-004 | Runtime held-out memory cannot update static LTM | 1/4 | static snapshot loader; runtime write rejection | static immutability/reset survival tests | implemented |
+| REQ-MEMORY-005 | Initial backend is SQLite FTS5 with normalized-hash exact dedup | 4 | `memory/store.py:MemoryStore` | FTS retrieval and normalized dedup tests | implemented |
+| REQ-MEMORY-006 | Conflicts coexist with environment, time, and evidence provenance | 4 | semantic key plus explicit conflict/evidence fields | conflict coexistence/unknown-target tests | implemented |
+| REQ-MEMORY-007 | Retrieval budget and candidate cap are validation-tuned engineering defaults | 4/9 | `RetrievalPolicy` with unvalidated status | cap/budget/false-optimal-claim tests; sensitivity experiment deferred | partial |
 | REQ-EVAL-001 | Main evaluation uses campaign coverage and unique malicious-node TP/FP/FN | 1/7 | privileged `EvaluationRecord` | Phase 7 metric fixtures | partial |
 | REQ-EVAL-002 | Node-window, edge, chain, phase, provenance, latency, GPU, and tool-call metrics have separate denominators | 1/7 | distinct metric maps in evaluator schema | Phase 7 denominator tests | partial |
 | REQ-EVAL-003 | P@C=100%, MCC, and ADP definitions are versioned | 1/7 | version-linked evaluator record | Phase 7 metric definitions/tests | partial |
