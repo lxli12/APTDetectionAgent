@@ -24,9 +24,11 @@ evaluator process.
   validation/held-out `EpisodeMetricsFeedback`.
 
 `ToolRequest.arguments` rejects executor-owned command, shell, environment, working
-directory, and CUDA-device fields recursively. Phase 2 replaces generic argument
-maps with tool-specific request types and allowlists; the current model establishes
-the outer security boundary.
+directory, and CUDA-device fields recursively. PIDSMaker requests are validated by
+the tool-specific types in `src/apt_detection_agent/pidsmaker/tools.py`; memory,
+case, and visible-report requests are validated by the tool-specific types in
+`src/apt_detection_agent/tooling/memory_tools.py`. The generic outer request remains
+the transport envelope, while each executor establishes its narrower allowlist.
 
 ## Privileged evaluator surface
 

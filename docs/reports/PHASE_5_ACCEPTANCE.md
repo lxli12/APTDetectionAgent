@@ -38,6 +38,16 @@ Remote evidence on 2026-07-14 at commit
 
 No service, environment modification, or experiment was required.
 
+## Post-acceptance completion audit
+
+The 2026-07-14 completion audit added the previously schema-only implementations of
+`retrieve_memory`, `write_memory`, `update_case`, and `generate_report` in
+`src/apt_detection_agent/tooling/memory_tools.py`, with five focused tests in
+`tests/test_memory_tools.py`. AutoDL ran those tests at commit
+`aee8c8c37a7de7448a0bc34a507f8f6a9986498e`: 5/5 passed. This addendum does not
+change the original Phase 5 controller evidence or claim the deferred real-PIDS
+traces.
+
 ## Deferred
 
 Phase 6 supplies the localhost vLLM client. Phase 8 supplies real PIDSMaker stage

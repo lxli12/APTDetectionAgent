@@ -26,3 +26,11 @@ field names, common teacher/answer phrases, and mismatched normalized hashes.
 The 2048-token budget and 20-candidate cap are explicitly marked
 `unvalidated_engineering_default`. They are not a method optimum and remain subject
 to the validation sensitivity experiment required by REQ-MEMORY-007.
+
+The Agent-facing boundary is `MemoryCaseToolService` in
+`src/apt_detection_agent/tooling/memory_tools.py`. The LLM supplies only observable
+query/write content or a next-window configuration identifier. The executor, not
+the LLM, supplies the database-backed store, exact namespace, environment profile,
+timestamp, record identifier, normalized hash, report path, and append-only audit
+path. `write_memory` is restricted to Working or Episode layers; released static
+LTM remains an offline, reviewed training artifact and has no runtime write tool.

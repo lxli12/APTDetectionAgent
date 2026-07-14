@@ -23,3 +23,11 @@ not host-visible capacity. The initial executor assignment is GPU 0 for vLLM and
 JSONL records containing the full public observation, formal prediction, action,
 tool results, reflection, and timing. Runtime run-directory completeness and tmux
 ownership remain part of the later entrypoint/remote-run phase.
+
+`src/apt_detection_agent/tooling/memory_tools.py` is the structured executor for
+`retrieve_memory`, `write_memory`, `update_case`, and `generate_report`. It binds
+the case, split/scenario/episode namespace, observable environment profile, report
+root, clock, and audit path outside the LLM request. Each tool has a strict
+per-tool argument model. Unknown arguments, identity-scope escape, static-LTM
+writes, non-next-window reconfiguration, privileged report prose, and report
+overwrite all fail closed and still produce a sanitized `ToolResult` audit record.
