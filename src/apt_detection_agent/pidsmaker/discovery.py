@@ -87,13 +87,36 @@ def _parse_config(path: Path) -> ParsedConfig:
 class PIDSMakerDiscovery:
     """Static source discovery with no PIDSMaker or database imports."""
 
-    def __init__(self, project_root: Path, checkpoint_root: Path | None = None) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        checkpoint_root: Path | None = None,
+        *,
+        pidsmaker_root: Path | None = None,
+    ) -> None:
         self.project_root = project_root.resolve()
-        self.pidsmaker_root = (self.project_root / "PIDSMaker").resolve()
+        self.pidsmaker_root = (
+            pidsmaker_root.resolve()
+            if pidsmaker_root is not None
+            else (self.project_root / "PIDSMaker").resolve()
+        )
         self.config_root = self.pidsmaker_root / "config"
         self.checkpoint_root = checkpoint_root
 
     def verify_commit(self) -> str:
+        compatibility_marker = self.pidsmaker_root / ".apt-pidsmaker-compat.json"
+        if compatibility_marker.is_file():
+            import json
+
+            identity = json.loads(compatibility_marker.read_text())
+            commit = str(identity.get("upstream_commit", ""))
+            if (
+                identity.get("schema_version") != "apt-pidsmaker-compat-v1"
+                or identity.get("source_submodule_modified") is not False
+                or commit != PINNED_COMMIT
+            ):
+                raise DiscoveryError("isolated PIDSMaker compatibility identity is invalid")
+            return commit
         result = subprocess.run(
             ["git", "-C", str(self.pidsmaker_root), "rev-parse", "HEAD"],
             check=True,

@@ -7,6 +7,7 @@ REQ-WANDB-001, REQ-RESOURCE-002, REQ-DB-003.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -180,6 +181,12 @@ def configured_adapter(
 ) -> PIDSMakerAdapter:
     compatibility = artifact_root / "compatibility"
     compatibility.mkdir(exist_ok=True)
+    shutil.copytree(ROOT / "PIDSMaker" / "config", compatibility / "config")
+    (compatibility / "pidsmaker" / "config").mkdir(parents=True)
+    shutil.copy2(
+        ROOT / "PIDSMaker" / "pidsmaker" / "config" / "config.py",
+        compatibility / "pidsmaker" / "config" / "config.py",
+    )
     (compatibility / ".apt-pidsmaker-compat.json").write_text(
             json.dumps(
                 {

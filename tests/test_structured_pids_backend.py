@@ -30,6 +30,12 @@ class StructuredPIDSBackendTests(unittest.TestCase):
         self.assertNotIn("shell=True", text)
         self.assertNotIn("wandb", text.lower())
 
+    def test_smoke_executor_reads_secret_file_without_putting_password_in_request(self) -> None:
+        text = (ROOT / "scripts" / "run_structured_pids_adapter_smoke.py").read_text()
+        self.assertIn("APT_PIDS_DB_SECRET_FILE", text)
+        self.assertIn("PIDS_WORKER_PASSWORD", text)
+        self.assertNotIn('parser.add_argument("--database-password"', text)
+
     def test_agent_request_cannot_select_paths_credentials_or_cuda(self) -> None:
         request_source = (
             ROOT / "src/apt_detection_agent/pidsmaker/adapter.py"

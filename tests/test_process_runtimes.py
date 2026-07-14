@@ -45,6 +45,12 @@ class ProcessRuntimeTests(unittest.TestCase):
             self.assertTrue(
                 (evaluator / "scripts" / "build_real_hidden_request.py").is_file()
             )
+            self.assertTrue(
+                (output / "pids" / "scripts" / "run_structured_pids_adapter_smoke.py").is_file()
+            )
+            self.assertFalse(
+                (controller / "scripts" / "run_structured_pids_adapter_smoke.py").exists()
+            )
 
 
 if __name__ == "__main__":

@@ -58,7 +58,13 @@ def main() -> int:
     scripts = project / "scripts"
     script_map = {
         "controller": ("finalize_real_public_report.py", "finalize_stage_run.py"),
-        "pids": ("standardize_pids_result.py",),
+        "pids": (
+            "standardize_pids_result.py",
+            "run_structured_pids_adapter_smoke.py",
+            "run_frozen_pids_tool.py",
+            "pidsmaker_stage_runner.py",
+            "pidsmaker_causal_runner.py",
+        ),
         "evaluator": ("build_real_hidden_request.py", "run_hidden_evaluator.py"),
     }
     for identity, names in script_map.items():

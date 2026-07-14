@@ -136,6 +136,7 @@ class PIDSMakerAdapter:
         frozen_bundle_root: Path | None = None,
         approved_bundles: Mapping[str, Path] | None = None,
         database_environment: Mapping[str, str] | None = None,
+        code_commit: str | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
         self.pidsmaker_root = (self.project_root / "PIDSMaker").resolve()
@@ -153,7 +154,11 @@ class PIDSMakerAdapter:
             key: value.resolve() for key, value in (approved_bundles or {}).items()
         }
         self.database_environment = dict(database_environment or {})
-        self.discovery = PIDSMakerDiscovery(self.project_root)
+        self.code_commit = code_commit
+        self.discovery = PIDSMakerDiscovery(
+            self.project_root,
+            pidsmaker_root=self.compatibility_root,
+        )
 
     def bundle_for(self, request: PIDSDetectionRequest) -> Path:
         try:
@@ -369,7 +374,7 @@ class PIDSMakerAdapter:
         manifest = ArtifactManifest(
             manifest_id=manifest_id,
             run_id=request.run_id,
-            code_commit=self._git_commit(self.project_root),
+            code_commit=self.code_commit or self._git_commit(self.project_root),
             pidsmaker_commit=self.discovery.verify_commit(),
             artifacts=tuple(artifacts),
             created_at=ended_at,

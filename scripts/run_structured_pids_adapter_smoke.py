@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -23,7 +24,31 @@ from apt_detection_agent.pidsmaker import (
 from apt_detection_agent.schemas import DataSplit, PIDSRef, TimeWindow
 
 
-DATABASE_KEYS = ("PIDS_DB_HOST", "PIDS_DB_USER", "PIDS_DB_PASSWORD", "PIDS_DB_PORT")
+DATABASE_KEYS = ("PIDS_DB_HOST", "PIDS_DB_USER", "PIDS_DB_PORT")
+
+
+def database_environment() -> dict[str, str]:
+    missing = [key for key in DATABASE_KEYS if not os.environ.get(key)]
+    if missing:
+        raise ValueError("PIDS worker database environment is incomplete")
+    secret_text = os.environ.get("APT_PIDS_DB_SECRET_FILE")
+    if not secret_text:
+        raise ValueError("executor-owned PIDS database secret file is required")
+    secret = Path(secret_text).resolve()
+    stat = secret.stat()
+    if stat.st_mode & 0o007 or not secret.is_file() or secret.is_symlink():
+        raise ValueError("PIDS database secret file permissions are unsafe")
+    password = ""
+    for line in secret.read_text().splitlines():
+        key, separator, value = line.partition("=")
+        if separator and key == "PIDS_WORKER_PASSWORD":
+            password = value
+    if len(password) != 64 or any(char not in "0123456789abcdef" for char in password):
+        raise ValueError("PIDS worker database secret is malformed")
+    return {
+        **{key: os.environ[key] for key in DATABASE_KEYS},
+        "PIDS_DB_PASSWORD": password,
+    }
 
 
 def main() -> int:
@@ -33,13 +58,14 @@ def main() -> int:
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--code-commit", required=True)
     parser.add_argument("--window-start-ns", type=int, required=True)
     parser.add_argument("--window-end-ns", type=int, required=True)
     args = parser.parse_args()
+    if not re.fullmatch(r"[0-9a-f]{40}", args.code_commit):
+        raise ValueError("code commit must be an exact Git SHA")
 
-    missing = [key for key in DATABASE_KEYS if not os.environ.get(key)]
-    if missing:
-        raise ValueError("PIDS worker database environment is incomplete")
+    database = database_environment()
     bundle = args.bundle.resolve()
     availability = json.loads((bundle / "availability_manifest.json").read_text())
     catalog = ApprovedConfigCatalog.from_json(bundle / "approved_config_catalog.json")
@@ -98,7 +124,8 @@ def main() -> int:
         compatibility_root=args.compatibility_root,
         frozen_bundle_root=bundle.parent,
         approved_bundles={config.config_id: bundle},
-        database_environment={key: os.environ[key] for key in DATABASE_KEYS},
+        database_environment=database,
+        code_commit=args.code_commit,
     )
     outcome = adapter.execute(request)
     print(
