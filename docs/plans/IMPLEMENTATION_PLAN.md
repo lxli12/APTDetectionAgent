@@ -5,10 +5,10 @@ Design baseline: `docs/design/APT_Detection_Agent_Design_v0.4.md` plus accepted
 decisions in `docs/decisions/`
 PIDSMaker baseline: `32602734bc9f896be5fc0f03f0a185c967cd6624`
 
-Implementation snapshot (2026-07-14): Phases 0–7 are accepted; Phase 8 has a safe
-prefix runner/inventory but real execution remains gated; Phase 9 synthetic
-end-to-end is accepted while real-data end-to-end inherits the Phase 8 gates;
-Phase 10 interfaces and dry-run are accepted while formal training is
+Implementation snapshot (2026-07-14): Phases 0–9 have scoped acceptance, including
+a bounded causal VELOX/CADETS smoke, frozen new-window inference, real validation
+integration, and live OS/PostgreSQL isolation. Phase 10 is complete through the
+pre-SFT freeze/validation boundary; formal training remains
 `BLOCKED_BY_SFT_DATASET`.
 
 This plan is requirement-driven. A phase is complete only when its mapped
@@ -129,6 +129,10 @@ Start with one dataset, one PIDS, and a minimal construction/feature/inference
 interval. Validate artifact schema and checkpoint load/save before expanding.
 Profile every PIDS independently; GPU 1 runs at most one unknown GPU workload.
 
+Accepted scope: VELOX on bounded `CADETS_E3` validation windows. Expansion to the
+remaining registry entries is continuing experimental coverage, not a prerequisite
+for the scoped Phase 8 implementation acceptance.
+
 ## Phase 9 — End-to-end validation
 
 Requirements: all runtime requirements.
@@ -136,6 +140,10 @@ Requirements: all runtime requirements.
 First pass a synthetic multi-window scenario covering state, memory, routing,
 slow-path, next-window config, evaluator isolation, metrics, and reports. Then run a
 minimal real-data scenario. Validate invariants and provenance, not only completion.
+
+Accepted scope: bounded real validation with evaluator-private campaign data and
+live process permission checks. Held-out/deployment remains a later frozen-bundle
+promotion gate.
 
 ## Phase 10 — SFT interfaces
 
@@ -145,6 +153,10 @@ Implement trajectory/teacher boundaries, sanitizer, dataset validator, split
 manifest, dataset-builder and trainer interfaces, dry-run fixtures, and checkpoint
 manifest. Formal dataset construction and training remain
 `BLOCKED_BY_SFT_DATASET` until authorized data exists.
+
+Before the dataset arrives, freeze and independently validate the causal PIDS,
+featurizer, threshold, and ApprovedConfig inputs. Do not promote that validation
+bundle to held-out/deployment.
 
 ## Formal entrypoints and remote operations
 

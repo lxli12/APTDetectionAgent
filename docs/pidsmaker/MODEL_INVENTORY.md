@@ -19,7 +19,7 @@ PIDS entries. Discovery also cross-checks `PIDSMaker/README.md`,
 | `orthrus_non_snooped` | `(orthrus, non_snooped)` | node | causal candidate | `max_val_loss` | unavailable |
 | `rcaid` | `(rcaid, default)` | node | compatibility baseline | `max_val_loss` | unavailable |
 | `threatrace` | `(threatrace, default)` | node | causal candidate | `threatrace` | unavailable |
-| `velox` | `(velox, default)` | node | causal candidate | `max_val_loss` | unavailable |
+| `velox` | `(velox, default)` | node | causal candidate | frozen validation calibration | available for bounded `CADETS_E3` validation only |
 
 Evidence:
 
@@ -41,5 +41,12 @@ patterns; it is not an ApprovedConfig until window alignment, fitted-state freez
 checkpoint, dataset, and smoke validation pass. All ten entries remain in
 `allowed_pids`; unavailable entries are never silently removed.
 
-AutoDL `/root/autodl-tmp/pids_artifacts` was absent during the 2026-07-14 inventory,
-which is expected before new runs. No historical checkpoint is assumed or fabricated.
+The VELOX promotion is backed by
+`/root/autodl-tmp/apt-agent/experiments/runs/phase8-velox-cadets-smoke-20260714-002`
+and the frozen bundle
+`/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`.
+Its checkpoint hash is
+`9fd5b64fd65f71faea65b037294dca537c75ab902a4ad92f04bb84315c0f54a2`;
+new-window frozen inference evidence is in
+`phase10-frozen-new-window-20260714-001`. This does not approve VELOX for held-out,
+deployment, or any other dataset. No status for the other nine entries changes.

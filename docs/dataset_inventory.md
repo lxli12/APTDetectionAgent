@@ -11,7 +11,7 @@ queryable database. No row below is an approved train/validation/held-out split.
 
 | Dataset | OS / schema family | Registered PIDS | Upstream date range | AutoDL dump | Queryable PostgreSQL DB | Checkpoint | Ground truth / campaign status | Runtime and availability status |
 |---|---|---|---|---|---|---|---|---|
-| `CADETS_E3` | FreeBSD / DARPA TC E3 CDM | all 10 registry entries, unverified | 2018-04-02..14 | `cadets_e3.dump`, ~1.36 GiB | `cadets_e3`, ~9.8 GiB | none found | CSV paths exist in upstream config; versioned project campaign manifest pending | best current smoke candidate; runtime unprofiled |
+| `CADETS_E3` | FreeBSD / DARPA TC E3 CDM | all 10 registered; VELOX bounded validation verified | 2018-04-02..14 | `cadets_e3.dump`, ~1.36 GiB | `cadets_e3`, ~9.8 GiB | VELOX validation checkpoint frozen; others absent | private validation campaign manifest exercised; full campaign inventory pending | VELOX 15-minute causal/new-window smoke passed; no held-out approval |
 | `THEIA_E3` | Linux / DARPA TC E3 CDM | all 10, unverified | 2018-04-02..14 | `theia_e3.dump`, ~1.05 GiB | `theia_e3`, ~12 GiB | none found | upstream CSV references only; campaign manifest pending | data present; runtime unprofiled |
 | `CLEARSCOPE_E3` | Android / DARPA TC E3 CDM | all 10, unverified | 2018-04-02..14 | `clearscope_e3.dump`, ~588 MiB | `clearscope_e3`, ~4.6 GiB | none found | upstream CSV references only; documented exclusions require review | data present; runtime unprofiled |
 | `FIVEDIRECTIONS_E3` | upstream docs conflict: Windows vs Linux / DARPA TC E3 | all 10, unverified | 2018-04-02..14 | `fivedirections_e3.dump`, ~3.0 GiB | absent | none found | upstream CSV references only; campaign manifest pending | unavailable until DB is provisioned by an approved operation |
@@ -46,14 +46,16 @@ mapping, and an independent smoke profile.
 4. Only after those checks select leave-one-dataset or leave-one-OS/schema-out OOD
    experiments. No concrete OOD target is frozen by this inventory.
 
-## Still requiring AutoDL work
+## Current AutoDL evidence and remaining work
 
-- No PIDS checkpoint was found outside the excluded dataset and PostgreSQL trees;
-  the only matching model file was the unrelated Llama weight
-  `/root/autodl-tmp/llm-models/Llama-3.1-8B/original/consolidated.00.pth`.
+- Historical inventory found no usable PIDS checkpoint. The project subsequently
+  produced a causal VELOX validation checkpoint and froze it under
+  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`.
+  It is a new project artifact, not an upstream pretrained checkpoint.
 - The measured dataset-to-database mapping is versioned in
   `configs/database/autodl.yaml`. Role provisioning and live verification use
   `scripts/postgres/provision_roles.sh` and `verify_role_policy.sh`; acceptance
   status is recorded in the Phase 8 report rather than inferred from this inventory.
-- Estimated runtime and peak resources require bounded smoke runs; host-visible
-  resources may not replace `configs/resources/autodl.yaml` quotas.
+- VELOX now has one bounded latency/VRAM smoke. Every other PIDS/dataset pair still
+  requires an independent profile; host-visible resources may not replace the
+  project quota in `configs/resource_profiles/autodl.yaml`.

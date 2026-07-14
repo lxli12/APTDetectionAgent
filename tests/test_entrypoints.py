@@ -129,7 +129,13 @@ class FormalEntrypointTests(unittest.TestCase):
             )
             status = json.loads((run_root / "real-preflight" / "run_status.json").read_text())
         self.assertEqual(completed.returncode, 3)
-        self.assertEqual(status["reason"], "BLOCKED_BY_PHASE8_REAL_PIDS_GATES")
+        self.assertEqual(status["reason"], "BLOCKED_BY_REQUIRED_REAL_RUN_AND_RUNTIME_INPUTS")
+
+    def test_pre_sft_stages_no_longer_claim_phase8_is_missing(self) -> None:
+        text = (ROOT / "scripts" / "train_agent.sh").read_text()
+        self.assertIn("validate_pre_sft_bundle.py", text)
+        self.assertIn("BLOCKED_BY_PRE_SFT_BUNDLE_PATH", text)
+        self.assertNotIn("BLOCKED_BY_PHASE8_CAUSAL_CHECKPOINT_AND_DB_ROLE", text)
 
     def test_remote_scripts_have_owned_session_guard_and_no_destructive_git(self) -> None:
         remote_root = ROOT / "scripts" / "remote"

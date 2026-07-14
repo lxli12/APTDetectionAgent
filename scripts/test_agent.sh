@@ -36,8 +36,8 @@ if [[ "$MODE" == "real" ]]; then
       --private-root "$PRIVATE_BASE" --pids-run "$PIDS_RUN" --runtime-root "$RUNTIME_ROOT"
   fi
   mkdir "$RUN_DIR"
-  printf '{"stage":"validate_frozen_bundle","status":"blocked","reason":"BLOCKED_BY_PHASE8_REAL_PIDS_GATES"}\n' >"$RUN_DIR/stages.jsonl"
-  "$PYTHON_BIN" "$ROOT/scripts/finalize_stage_run.py" --run-dir "$RUN_DIR" --status blocked --reason BLOCKED_BY_PHASE8_REAL_PIDS_GATES --evidence-class real_data_preflight
+  printf '{"stage":"validate_real_inputs","status":"blocked","reason":"BLOCKED_BY_REQUIRED_REAL_RUN_AND_RUNTIME_INPUTS"}\n' >"$RUN_DIR/stages.jsonl"
+  "$PYTHON_BIN" "$ROOT/scripts/finalize_stage_run.py" --run-dir "$RUN_DIR" --status blocked --reason BLOCKED_BY_REQUIRED_REAL_RUN_AND_RUNTIME_INPUTS --evidence-class real_data_preflight
   exit 3
 fi
 [[ "$MODE" == "synthetic" ]] || exit 2

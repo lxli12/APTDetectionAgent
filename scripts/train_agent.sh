@@ -8,6 +8,7 @@ RUN_ROOT="${APT_AGENT_RUN_ROOT:-/root/autodl-tmp/apt-agent/experiments/runs}"
 RUN_ID=""
 STAGE="all"
 PYTHON_BIN="${APT_AGENT_PYTHON:-python}"
+PRE_SFT_BUNDLE="${APT_PRE_SFT_BUNDLE:-}"
 
 STAGES=(
   validate_environment validate_data prepare_pids_artifacts train_pids
@@ -65,13 +66,20 @@ execute_stage() {
       PYTHONPATH="$ROOT/src" "$PYTHON_BIN" -c 'from pathlib import Path; from apt_detection_agent.pidsmaker import PIDSMakerDiscovery; d=PIDSMakerDiscovery(Path("'"$ROOT"'")); assert len(d.capabilities())==10' >>"$RUN_DIR/stdout.log" 2>>"$RUN_DIR/stderr.log"
       record "$name" succeeded "complete registry retained; unavailable checkpoints were not fabricated" ;;
     train_pids|calibrate_thresholds|build_approved_config_catalog)
-      blocked=1; record "$name" blocked "BLOCKED_BY_PHASE8_CAUSAL_CHECKPOINT_AND_DB_ROLE" ;;
+      if [[ -z "$PRE_SFT_BUNDLE" ]]; then
+        blocked=1; record "$name" blocked "BLOCKED_BY_PRE_SFT_BUNDLE_PATH"
+      elif "$PYTHON_BIN" "$ROOT/scripts/validate_pre_sft_bundle.py" \
+        --bundle "$PRE_SFT_BUNDLE" >>"$RUN_DIR/stdout.log" 2>>"$RUN_DIR/stderr.log"; then
+        record "$name" succeeded "frozen causal validation asset verified; no training or recalibration performed"
+      else
+        blocked=1; record "$name" blocked "INVALID_PRE_SFT_BUNDLE"
+      fi ;;
     build_trajectory_dataset|train_sft|validate_sft)
       blocked=1; record "$name" blocked "BLOCKED_BY_SFT_DATASET" ;;
     build_static_ltm)
       blocked=1; record "$name" blocked "BLOCKED_BY_APPROVED_TRAINING_TRAJECTORIES" ;;
     freeze_deployment_bundle)
-      blocked=1; record "$name" blocked "BLOCKED_BY_UPSTREAM_ARTIFACT_AND_SFT_GATES" ;;
+      blocked=1; record "$name" blocked "BLOCKED_BY_SFT_AND_HELD_OUT_APPROVAL_GATES" ;;
   esac
 }
 

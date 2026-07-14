@@ -5,52 +5,61 @@ REQ-REPRO-001..003, REQ-WANDB-001.
 
 ## Immutable baselines
 
-- Main code comes only from GitHub and is synchronized to AutoDL with a clean-tree
-  `git pull --ff-only`.
+- GitHub is the code source; AutoDL synchronization requires a clean tree and
+  `git pull --ff-only` via `scripts/remote/sync_code.sh`.
 - PIDSMaker is fixed at `32602734bc9f896be5fc0f03f0a185c967cd6624`.
-- AutoDL quotas are 32 vCPU, 240 GiB RAM, two RTX 4090 GPUs, and 24 GiB per GPU;
-  host-visible excess is never allocatable.
-- PIDSMaker uses the existing `pids` environment. vLLM uses the independent `vllm`
-  environment. Neither environment is merged or upgraded by project scripts.
-- PostgreSQL is version 17.9 at
-  `/root/autodl-tmp/postgresql/17/main`. Runtime scripts never initialize, migrate,
-  restore, drop, or repair it.
-- W&B is disabled and never used as an artifact or reproduction service.
+- AutoDL allocation is 32 vCPU, 240 GiB RAM, and two 24-GiB RTX 4090 GPUs.
+- PIDSMaker uses `pids`; vLLM uses `vllm`; neither environment is merged/upgraded.
+- PostgreSQL 17.9 data at `/root/autodl-tmp/postgresql/17/main` is never
+  initialized, migrated, restored, dropped, or repaired by runtime scripts.
+- W&B is disabled and is not an artifact, logger, or reproduction dependency.
 
-## Test and synthetic acceptance
-
-On AutoDL:
+## Verification
 
 ```bash
 cd /root/APTDetectionAgent
 source /root/miniconda3/etc/profile.d/conda.sh
 conda activate pids
-PYTHONPATH=src python -m unittest discover -s tests -v
+APT_PIDS_CPU_THREADS=16 OMP_NUM_THREADS=16 MKL_NUM_THREADS=16 \
+  OPENBLAS_NUM_THREADS=16 NUMEXPR_NUM_THREADS=16 \
+  VECLIB_MAXIMUM_THREADS=16 PYTHONPATH=src python -m pytest -q tests
 ```
 
-The accepted Phase 9 synthetic run is
-`/root/autodl-tmp/apt-agent/experiments/runs/phase9_synthetic_e2e_20260714_001`.
-It proves chronological/config/memory/process-boundary behavior only. Its private
-fixture and complete metrics stay under the evaluator-private root and are not an
-Agent input.
+Accepted append-only evidence:
 
-The formal stage entrypoints are:
+- synthetic protocol:
+  `/root/autodl-tmp/apt-agent/experiments/runs/phase9_synthetic_e2e_20260714_001`;
+- causal PIDSMaker smoke:
+  `/root/autodl-tmp/apt-agent/experiments/runs/phase8-velox-cadets-smoke-20260714-002`;
+- real validation integration:
+  `/root/autodl-tmp/apt-agent/experiments/runs/phase9-real-e2e-20260714-002`;
+- pre-SFT frozen validation bundle:
+  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`;
+- frozen new-window inference:
+  `/root/autodl-tmp/apt-agent/experiments/runs/phase10-frozen-new-window-20260714-001`.
+
+These prove causal mechanics and validation integration only. Each real public
+artifact records `formal_performance_claim=false`; evaluator-private mappings and
+full metrics remain outside the controller filesystem.
+
+## Formal stage entrypoints
 
 ```bash
 export APT_AGENT_PYTHON="$CONDA_PREFIX/bin/python"
+export APT_PRE_SFT_BUNDLE_ROOT=/root/autodl-tmp/apt-agent/pre-sft-bundles
+export APT_PRE_SFT_BUNDLE="$APT_PRE_SFT_BUNDLE_ROOT/velox-cadets-validation-3fa5ec0-002"
 scripts/train_agent.sh --run-id <new-id> --stage all
 scripts/test_agent.sh --run-id <new-id> --mode synthetic
-scripts/test_agent.sh --run-id <new-id> --mode real
+scripts/test_agent.sh --run-id <new-id> --mode real \
+  --pids-run <validated-run> --runtime-root <role-specific-runtime>
 ```
 
-`train_agent.sh --stage all` currently exits 3 after recording successful preflight
-stages and explicit Phase 8/SFT blockers. `test_agent.sh --mode real` also exits 3
-before data/model mutation. These are expected fail-closed states, not test
-failures. Every run ID is append-only and must be new.
+`train_agent.sh --stage all` still exits 3: PIDS/checkpoint/threshold/config stages
+validate the bundle, while trajectory/SFT/static-LTM/deployment stages remain
+blocked. Real test mode requires both explicit inputs; omission is a fail-closed
+input gate. Every run ID and bundle directory is append-only.
 
 ## Long-run operations
-
-After `tmux` is installed through a separately approved environment operation:
 
 ```bash
 scripts/remote/start_run.sh <run-id> train --stage all
@@ -60,31 +69,16 @@ scripts/remote/collect_run_summary.sh <run-id>
 scripts/remote/stop_owned_run.sh <run-id>
 ```
 
-`stop_owned_run.sh` refuses sessions without the ownership marker created by
-`start_run.sh`. On the current AutoDL baseline `tmux` is absent, so `start_run.sh`
-returns `BLOCKED_BY_MISSING_TMUX` before creating a run/control directory. Do not
-replace this with an unowned background process for long training.
+The current server has tmux. Ownership markers prevent stopping unrelated
+sessions; a server without tmux fails before creating a run. Long work must not use
+an unowned background process.
 
-## Required artifacts
+## Remaining gates
 
-Formal run directories are below
-`/root/autodl-tmp/apt-agent/experiments/runs/<run_id>/` and preserve command, main
-and submodule SHA, diff, environment, resource/config/data/artifact manifests,
-stdout/stderr, tool calls, trajectory, predictions, metrics or sanitized metric
-reference, status, and summary. Full held-out metric files remain evaluator-private;
-the Agent-visible report receives only the versioned episode artifact reference.
-
-## Real-data continuation gate
-
-Before a real run, all of the following must be approved and verified:
-
-1. create distinct least-privilege `pids_worker` and `hidden_evaluator` PostgreSQL
-   roles/grants without exposing credentials;
-2. install `tmux` without changing CUDA/PyTorch/vLLM/PIDSMaker dependencies;
-3. approve a versioned compatibility patch applied only to an isolated PIDSMaker
-   build copy, adding bounded `[start,end)` construction, optional local logging,
-   train/validation-only training, and checkpoint save/load;
-4. validate one causal ApprovedConfig/checkpoint/threshold before held-out use.
-
-No PIDS is promoted from unavailable until those checks and an independent resource
-profile pass.
+Least-privilege roles, live OS isolation, tmux, the isolated compatibility patch,
+one causal checkpoint, one validation threshold, and one validation-only
+ApprovedConfig are verified for VELOX/CADETS. Remaining work is to profile other
+PIDS/datasets, finish the full agent-level validation campaign inventory, ingest
+and sanitize the formal SFT trajectories, train/validate SFT and static LTM, and
+only then create a distinct held-out-approved bundle. Test labels, hidden campaign
+mappings, and validation episode memory may not influence those choices.

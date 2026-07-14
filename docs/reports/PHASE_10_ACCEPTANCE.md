@@ -1,43 +1,34 @@
-# Phase 10 acceptance report — interfaces complete, formal training blocked
+# Phase 10 acceptance report — pre-SFT complete, formal SFT blocked
 
 Requirements: REQ-SFT-001..004, REQ-LABEL-002..004,
 REQ-ARTIFACT-001..003, REQ-REPRO-001..003.
 
-## Accepted interface behavior
+The privileged teacher, deployment-visible student, recursive sanitizer, dataset
+builder, split manifest, dry-run trainer, checkpoint contract, and static-LTM
+release boundary are implemented under `src/apt_detection_agent/sft/` and tested in
+`tests/test_sft.py`. Teacher-only rationale, labels, counterfactual actions, dataset
+identity shortcuts, and hidden feedback cannot enter student inputs or deployable
+memory.
 
-- `src/apt_detection_agent/sft/teacher.py` is the privileged teacher schema;
-  `src/apt_detection_agent/sft/contracts.py:StudentSFTExample` is the separate
-  deployment-visible student schema.
-- `src/apt_detection_agent/sft/sanitizer.py` removes teacher-only rationale,
-  privileged labels, and counterfactual fields, rejects privileged phrases in
-  student rationale, and hashes the exact sanitized payload.
-- `src/apt_detection_agent/sft/builder.py` accepts agent-training records only,
-  creates explicit non-overlapping train/validation partitions, and emits a
-  versioned dataset hash/manifest. Synthetic data cannot be formally approved.
-- `scripts/train_sft.py` validates dataset/config identity and supports dry-run
-  without weight updates or checkpoint creation. Missing/unapproved data produces
-  `BLOCKED_BY_SFT_DATASET`.
-- Checkpoint/adapter and future low-bandwidth RL contracts reject unsafe paths,
-  held-out step reward, unbounded reward, and missing provenance.
-- `scripts/train_agent.sh` and `scripts/test_agent.sh` expose the required formal
-  stage lists; their real-data paths fail closed at documented gates.
-- `scripts/remote/` implements unique owned-run start/status/tail/stop/summary.
-  The live missing-tmux preflight returned code 3 before creating any run directory.
+Pre-SFT runtime assets are now frozen and independently exercised:
 
-AutoDL commit `266c050f49a1d5a11fc002945715a8bf8ed90c80` passed all
-168 tests in the existing `pids` environment. Formal entrypoint runs are:
+- `scripts/freeze_pre_sft_bundle.py` creates an append-only validation bundle with
+  checkpoint, train-fitted featurizer, threshold catalog, ApprovedConfig catalog,
+  availability manifest, and content hashes;
+- the current accepted bundle is
+  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`;
+- `scripts/validate_pre_sft_bundle.py` verifies that it remains causal,
+  validation-only, non-deployment, and contains neither SFT data nor static LTM;
+- `scripts/run_frozen_pidsmaker_smoke.sh` proved new-window inference without
+  featurizer refit, checkpoint selection, labels, W&B, or configuration drift;
+- AutoDL commit `3fa5ec07df92993bdf7bb58c53a1b06ddc94b963` passed 211 tests.
 
-- `/root/autodl-tmp/apt-agent/experiments/runs/phase10_train_preflight_20260714_001`
-  — 11 stages recorded, expected terminal status `blocked`, with the SFT stages
-  explicitly `BLOCKED_BY_SFT_DATASET`;
-- `/root/autodl-tmp/apt-agent/experiments/runs/phase10_test_synthetic_20260714_001`
-  — terminal status `succeeded`, explicitly non-formal synthetic evidence.
+`scripts/train_agent.sh` no longer reports obsolete Phase 8 blockers. With
+`APT_PRE_SFT_BUNDLE` and `APT_PRE_SFT_BUNDLE_ROOT` set, its PIDS/threshold/config
+stages validate frozen evidence; trajectory construction, SFT, SFT validation,
+static LTM, and deployment freeze remain explicitly gated.
 
-Both GPUs remained at 0 MiB for these interface/preflight runs.
-
-## Deliberately not claimed
-
-No formal trajectory dataset, SFT weight update, adapter, checkpoint, or performance
-result exists. Formal SFT therefore remains `BLOCKED_BY_SFT_DATASET`. A future
-trainer backend may be connected only after dataset deployability approval; the
-current CLI reports readiness but never fabricates training.
+No formal trajectory dataset, SFT update, adapter checkpoint, deployable static
+LTM, or held-out performance claim exists. These stages remain
+`BLOCKED_BY_SFT_DATASET` (and deployment additionally by held-out approval) until
+the user-provided dataset passes deployability and split checks.
