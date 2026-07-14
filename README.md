@@ -8,6 +8,7 @@ evaluation, and reproducible experiment manifests.
 The objective is not merely to execute PIDSMaker. The implementation must preserve
 the invariants in the [final design](docs/design/APT_Detection_Agent_Design_v0.4.md)
 and the [requirement traceability matrix](docs/plans/REQUIREMENT_TRACEABILITY.md),
+plus the [frozen repository architecture](docs/PROJECT_ARCHITECTURE_DESIGN_v1.1.md),
 especially future-data exclusion, hidden-label isolation, next-window
 reconfiguration, split-scoped memory, and campaign-aware evaluation.
 
@@ -18,6 +19,11 @@ Implementation is staged according to
 recorded in `docs/reports/`; unimplemented phases must not be represented as
 complete. Formal SFT training remains `BLOCKED_BY_SFT_DATASET` until a valid,
 sanitized trajectory dataset exists.
+
+Repository migration follows v1.1 incrementally. The current stabilization slice
+introduces the `agent` policy boundary and the public `evaluation` boundary while
+retaining compatibility paths for the existing controller, tooling, and private
+evaluator implementations.
 
 Phases 0–7 and the Phase 9 synthetic multi-window path have remote acceptance
 evidence. Phase 8 real PIDSMaker and Phase 9 real-data acceptance remain gated by a
@@ -35,6 +41,8 @@ not reported as detector performance.
   OpenAI-compatible HTTP endpoint.
 - The controller uses typed requests and never imports PIDSMaker or vLLM across
   their environment boundary.
+- The Agent emits only `ProposedAction`; the runtime resolves it into an
+  `ExecutableAction` before any tool dispatch.
 - PostgreSQL access is role-separated; the controller has no private-label access.
 - W&B is disabled and is not a project dependency.
 
