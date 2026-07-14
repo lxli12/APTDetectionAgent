@@ -1,11 +1,12 @@
 """Privileged metric engine; never imported into the controller process.
 
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007.
 """
 
 from __future__ import annotations
 
 import math
+import statistics
 from dataclasses import dataclass
 from itertools import groupby
 from pathlib import Path
@@ -21,7 +22,7 @@ from apt_detection_agent.schemas.evaluation import (
 )
 
 
-METRIC_DEFINITION_VERSION = "agent-eval-v1"
+METRIC_DEFINITION_VERSION = "agent-eval-v2"
 
 
 class ScoredEntity(StrictModel):
@@ -51,6 +52,20 @@ class HiddenEvaluationInput(StrictModel):
     latency_seconds: float = Field(default=0.0, ge=0.0)
     gpu_seconds: float = Field(default=0.0, ge=0.0)
     tool_calls: int = Field(default=0, ge=0)
+    campaign_detection_delay_seconds: dict[Identifier, float] = Field(default_factory=dict)
+    window_alert_counts: dict[Identifier, int] = Field(default_factory=dict)
+    window_score_means: dict[Identifier, float] = Field(default_factory=dict)
+    llm_calls: int = Field(default=0, ge=0)
+    prompt_tokens: int = Field(default=0, ge=0)
+    completion_tokens: int = Field(default=0, ge=0)
+    max_context_tokens: int = Field(default=0, ge=0)
+    slow_path_triggers: int = Field(default=0, ge=0)
+    reconfigurations: int = Field(default=0, ge=0)
+    model_switches: int = Field(default=0, ge=0)
+    threshold_changes: int = Field(default=0, ge=0)
+    retraining_count: int = Field(default=0, ge=0)
+    cache_hits: int = Field(default=0, ge=0)
+    cache_requests: int = Field(default=0, ge=0)
     computed_at: Timestamp
 
     @model_validator(mode="after")
@@ -77,6 +92,36 @@ class HiddenEvaluationInput(StrictModel):
         }
         if not malicious.issubset(self.universe_entity_ids):
             raise ValueError("malicious entities must belong to the evaluation universe")
+        campaign_id_set = set(campaign_ids)
+        if not set(self.campaign_detection_delay_seconds).issubset(campaign_id_set):
+            raise ValueError("delay metrics reference an unknown campaign")
+        if any(
+            value < 0.0 or not math.isfinite(value)
+            for value in self.campaign_detection_delay_seconds.values()
+        ):
+            raise ValueError("campaign detection delays must be finite and nonnegative")
+        campaign_by_id = {campaign.campaign_id: campaign for campaign in self.campaigns}
+        alerted_ids = {item.entity_id for item in self.scored_entities if item.alerted}
+        if any(
+            not (alerted_ids & set(campaign_by_id[campaign_id].malicious_entity_ids))
+            for campaign_id in self.campaign_detection_delay_seconds
+        ):
+            raise ValueError("delay metrics require a detected campaign")
+        if any(value < 0 for value in self.window_alert_counts.values()):
+            raise ValueError("window alert counts must be nonnegative")
+        if any(not math.isfinite(value) for value in self.window_score_means.values()):
+            raise ValueError("window score means must be finite")
+        if set(self.window_alert_counts) != set(self.window_score_means):
+            raise ValueError("stability inputs must describe the same windows")
+        derived_alert_counts: dict[str, int] = {}
+        for item in self.scored_entities:
+            if item.alerted:
+                for window_id in item.window_ids:
+                    derived_alert_counts[window_id] = derived_alert_counts.get(window_id, 0) + 1
+        if self.window_alert_counts and self.window_alert_counts != derived_alert_counts:
+            raise ValueError("window alert counts disagree with alerted entity occurrences")
+        if self.cache_hits > self.cache_requests:
+            raise ValueError("cache hits cannot exceed cache requests")
         return self
 
 
@@ -92,6 +137,22 @@ def _ratio(numerator: int, denominator: int) -> float:
 def _mcc(tp: int, fp: int, fn: int, tn: int) -> float:
     denominator = math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     return ((tp * tn - fp * fn) / denominator) if denominator else 0.0
+
+
+def _distribution_metrics(values: tuple[float, ...], prefix: str) -> dict[str, float]:
+    if not values:
+        return {
+            f"{prefix}_mean": 0.0,
+            f"{prefix}_stddev": 0.0,
+            f"{prefix}_coefficient_of_variation": 0.0,
+        }
+    mean = statistics.fmean(values)
+    stddev = statistics.pstdev(values)
+    return {
+        f"{prefix}_mean": mean,
+        f"{prefix}_stddev": stddev,
+        f"{prefix}_coefficient_of_variation": stddev / abs(mean) if mean else 0.0,
+    }
 
 
 def _campaign_curve(
@@ -172,6 +233,18 @@ class HiddenEvaluator:
             for item in request.scored_entities
             if item.entity_id in tp_set
         )
+        delay_values = tuple(request.campaign_detection_delay_seconds.values())
+        stability_metrics = {
+            "window_denominator": float(len(request.window_alert_counts)),
+            "total_alert_volume": float(sum(request.window_alert_counts.values())),
+            **_distribution_metrics(
+                tuple(float(value) for value in request.window_alert_counts.values()),
+                "window_alert_count",
+            ),
+            **_distribution_metrics(
+                tuple(request.window_score_means.values()), "window_score_mean"
+            ),
+        }
         record = EvaluationRecord(
             evaluation_id=request.evaluation_id,
             split=request.split,
@@ -208,6 +281,29 @@ class HiddenEvaluator:
                 "latency_seconds": request.latency_seconds,
                 "gpu_seconds": request.gpu_seconds,
                 "tool_calls": float(request.tool_calls),
+                "llm_calls": float(request.llm_calls),
+                "prompt_tokens": float(request.prompt_tokens),
+                "completion_tokens": float(request.completion_tokens),
+                "max_context_tokens": float(request.max_context_tokens),
+            },
+            delay_metrics={
+                "detected_campaign_denominator": float(len(delay_values)),
+                "all_campaign_denominator": float(len(request.campaigns)),
+                "mean_detection_delay_seconds": statistics.fmean(delay_values)
+                if delay_values
+                else 0.0,
+                "maximum_detection_delay_seconds": max(delay_values) if delay_values else 0.0,
+            },
+            stability_metrics=stability_metrics,
+            control_metrics={
+                "slow_path_triggers": float(request.slow_path_triggers),
+                "reconfigurations": float(request.reconfigurations),
+                "model_switches": float(request.model_switches),
+                "threshold_changes": float(request.threshold_changes),
+                "retraining_count": float(request.retraining_count),
+                "cache_hits": float(request.cache_hits),
+                "cache_requests": float(request.cache_requests),
+                "cache_hit_rate": _ratio(request.cache_hits, request.cache_requests),
             },
             computed_at=request.computed_at,
         )

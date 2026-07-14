@@ -1,6 +1,6 @@
 # Phase 7 acceptance report
 
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006, REQ-DB-001..003.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007, REQ-DB-001..003.
 
 ## Scope
 
@@ -38,3 +38,13 @@ Actual filesystem users and PostgreSQL grants must be provisioned manually and t
 tested on AutoDL. The runtime does not create roles or alter the PostgreSQL 17
 cluster. Consequently REQ-DB-001/002 remain partial despite the enforced policy and
 IPC boundaries.
+
+## Post-acceptance metric completion audit
+
+The 2026-07-14 completion audit introduced `agent-eval-v2` in
+`src/apt_detection_agent/evaluator/engine.py`. It retains all v1 primary metrics and
+adds separately denominated campaign delay, alert-volume/score stability, LLM
+efficiency, and control-behavior maps required by the final design. Negative tests
+reject unknown campaign delay keys, incoherent window series, and impossible cache
+counters. This schema evolution does not reinterpret or overwrite historical v1
+artifacts.

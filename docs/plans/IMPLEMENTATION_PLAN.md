@@ -114,7 +114,7 @@ conservative, explicitly approved AutoDL smoke.
 
 ## Phase 7 — Hidden evaluator and metrics
 
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006, REQ-DB-001..003.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007, REQ-DB-001..003.
 
 Implement isolated evaluator IPC, campaign manifests, unique-node and occurrence
 metrics, edge/evidence metrics, P@C=100%, MCC, ADP, coverage, stability, efficiency,

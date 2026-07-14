@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run one private evaluation request and emit only sanitized public feedback.
 
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006, REQ-DB-001..003.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007, REQ-DB-001..003.
 """
 
 from __future__ import annotations

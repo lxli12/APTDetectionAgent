@@ -1,7 +1,7 @@
 """Privileged campaign truth and hidden-evaluation contracts.
 
 These models belong to the evaluator boundary and are never nested in Observation.
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006, REQ-SFT-001..002.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007, REQ-SFT-001..002.
 """
 
 from __future__ import annotations
@@ -59,6 +59,9 @@ class EvaluationRecord(StrictModel):
     edge_metrics: dict[str, float] = Field(default_factory=dict)
     evidence_metrics: dict[str, float] = Field(default_factory=dict)
     efficiency_metrics: dict[str, float] = Field(default_factory=dict)
+    delay_metrics: dict[str, float] = Field(default_factory=dict)
+    stability_metrics: dict[str, float] = Field(default_factory=dict)
+    control_metrics: dict[str, float] = Field(default_factory=dict)
     computed_at: Timestamp
 
 

@@ -1,6 +1,6 @@
 """Phase 7 privileged metrics and feedback isolation tests.
 
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006, REQ-DB-001..003.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007, REQ-DB-001..003.
 """
 
 from __future__ import annotations
@@ -93,6 +93,20 @@ def evaluation_input(**updates: object) -> HiddenEvaluationInput:
         "latency_seconds": 2.5,
         "gpu_seconds": 1.25,
         "tool_calls": 3,
+        "campaign_detection_delay_seconds": {"campaign-1": 10.0, "campaign-2": 30.0},
+        "window_alert_counts": {"window-1": 2, "window-2": 1},
+        "window_score_means": {"window-1": 0.55, "window-2": 0.40},
+        "llm_calls": 2,
+        "prompt_tokens": 100,
+        "completion_tokens": 20,
+        "max_context_tokens": 80,
+        "slow_path_triggers": 1,
+        "reconfigurations": 1,
+        "model_switches": 1,
+        "threshold_changes": 0,
+        "retraining_count": 0,
+        "cache_hits": 3,
+        "cache_requests": 4,
         "computed_at": NOW,
     }
     values.update(updates)
@@ -103,7 +117,7 @@ class HiddenMetricTests(unittest.TestCase):
     def test_primary_campaign_and_unique_node_metrics(self) -> None:
         output = HiddenEvaluator().evaluate(evaluation_input())
         record = output.record
-        self.assertEqual(output.metric_definition_version, "agent-eval-v1")
+        self.assertEqual(output.metric_definition_version, "agent-eval-v2")
         self.assertEqual(record.campaign_coverage, 1.0)
         self.assertEqual(
             (
@@ -128,6 +142,28 @@ class HiddenMetricTests(unittest.TestCase):
         self.assertEqual(record.evidence_metrics["unique_tp_denominator"], 2)
         self.assertEqual(record.evidence_metrics["provenance_completeness"], 0.5)
         self.assertEqual(record.efficiency_metrics["tool_calls"], 3)
+
+    def test_delay_stability_and_control_metrics_are_separate(self) -> None:
+        record = HiddenEvaluator().evaluate(evaluation_input()).record
+        self.assertEqual(record.delay_metrics["all_campaign_denominator"], 2)
+        self.assertEqual(record.delay_metrics["detected_campaign_denominator"], 2)
+        self.assertEqual(record.delay_metrics["mean_detection_delay_seconds"], 20.0)
+        self.assertEqual(record.stability_metrics["window_denominator"], 2)
+        self.assertEqual(record.stability_metrics["total_alert_volume"], 3)
+        self.assertAlmostEqual(record.stability_metrics["window_alert_count_mean"], 1.5)
+        self.assertEqual(record.control_metrics["reconfigurations"], 1)
+        self.assertEqual(record.control_metrics["cache_hit_rate"], 0.75)
+        self.assertEqual(record.efficiency_metrics["prompt_tokens"], 100)
+
+    def test_unknown_delay_campaign_or_incoherent_stability_is_rejected(self) -> None:
+        with self.assertRaises(ValidationError):
+            evaluation_input(campaign_detection_delay_seconds={"unknown-campaign": 1.0})
+        with self.assertRaises(ValidationError):
+            evaluation_input(window_score_means={"window-1": 0.5})
+        with self.assertRaises(ValidationError):
+            evaluation_input(window_alert_counts={"window-1": 1, "window-2": 1})
+        with self.assertRaises(ValidationError):
+            evaluation_input(cache_hits=2, cache_requests=1)
 
     def test_campaign_manifest_version_mismatch_is_rejected(self) -> None:
         mismatched = campaign("campaign-x", "node-a", "window-1").model_copy(

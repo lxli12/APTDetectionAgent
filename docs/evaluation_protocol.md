@@ -1,8 +1,9 @@
 # Hidden evaluation and metric definitions
 
-Requirements: REQ-LABEL-001..004, REQ-EVAL-001..006, REQ-DB-001..003.
+Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007, REQ-DB-001..003.
 
-Metric definition version: `agent-eval-v1`.
+Metric definition version: `agent-eval-v2`. Historical Phase 7/9 synthetic
+artifacts produced under v1 remain immutable historical evidence.
 
 The hidden evaluator is a separate process entrypoint at
 `scripts/run_hidden_evaluator.py`. Its request and full output must remain under an
@@ -27,6 +28,12 @@ Definitions:
 - node-window occurrences, malicious-edge recovery, attack-chain edge recovery,
   phase recovery, evidence provenance completeness, latency, GPU time, and tool
   calls are separate maps with explicit independent denominators.
+- campaign detection delay has detected-campaign and all-campaign denominators;
+- stability reports per-window alert-volume and mean-score population dispersion;
+- control behavior reports slow-path triggers, reconfigurations, model/threshold
+  changes, retraining, and cache use separately from detection metrics;
+- LLM calls, tokens, and maximum context are efficiency metrics and are not folded
+  into the detection objective.
 
 Campaign identity never comes from a ground-truth filename. Node-window truth is an
 explicit private pair set; it is not fabricated as the Cartesian product of campaign
