@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 from datetime import timedelta
+from pathlib import Path
 
 from pydantic import ValidationError
 
@@ -47,6 +52,7 @@ from tests.test_frozen_sft import frozen_teacher
 
 SHA = "a" * 64
 GIT_SHA = "b" * 40
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def capability(pids_id: str = "velox") -> DetectorCapabilityView:
@@ -293,6 +299,54 @@ class DemonstrationConstructionTests(unittest.TestCase):
         )
         self.assertEqual(report.admitted_success_count, 0)
         self.assertEqual(report.capability_or_rejection_only_pids, ("velox:default",))
+
+    def test_synthetic_builder_uses_dynamic_inventory_and_never_overwrites(self) -> None:
+        environment = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(ROOT / "src")}
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = subprocess.run(
+                (
+                    sys.executable,
+                    str(ROOT / "scripts" / "run_frozen_runtime_synthetic.py"),
+                    "--run-id",
+                    "runtime-source",
+                    "--run-root",
+                    str(root),
+                    "--code-commit",
+                    GIT_SHA,
+                ),
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            command = (
+                sys.executable,
+                str(ROOT / "scripts" / "build_synthetic_demonstrations.py"),
+                "--run-id",
+                "demonstration-build",
+                "--run-root",
+                str(root),
+                "--project-root",
+                str(ROOT),
+                "--source-runtime-run",
+                str(root / "runtime-source"),
+                "--code-commit",
+                GIT_SHA,
+            )
+            first = subprocess.run(
+                command, env=environment, capture_output=True, text=True, check=False
+            )
+            second = subprocess.run(
+                command, env=environment, capture_output=True, text=True, check=False
+            )
+            summary = json.loads((root / "demonstration-build" / "metrics.json").read_text())
+        self.assertEqual(runtime.returncode, 0, runtime.stderr)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertNotEqual(second.returncode, 0)
+        self.assertGreaterEqual(summary["dynamic_source_config_count"], 8)
+        self.assertEqual(summary["successful_tool_use_count"], 0)
+        self.assertTrue(all(summary["checks"].values()))
 
 
 if __name__ == "__main__":
