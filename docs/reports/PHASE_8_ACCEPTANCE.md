@@ -20,6 +20,10 @@ REQ-WANDB-001, REQ-DB-001..003.
 - Read-only AutoDL checks confirm PostgreSQL 17.9 is ready, five dataset databases
   exist, only the administrator login role exists, no PIDS checkpoint was found,
   both GPUs were idle during inventory, and `tmux` is absent.
+- AutoDL commit `5a0cbbbf13f74c74ac7e7022cf7f360679e2744d` passed all
+  149 unit/integration tests in the existing `pids` environment. The stage-runner
+  help smoke also passed without starting PIDSMaker, touching data, or importing
+  the controller into the PIDS process.
 
 ## Acceptance gates not yet satisfied
 
