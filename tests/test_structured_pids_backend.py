@@ -35,6 +35,10 @@ class StructuredPIDSBackendTests(unittest.TestCase):
         self.assertIn("APT_PIDS_DB_SECRET_FILE", text)
         self.assertIn("PIDS_WORKER_PASSWORD", text)
         self.assertNotIn('parser.add_argument("--database-password"', text)
+        self.assertIn(
+            'parser.add_argument("--nltk-data-root", type=Path, required=True)',
+            text,
+        )
 
     def test_agent_request_cannot_select_paths_credentials_or_cuda(self) -> None:
         request_source = (

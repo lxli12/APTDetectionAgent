@@ -312,6 +312,7 @@ class PIDSMakerAdapterTests(unittest.TestCase):
                 "pids_artifacts"
             )
         )
+        self.assertNotIn("NLTK_DATA", called_kwargs["env"])
         self.assertEqual(called_kwargs["env"]["PIDS_DB_PASSWORD"], "unit-test-only")
         self.assertTrue(
             all(

@@ -8,6 +8,7 @@ REQ-SFT-003..004, REQ-REPRO-001..002.
 from __future__ import annotations
 
 import argparse
+import grp
 import hashlib
 import json
 import os
@@ -57,11 +58,22 @@ def scalar(value: str) -> str | int | float | bool:
             return value
 
 
+def grant_frozen_asset_access(root: Path, consumer_group: str) -> None:
+    """Grant one executor role read-only access without making assets public."""
+    if os.geteuid() != 0:
+        raise PermissionError("consumer group provisioning requires root")
+    group_id = grp.getgrnam(consumer_group).gr_gid
+    for path in (root, *sorted(root.rglob("*"))):
+        os.chown(path, -1, group_id)
+        path.chmod(0o750 if path.is_dir() else 0o640)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pids-run", type=Path, required=True)
     parser.add_argument("--validation-run", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--consumer-group")
     args = parser.parse_args()
     approved_text = os.environ.get("APT_PRE_SFT_BUNDLE_ROOT")
     output = args.output_root.resolve()
@@ -182,6 +194,8 @@ def main() -> int:
     (output / "bundle_manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     )
+    if args.consumer_group:
+        grant_frozen_asset_access(output, args.consumer_group)
     print(json.dumps(manifest, sort_keys=True))
     return 0
 

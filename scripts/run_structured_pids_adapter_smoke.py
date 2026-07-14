@@ -56,6 +56,7 @@ def main() -> int:
     parser.add_argument("--project-root", type=Path, required=True)
     parser.add_argument("--compatibility-root", type=Path, required=True)
     parser.add_argument("--bundle", type=Path, required=True)
+    parser.add_argument("--nltk-data-root", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--code-commit", required=True)
@@ -125,6 +126,7 @@ def main() -> int:
         frozen_bundle_root=bundle.parent,
         approved_bundles={config.config_id: bundle},
         database_environment=database,
+        nltk_data_root=args.nltk_data_root,
         code_commit=args.code_commit,
     )
     outcome = adapter.execute(request)

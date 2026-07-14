@@ -136,6 +136,7 @@ class PIDSMakerAdapter:
         frozen_bundle_root: Path | None = None,
         approved_bundles: Mapping[str, Path] | None = None,
         database_environment: Mapping[str, str] | None = None,
+        nltk_data_root: Path | None = None,
         code_commit: str | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
@@ -154,6 +155,9 @@ class PIDSMakerAdapter:
             key: value.resolve() for key, value in (approved_bundles or {}).items()
         }
         self.database_environment = dict(database_environment or {})
+        self.nltk_data_root = nltk_data_root.resolve() if nltk_data_root else None
+        if self.nltk_data_root is not None and not self.nltk_data_root.is_dir():
+            raise ValueError("executor-owned NLTK data root is unavailable")
         self.code_commit = code_commit
         self.discovery = PIDSMakerDiscovery(
             self.project_root,
@@ -268,6 +272,8 @@ class PIDSMakerAdapter:
         if self.cuda_visible_devices is not None:
             environment["CUDA_VISIBLE_DEVICES"] = self.cuda_visible_devices
         environment.update(self.database_environment)
+        if self.nltk_data_root is not None:
+            environment["NLTK_DATA"] = str(self.nltk_data_root)
         if self.frozen_bundle_root is not None:
             environment["APT_PRE_SFT_BUNDLE_ROOT"] = str(self.frozen_bundle_root)
         if run_directory is not None:

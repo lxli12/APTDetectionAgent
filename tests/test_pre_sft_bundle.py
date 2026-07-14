@@ -28,6 +28,12 @@ class PreSFTBundleTests(unittest.TestCase):
         self.assertNotIn("campaign_manifest.json", text)
         self.assertNotIn("evaluator-private", text)
 
+    def test_bundle_can_be_provisioned_read_only_for_the_pids_role(self) -> None:
+        text = (ROOT / "scripts" / "freeze_pre_sft_bundle.py").read_text()
+        self.assertIn('parser.add_argument("--consumer-group")', text)
+        self.assertIn("grp.getgrnam(consumer_group).gr_gid", text)
+        self.assertIn("0o750 if path.is_dir() else 0o640", text)
+
 
 if __name__ == "__main__":
     unittest.main()
