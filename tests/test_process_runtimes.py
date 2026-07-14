@@ -46,6 +46,9 @@ class ProcessRuntimeTests(unittest.TestCase):
                 (evaluator / "scripts" / "build_real_hidden_request.py").is_file()
             )
             self.assertTrue(
+                (evaluator / "scripts" / "run_memory_retrieval_sensitivity.py").is_file()
+            )
+            self.assertTrue(
                 (output / "pids" / "scripts" / "run_structured_pids_adapter_smoke.py").is_file()
             )
             self.assertFalse(

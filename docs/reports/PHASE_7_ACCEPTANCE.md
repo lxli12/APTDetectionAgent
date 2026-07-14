@@ -34,10 +34,14 @@ Remote evidence on 2026-07-14 at commit
 
 ## Residual deployment gate
 
-Actual filesystem users and PostgreSQL grants must be provisioned manually and then
-tested on AutoDL. The runtime does not create roles or alter the PostgreSQL 17
-cluster. Consequently REQ-DB-001/002 remain partial despite the enforced policy and
-IPC boundaries.
+The filesystem users and PostgreSQL grants were subsequently provisioned and
+verified on AutoDL with separate `apt_agent_controller`, `apt_pids_worker`, and
+`apt_hidden_evaluator` identities and distinct database roles. The controller was
+denied the PIDS secret, raw PIDS artifacts, evaluator runtime, and evaluator-private
+files. Runtime code does not create roles or alter the PostgreSQL 17 cluster;
+`scripts/postgres/provision_roles.sh` remains a separately authorized administrative
+operation. REQ-DB-001/002 are therefore implemented, while future schema changes
+still require explicit approval.
 
 ## Post-acceptance metric completion audit
 

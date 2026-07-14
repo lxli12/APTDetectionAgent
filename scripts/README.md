@@ -16,6 +16,15 @@ protocol and a fail-closed real-data preflight. `build_sft_dataset.py` and
 `train_sft.py` enforce teacher/student roots, sanitization, hashes, partitions, and
 dry-run/no-checkpoint semantics.
 
+`run_structured_pids_adapter_smoke.py` is the bounded real tool-contract gate. Its
+database secret is read by the executor from a role-specific file, its NLTK data
+root is an executor-owned argument, and neither path is part of the Agent request.
+`freeze_pre_sft_bundle.py --consumer-group apt_pids_worker` grants the single PIDS
+runtime role read-only `750/640` access to frozen assets without making them public.
+`run_memory_retrieval_sensitivity.py` runs only in the evaluator runtime against a
+private validation relevance manifest. Synthetic fixtures can smoke the grid but
+cannot select 2048/20 or make an optimality claim.
+
 The `remote/` commands start, inspect, tail, summarize, or stop only owned tmux
-sessions. The current AutoDL server has no tmux, so `start_run.sh` intentionally
-returns `BLOCKED_BY_MISSING_TMUX` until installation is separately approved.
+sessions. tmux is available on the current AutoDL baseline; ownership markers and
+append-only run IDs remain mandatory.

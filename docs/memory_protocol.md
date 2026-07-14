@@ -26,6 +26,12 @@ field names, common teacher/answer phrases, and mismatched normalized hashes.
 The 2048-token budget and 20-candidate cap are explicitly marked
 `unvalidated_engineering_default`. They are not a method optimum and remain subject
 to the validation sensitivity experiment required by REQ-MEMORY-007.
+`scripts/run_memory_retrieval_sensitivity.py` provides that evaluator-only,
+append-only experiment harness. It accepts a private validation relevance manifest,
+varies token/candidate limits, and releases aggregate recall, precision, reciprocal
+rank, token use, and truncation only. Synthetic fixtures never select a default;
+formal selection still requires a named agent-level validation manifest and a
+prespecified reviewed selection rule.
 
 The Agent-facing boundary is `MemoryCaseToolService` in
 `src/apt_detection_agent/tooling/memory_tools.py`. The LLM supplies only observable

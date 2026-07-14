@@ -22,7 +22,7 @@ source /root/miniconda3/etc/profile.d/conda.sh
 conda activate pids
 APT_PIDS_CPU_THREADS=16 OMP_NUM_THREADS=16 MKL_NUM_THREADS=16 \
   OPENBLAS_NUM_THREADS=16 NUMEXPR_NUM_THREADS=16 \
-  VECLIB_MAXIMUM_THREADS=16 PYTHONPATH=src python -m pytest -q tests
+  VECLIB_MAXIMUM_THREADS=16 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
 Accepted append-only evidence:
@@ -34,9 +34,11 @@ Accepted append-only evidence:
 - real validation integration:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase9-real-e2e-20260714-002`;
 - pre-SFT frozen validation bundle:
-  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`;
+  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-8eb6f76-003`;
 - frozen new-window inference:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-frozen-new-window-20260714-001`.
+- real structured tool invocation:
+  `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-006`.
 
 These prove causal mechanics and validation integration only. Each real public
 artifact records `formal_performance_claim=false`; evaluator-private mappings and
@@ -47,7 +49,7 @@ full metrics remain outside the controller filesystem.
 ```bash
 export APT_AGENT_PYTHON="$CONDA_PREFIX/bin/python"
 export APT_PRE_SFT_BUNDLE_ROOT=/root/autodl-tmp/apt-agent/pre-sft-bundles
-export APT_PRE_SFT_BUNDLE="$APT_PRE_SFT_BUNDLE_ROOT/velox-cadets-validation-3fa5ec0-002"
+export APT_PRE_SFT_BUNDLE="$APT_PRE_SFT_BUNDLE_ROOT/velox-cadets-validation-8eb6f76-003"
 scripts/train_agent.sh --run-id <new-id> --stage all
 scripts/test_agent.sh --run-id <new-id> --mode synthetic
 scripts/test_agent.sh --run-id <new-id> --mode real \

@@ -65,7 +65,11 @@ def main() -> int:
             "pidsmaker_stage_runner.py",
             "pidsmaker_causal_runner.py",
         ),
-        "evaluator": ("build_real_hidden_request.py", "run_hidden_evaluator.py"),
+        "evaluator": (
+            "build_real_hidden_request.py",
+            "run_hidden_evaluator.py",
+            "run_memory_retrieval_sensitivity.py",
+        ),
     }
     for identity, names in script_map.items():
         destination = output / identity / "scripts"

@@ -13,7 +13,9 @@ closed: tmux is installed; least-privilege PostgreSQL roles and separate OS
 identities are live; a versioned compatibility patch runs outside the clean pinned
 submodule; exact windows, causal checkpointing, W&B-free training, frozen
 featurization, standardized scores, hidden evaluation, and new-window inference
-have real AutoDL evidence.
+have real AutoDL evidence. The Agent-facing typed tool path now also reaches that
+causal backend through the isolated `apt_pids_worker` runtime; it is no longer only
+a synthetic adapter contract.
 
 | Phase | Disposition | Scope limit |
 |---|---|---|
@@ -31,15 +33,17 @@ have real AutoDL evidence.
 - real validation:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase9-real-e2e-20260714-002`;
 - frozen validation bundle:
-  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`;
+  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-8eb6f76-003`;
+- real structured tool run:
+  `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-006`;
 - frozen later-window run:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-frozen-new-window-20260714-001`;
 - checkpoint hash:
   `9fd5b64fd65f71faea65b037294dca537c75ab902a4ad92f04bb84315c0f54a2`;
 - featurizer hash:
   `965911178ec53c3c6dc2efc61eb1e365b4c253168ee38df586d44582b4e58cab`;
-- AutoDL commit `39c360856362e35143916690a9e428aa79a72699`:
-  213/213 tests passed;
+- AutoDL commit `a859a3ebe7c23c2769b70768c501b31571d17967`:
+  219/219 tests passed;
 - formal pre-SFT gate run:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-pre-sft-gate-20260714-002`.
 
@@ -47,6 +51,14 @@ The later-window run produced 8,394 label-free scores with the exact frozen hash
 `featurizer_fit_on_current_window=false`, `test_labels_loaded=false`, and
 `formal_performance_claim=false`. Controller permission checks denied access to raw
 scores, evaluator-private files, source checkout, and evaluator runtime.
+
+The structured run processed exact window `[1523039400000000000,
+1523040300000000000)`, reused the same frozen hashes, skipped featurizer fitting,
+and produced a strict `ToolResult` with construction, transformation, skipped
+frozen featurization, `feat_inference`, and inference traces. Its standardized
+observation contains 1,769 node scores and 46 threshold alerts. A privileged-field
+scan passed, the controller could not read the raw pipeline tree, and the command
+manifest contains environment key names but no credentials.
 
 ## Remaining non-bypassable gates
 

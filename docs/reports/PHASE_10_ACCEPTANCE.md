@@ -16,12 +16,16 @@ Pre-SFT runtime assets are now frozen and independently exercised:
   checkpoint, train-fitted featurizer, threshold catalog, ApprovedConfig catalog,
   availability manifest, and content hashes;
 - the current accepted bundle is
-  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-3fa5ec0-002`;
+  `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-8eb6f76-003`;
 - `scripts/validate_pre_sft_bundle.py` verifies that it remains causal,
   validation-only, non-deployment, and contains neither SFT data nor static LTM;
 - `scripts/run_frozen_pidsmaker_smoke.sh` proved new-window inference without
   featurizer refit, checkpoint selection, labels, W&B, or configuration drift;
-- AutoDL commit `39c360856362e35143916690a9e428aa79a72699` passed 213 tests.
+- `scripts/run_structured_pids_adapter_smoke.py` exercised the actual typed
+  request → adapter → frozen PIDSMaker → standardized observation path in
+  `structured-adapter-20260714-006`;
+- AutoDL commit `a859a3ebe7c23c2769b70768c501b31571d17967`
+  passed 219 tests.
 
 `scripts/train_agent.sh` no longer reports obsolete Phase 8 blockers. With
 `APT_PRE_SFT_BUNDLE` and `APT_PRE_SFT_BUNDLE_ROOT` set, its PIDS/threshold/config

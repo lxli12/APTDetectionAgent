@@ -73,3 +73,15 @@ checkpoint save/load, PostgreSQL credential injection, label-free inference outp
 and measured CPU/GPU profiles remain open. The requirement matrix intentionally
 keeps the affected requirements partial rather than treating process success as
 scientific acceptance.
+
+## Post-acceptance structured backend audit
+
+The original deferral for the available VELOX/CADETS path is closed by
+`/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-006`.
+At commit `a859a3ebe7c23c2769b70768c501b31571d17967`, a typed
+`PIDSDetectionRequest` reached the isolated causal backend and returned a strict
+five-stage `ToolResult`. Preserved failed runs 002, 004, and 005 demonstrate typed
+failure on missing artifact root, inaccessible frozen assets, and missing
+executor-owned NLTK data respectively. Parsers and measured profiles for registry
+entries that remain unavailable are still deferred and are not implied by this
+addendum.

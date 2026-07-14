@@ -43,3 +43,12 @@ Remote evidence on 2026-07-14 at main-project commit
 
 No PostgreSQL service, PIDSMaker pipeline, vLLM service, or experiment was started;
 no dependency or Conda environment was modified.
+
+## Post-acceptance sensitivity harness
+
+`scripts/run_memory_retrieval_sensitivity.py` later added the missing
+evaluator-private grid harness and aggregate-only result contract. Its synthetic
+fixture proves path, split, relevance-reference, candidate-grid, and no-optimality
+guards, but it deliberately makes no 2048/20 selection. REQ-MEMORY-007 remains
+partial until a formal validation relevance manifest and prespecified review rule
+are available.
