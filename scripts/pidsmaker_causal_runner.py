@@ -34,6 +34,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("dataset_id")
     parser.add_argument("--pidsmaker-root", required=True)
     parser.add_argument("--artifact-dir", required=True)
+    parser.add_argument("--frozen-bundle")
     parser.add_argument("--checkpoint-hash")
     parser.add_argument("--override", action="append", default=[])
     parser.add_argument("--cpu", action="store_true")
@@ -78,8 +79,18 @@ def validate(args: argparse.Namespace, environ: dict[str, str]) -> tuple[Path, P
             raise CausalRunnerError("executor-owned override")
     if args.phase == "train" and args.checkpoint_hash is not None:
         raise CausalRunnerError("train does not accept a checkpoint hash")
+    if args.phase == "train" and args.frozen_bundle is not None:
+        raise CausalRunnerError("train does not accept a frozen bundle")
     if args.phase == "infer" and not re.fullmatch(r"[0-9a-f]{64}", args.checkpoint_hash or ""):
         raise CausalRunnerError("inference requires a checkpoint hash")
+    if args.phase == "infer" and args.frozen_bundle is not None:
+        prefix.validate_frozen_bundle(
+            Path(args.frozen_bundle),
+            environ,
+            expected_source_config_id=args.source_config_id,
+            expected_dataset_id=args.dataset_id,
+            expected_overrides=args.override,
+        )
     training_source = root / "pidsmaker" / "detection" / "training_methods" / "training_loop.py"
     if "import wandb" in training_source.read_text():
         raise CausalRunnerError("compatibility training path still imports W&B")
@@ -155,7 +166,13 @@ def run_train(args: argparse.Namespace, cfg, root: Path, artifact_dir: Path, ide
     return summary
 
 
-def run_infer(args: argparse.Namespace, cfg, artifact_dir: Path, identity: dict[str, object]) -> dict[str, object]:
+def run_infer(
+    args: argparse.Namespace,
+    cfg,
+    artifact_dir: Path,
+    identity: dict[str, object],
+    environ: dict[str, str],
+) -> dict[str, object]:
     from pidsmaker.detection.training_methods import inference_loop
     from pidsmaker.factory import build_model
     from pidsmaker.utils.data_utils import load_model, load_test_dataset
@@ -164,12 +181,31 @@ def run_infer(args: argparse.Namespace, cfg, artifact_dir: Path, identity: dict[
     summary_path = artifact_dir / "inference_stage_summary.json"
     if summary_path.exists():
         raise CausalRunnerError("inference summary already exists")
-    manifest = json.loads((artifact_dir / "checkpoint_manifest.json").read_text())
-    checkpoint_dir = artifact_dir / manifest["checkpoint_relative_path"]
+    if args.frozen_bundle is None:
+        manifest = json.loads((artifact_dir / "checkpoint_manifest.json").read_text())
+        checkpoint_dir = artifact_dir / manifest["checkpoint_relative_path"]
+        patch_matches = (
+            manifest.get("compatibility_patch_series_hash") == identity["patch_series_hash"]
+        )
+    else:
+        frozen = prefix.validate_frozen_bundle(
+            Path(args.frozen_bundle),
+            environ,
+            expected_source_config_id=args.source_config_id,
+            expected_dataset_id=args.dataset_id,
+            expected_overrides=args.override,
+        )
+        availability = frozen["availability"]
+        checkpoint_dir = frozen["checkpoint"]
+        manifest = {
+            "checkpoint_hash": availability["checkpoint_hash"],
+            "best_epoch": "frozen",
+        }
+        patch_matches = True
     if (
         manifest.get("checkpoint_hash") != args.checkpoint_hash
         or tree_hash(checkpoint_dir) != args.checkpoint_hash
-        or manifest.get("compatibility_patch_series_hash") != identity["patch_series_hash"]
+        or not patch_matches
     ):
         raise CausalRunnerError("checkpoint identity mismatch")
     test_loss_root = Path(cfg.training._edge_losses_dir) / "test"
@@ -218,6 +254,8 @@ def run_infer(args: argparse.Namespace, cfg, artifact_dir: Path, identity: dict[
         "selection_split": "frozen_validation_checkpoint",
         "inference_split": "test",
         "test_labels_loaded": False,
+        "frozen_bundle_used": args.frozen_bundle is not None,
+        "featurizer_fit_on_inference_window": False,
         "anomaly_score_mean": finite_stat("test_loss"),
         "peak_inference_cpu_memory_gib": finite_stat("peak_inference_cpu_memory"),
         "peak_inference_gpu_memory_gib": finite_stat("peak_inference_gpu_memory"),
@@ -236,7 +274,7 @@ def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> dict
     cfg = load_cfg(args, root, artifact_dir, environ)
     if args.phase == "train":
         return run_train(args, cfg, root, artifact_dir, identity)
-    return run_infer(args, cfg, artifact_dir, identity)
+    return run_infer(args, cfg, artifact_dir, identity, environ)
 
 
 def main() -> None:

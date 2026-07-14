@@ -45,6 +45,7 @@ def arguments(root: Path, artifact: Path, **updates: object) -> Namespace:
         "dataset_id": "CADETS_E3",
         "pidsmaker_root": str(root),
         "artifact_dir": str(artifact),
+        "frozen_bundle": None,
         "checkpoint_hash": None,
         "override": ["training.num_epochs=1"],
         "cpu": False,
@@ -142,6 +143,20 @@ class CausalRunnerContractTests(unittest.TestCase):
             with self.assertRaisesRegex(runner.CausalRunnerError, "imports W&B"):
                 runner.validate(arguments(root, artifact), environment(approved))
 
+    def test_train_rejects_frozen_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            approved = base / "artifacts"
+            approved.mkdir()
+            root = base / "compat"
+            artifact = approved / "run"
+            self.fixture(root, artifact)
+            with self.assertRaisesRegex(runner.CausalRunnerError, "frozen bundle"):
+                runner.validate(
+                    arguments(root, artifact, frozen_bundle=str(base / "bundle")),
+                    environment(approved),
+                )
+
     def test_tree_hash_is_content_and_path_bound(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -158,6 +173,7 @@ class CausalRunnerContractTests(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^\s*(?:from|import)\s+wandb\b", source))
         self.assertIn('split="test"', source)
         self.assertIn("test_labels_loaded", source)
+        self.assertIn("featurizer_fit_on_inference_window", source)
 
 
 if __name__ == "__main__":

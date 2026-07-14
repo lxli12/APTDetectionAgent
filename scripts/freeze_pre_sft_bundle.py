@@ -146,6 +146,7 @@ def main() -> int:
         "schema_version": "pids-availability-v1",
         "pids_id": "velox",
         "variant_id": "default",
+        "source_config_id": config.source_config_id,
         "dataset_id": "CADETS_E3",
         "status": "available_for_validation",
         "checkpoint_hash": threshold.checkpoint_hash,

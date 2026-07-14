@@ -84,6 +84,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("dataset_id")
     parser.add_argument("--pidsmaker-root", required=True)
     parser.add_argument("--artifact-dir", required=True)
+    parser.add_argument("--frozen-bundle")
     parser.add_argument("--stop-after", choices=SAFE_STAGES, required=True)
     parser.add_argument("--override", action="append", default=[])
     parser.add_argument("--cpu", action="store_true")
@@ -133,7 +134,107 @@ def validate_inputs(args: argparse.Namespace, environ: dict[str, str]) -> tuple[
         key = override.split("=", 1)[0]
         if set(key.lower().split(".")) & FORBIDDEN_OVERRIDE_PARTS:
             raise StageRunnerError(f"override {key} is executor-owned or prohibited")
+    if args.frozen_bundle is not None:
+        if args.stop_after != "feat_inference":
+            raise StageRunnerError("frozen featurizer requires stop-after feat_inference")
+        validate_frozen_bundle(
+            Path(args.frozen_bundle),
+            environ,
+            expected_source_config_id=args.source_config_id,
+            expected_dataset_id=args.dataset_id,
+            expected_overrides=args.override,
+        )
     return root, artifact_dir
+
+
+def asset_tree_hash(root: Path) -> str:
+    digest = hashlib.sha256()
+    files = sorted(path for path in root.rglob("*") if path.is_file())
+    if not files:
+        raise StageRunnerError("frozen asset tree is empty")
+    for path in files:
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def validate_frozen_bundle(
+    bundle: Path,
+    environ: dict[str, str],
+    *,
+    expected_source_config_id: str | None = None,
+    expected_dataset_id: str | None = None,
+    expected_overrides: list[str] | None = None,
+) -> dict[str, object]:
+    approved = environ.get("APT_PRE_SFT_BUNDLE_ROOT")
+    resolved = bundle.resolve()
+    if not approved or resolved.parent != Path(approved).resolve():
+        raise StageRunnerError("frozen bundle escaped the approved root")
+    manifest_path = resolved / "bundle_manifest.json"
+    availability_path = resolved / "availability_manifest.json"
+    catalog_path = resolved / "approved_config_catalog.json"
+    if not manifest_path.is_file() or not availability_path.is_file() or not catalog_path.is_file():
+        raise StageRunnerError("frozen bundle manifests are incomplete")
+    manifest = json.loads(manifest_path.read_text())
+    availability = json.loads(availability_path.read_text())
+    catalog = json.loads(catalog_path.read_text())
+    if not isinstance(catalog, list) or len(catalog) != 1 or not isinstance(catalog[0], dict):
+        raise StageRunnerError("frozen bundle config catalog is invalid")
+    approved_config = catalog[0]
+    featurizer = resolved / str(availability.get("featurizer_relative_path", ""))
+    checkpoint = resolved / str(availability.get("checkpoint_relative_path", ""))
+    try:
+        featurizer.resolve().relative_to(resolved)
+        checkpoint.resolve().relative_to(resolved)
+    except ValueError as exc:
+        raise StageRunnerError("frozen asset path escaped the bundle") from exc
+    if (
+        manifest.get("status") != "validation_candidate_frozen"
+        or availability.get("status") != "available_for_validation"
+        or availability.get("held_out_approved") is not False
+        or availability.get("deployment_approved") is not False
+        or asset_tree_hash(featurizer) != manifest.get("featurizer_hash")
+        or asset_tree_hash(checkpoint) != manifest.get("checkpoint_hash")
+        or availability.get("checkpoint_hash") != manifest.get("checkpoint_hash")
+        or approved_config.get("source_config_id") != availability.get("source_config_id")
+        or approved_config.get("dataset_id") != availability.get("dataset_id")
+        or approved_config.get("approved_splits") != ["validation"]
+        or (
+            expected_source_config_id is not None
+            and availability.get("source_config_id") != expected_source_config_id
+        )
+        or (
+            expected_dataset_id is not None
+            and availability.get("dataset_id") != expected_dataset_id
+        )
+    ):
+        raise StageRunnerError("frozen featurizer provenance is invalid")
+    if expected_overrides is not None:
+        supplied = {
+            key: override_scalar(value)
+            for key, value in (item.split("=", 1) for item in expected_overrides)
+        }
+        if supplied != approved_config.get("parameters"):
+            raise StageRunnerError("runtime overrides differ from the frozen ApprovedConfig")
+    return {
+        "manifest": manifest,
+        "availability": availability,
+        "featurizer": featurizer,
+        "checkpoint": checkpoint,
+        "approved_config": approved_config,
+    }
+
+
+def override_scalar(value: str) -> str | int | float | bool:
+    if value in {"True", "False"}:
+        return value == "True"
+    try:
+        return int(value)
+    except ValueError:
+        try:
+            return float(value)
+        except ValueError:
+            return value
 
 
 def validate_window_contract(args: argparse.Namespace) -> None:
@@ -279,6 +380,8 @@ def sanitized_resolved_config(
             for split in ("train", "val", "test")
         },
         "excluded_privileged_fields": ["ground_truth_relative_path", "attack_to_time_window"],
+        "frozen_bundle_used": args.frozen_bundle is not None,
+        "featurizer_fit_on_current_window": False if args.frozen_bundle else None,
     }
 
 
@@ -299,6 +402,17 @@ def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> int:
     cfg.dataset.ground_truth_relative_path = []
     cfg.dataset.attack_to_time_window = []
 
+    frozen = None
+    if args.frozen_bundle is not None:
+        frozen = validate_frozen_bundle(
+            Path(args.frozen_bundle),
+            environ,
+            expected_source_config_id=args.source_config_id,
+            expected_dataset_id=args.dataset_id,
+            expected_overrides=args.override,
+        )
+        cfg.featurization._model_dir = str(frozen["featurizer"]) + "/"
+
     # ``get_yml_cfg`` creates per-stage log directories below the previously
     # absent run root.  Its existence here is expected, but it must still be a
     # directory and must not have existed at validation time.
@@ -318,6 +432,15 @@ def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> int:
     completed: list[dict[str, object]] = []
     stop_index = SAFE_STAGES.index(args.stop_after)
     for stage in SAFE_STAGES[: stop_index + 1]:
+        if stage == "featurization" and frozen is not None:
+            completed.append(
+                {
+                    "stage": "featurization",
+                    "execution": "skipped_loaded_frozen_asset",
+                    "featurizer_hash": frozen["manifest"]["featurizer_hash"],
+                }
+            )
+            continue
         module = load_stage_module(root, stage)
         started = time.monotonic()
         module.main(cfg)

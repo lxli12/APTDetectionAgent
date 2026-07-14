@@ -7,6 +7,7 @@ REQ-WANDB-001, REQ-REPRO-001..002.
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from argparse import Namespace
@@ -42,6 +43,7 @@ def request(root: Path, artifact: Path, **updates: object) -> Namespace:
         "dataset_id": "CADETS_E3",
         "pidsmaker_root": str(root),
         "artifact_dir": str(artifact),
+        "frozen_bundle": None,
         "stop_after": "construction",
         "override": [],
         "cpu": True,
@@ -75,6 +77,41 @@ def environment(artifact_root: Path, **updates: str) -> dict[str, str]:
 
 
 class StageRunnerContractTests(unittest.TestCase):
+    def frozen_bundle(self, root: Path) -> Path:
+        bundle = root / "bundle-1"
+        featurizer = bundle / "featurizers" / "velox" / "word2vec"
+        checkpoint = bundle / "checkpoints" / "velox" / "frozen_validation_checkpoint"
+        featurizer.mkdir(parents=True)
+        checkpoint.mkdir(parents=True)
+        (featurizer / "word2vec.model").write_bytes(b"frozen-featurizer")
+        (checkpoint / "state_dict.pkl").write_bytes(b"frozen-checkpoint")
+        manifest = {
+            "status": "validation_candidate_frozen",
+            "featurizer_hash": runner.asset_tree_hash(featurizer),
+            "checkpoint_hash": runner.asset_tree_hash(checkpoint),
+        }
+        availability = {
+            "pids_id": "velox",
+            "source_config_id": "velox",
+            "dataset_id": "CADETS_E3",
+            "status": "available_for_validation",
+            "held_out_approved": False,
+            "deployment_approved": False,
+            "featurizer_relative_path": featurizer.relative_to(bundle).as_posix(),
+            "checkpoint_relative_path": checkpoint.relative_to(bundle).as_posix(),
+            "checkpoint_hash": manifest["checkpoint_hash"],
+        }
+        approved_config = [{
+            "source_config_id": "velox",
+            "dataset_id": "CADETS_E3",
+            "approved_splits": ["validation"],
+            "parameters": {},
+        }]
+        (bundle / "bundle_manifest.json").write_text(json.dumps(manifest))
+        (bundle / "availability_manifest.json").write_text(json.dumps(availability))
+        (bundle / "approved_config_catalog.json").write_text(json.dumps(approved_config))
+        return bundle
+
     def test_upstream_password_is_environment_only_and_never_in_argv(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             artifact_root = Path(temp)
@@ -198,6 +235,42 @@ class StageRunnerContractTests(unittest.TestCase):
             )
             identity = runner.source_identity(root)
         self.assertEqual(identity["patch_series_hash"], "a" * 64)
+
+    def test_frozen_bundle_is_bound_to_identity_hashes_and_validation_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            artifacts = base / "artifacts"
+            bundles = base / "bundles"
+            artifacts.mkdir()
+            bundles.mkdir()
+            bundle = self.frozen_bundle(bundles)
+            args = request(
+                ROOT / "PIDSMaker",
+                artifacts / "run-1",
+                frozen_bundle=str(bundle),
+                stop_after="feat_inference",
+            )
+            env = environment(artifacts, APT_PRE_SFT_BUNDLE_ROOT=str(bundles))
+            frozen = runner.validate_frozen_bundle(
+                bundle,
+                env,
+                expected_source_config_id="velox",
+                expected_dataset_id="CADETS_E3",
+                expected_overrides=[],
+            )
+            self.assertEqual(frozen["manifest"]["status"], "validation_candidate_frozen")
+            runner.validate_inputs(args, env)
+            with self.assertRaisesRegex(runner.StageRunnerError, "ApprovedConfig"):
+                runner.validate_frozen_bundle(
+                    bundle,
+                    env,
+                    expected_source_config_id="velox",
+                    expected_dataset_id="CADETS_E3",
+                    expected_overrides=["training.num_epochs=2"],
+                )
+            (Path(frozen["featurizer"]) / "word2vec.model").write_bytes(b"tampered")
+            with self.assertRaisesRegex(runner.StageRunnerError, "provenance"):
+                runner.validate_frozen_bundle(bundle, env)
 
 
 if __name__ == "__main__":
