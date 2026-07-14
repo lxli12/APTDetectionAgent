@@ -27,6 +27,7 @@ from apt_detection_agent.schemas import (
     CommittedFastPathResult,
     DataSplit,
     DecisionSource,
+    ExecutionRole,
     FrozenActionDecision,
     FrozenActionType,
     FrozenCaseState,
@@ -101,7 +102,7 @@ def committed_bundle(request: object) -> CommittedExecutionBundle:
     raw_payload: dict[str, object] = {
         "builder_version": "raw-builder-v1",
         "raw_state_id": "raw-state-1",
-        "execution_role": "committed_fast_path",
+        "execution_role": ExecutionRole.COMMITTED_FAST_PATH,
         "case_id": "case-1",
         "window_id": "window-1",
         "result_id": result.result_id,

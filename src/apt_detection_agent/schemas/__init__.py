@@ -31,6 +31,12 @@ from .agent_runtime import (
     RuntimeMemorySummary,
     TriggerRecord,
 )
+from .admission import (
+    AdmittedUse,
+    AdmissionGate,
+    AdmissionGateResult,
+    PIDSAdmissionRecord,
+)
 from .artifacts import ArtifactManifest, ArtifactRecord, RunManifest
 from .common import (
     AvailabilityStatus,
@@ -75,6 +81,9 @@ from .tools import (
 
 __all__ = [
     "ACTION_TO_TOOL",
+    "AdmittedUse",
+    "AdmissionGate",
+    "AdmissionGateResult",
     "ActiveDetectionSummary",
     "AdditionalDetectorRequest",
     "AdditionalDetectorResult",
@@ -115,6 +124,7 @@ __all__ = [
     "ModelPromptObservation",
     "Observation",
     "PIDSCapability",
+    "PIDSAdmissionRecord",
     "PIDSRef",
     "PendingConfiguration",
     "PendingDetectionState",
