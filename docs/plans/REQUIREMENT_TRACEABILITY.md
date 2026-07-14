@@ -66,8 +66,8 @@ and test path is updated when work lands.
 | REQ-WANDB-001 | W&B is disabled, makes no network request, and is not a project dependency | 0/2/8 | AGENTS; W&B audit; disabled adapter environment; preprocessing runner bypasses eager W&B imports | dependency/source/argv/stage allowlist tests; upstream training compatibility remains | partial |
 | REQ-REPRO-001 | Runs record exact code, environment, data, config, checkpoint, threshold, command, seed, timing, resources, metrics, and failures | 0/1/5/9 | experiment protocol; synthetic run manifests and append-only artifacts | complete synthetic remote run; real PIDS provenance deferred | partial |
 | REQ-REPRO-002 | Every run has a unique non-overwriting run ID and required local files | 5/8/9 | stage and synthetic run collision gates; complete synthetic artifact set | overwrite-negative test and AutoDL run inspection | implemented |
-| REQ-REPRO-003 | Long runs use owned tmux sessions and leave status/tail/recovery instructions | 5/8 | planned remote scripts | remote smoke | planned |
-| REQ-SFT-001 | SFT student data contains no privileged label/rationale leakage | 10 | planned sanitizer | dataset negative tests | planned |
-| REQ-SFT-002 | Hidden teacher inputs and student-visible outputs use separate schemas | 1/10 | evaluator namespace and deployable payload guard | boundary tests | partial |
-| REQ-SFT-003 | Synthetic fixtures are never reported as formal training evidence | 10 | experiment protocol | report validator | partial |
-| REQ-SFT-004 | Missing formal trajectories yields `BLOCKED_BY_SFT_DATASET` | 0/10 | plan | stage status test | partial |
+| REQ-REPRO-003 | Long runs use owned tmux sessions and leave status/tail/recovery instructions | 5/8/10 | owned start/status/tail/stop/summary scripts; reproduction guide | shell contract tests; live missing-tmux fail-closed preflight; running-session smoke pending | partial |
+| REQ-SFT-001 | SFT student data contains no privileged label/rationale leakage | 10 | `sft/sanitizer.py`; strict student dataset validator | teacher-field and rationale leakage negative tests | implemented |
+| REQ-SFT-002 | Hidden teacher inputs and student-visible outputs use separate schemas | 1/10 | evaluator namespace; `HiddenTeacherRecord`; `StudentSFTExample` | serialization and split-boundary tests | implemented |
+| REQ-SFT-003 | Synthetic fixtures are never reported as formal training evidence | 9/10 | experiment protocol; dataset manifest; run status/report | synthetic formal-approval and checkpoint negative tests | implemented |
+| REQ-SFT-004 | Missing formal trajectories yields `BLOCKED_BY_SFT_DATASET` | 0/10 | `train_sft.py`; formal training stage orchestrator | missing-dataset CLI and AutoDL preflight | implemented |

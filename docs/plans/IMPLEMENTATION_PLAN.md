@@ -5,6 +5,12 @@ Design baseline: `docs/design/APT_Detection_Agent_Design_v0.4.md` plus accepted
 decisions in `docs/decisions/`
 PIDSMaker baseline: `32602734bc9f896be5fc0f03f0a185c967cd6624`
 
+Implementation snapshot (2026-07-14): Phases 0–7 are accepted; Phase 8 has a safe
+prefix runner/inventory but real execution remains gated; Phase 9 synthetic
+end-to-end is accepted while real-data end-to-end inherits the Phase 8 gates;
+Phase 10 interfaces and dry-run are accepted while formal training is
+`BLOCKED_BY_SFT_DATASET`.
+
 This plan is requirement-driven. A phase is complete only when its mapped
 requirements have implementation and test evidence in
 `REQUIREMENT_TRACEABILITY.md`; exit code zero alone is insufficient.
@@ -142,9 +148,9 @@ manifest. Formal dataset construction and training remain
 
 ## Formal entrypoints and remote operations
 
-Later phases must deliver substantive `scripts/train_agent.sh` and
-`scripts/test_agent.sh` stage orchestrators plus owned-run start/status/tail/stop/
-summary scripts. They must create non-overwriting run directories under
+Phase 10 delivers substantive `scripts/train_agent.sh` and `scripts/test_agent.sh`
+stage orchestrators plus owned-run start/status/tail/stop/summary scripts. They
+create non-overwriting run directories under
 `/root/autodl-tmp/apt-agent/experiments/runs/<run_id>/` and preserve every artifact
 listed by REQ-REPRO-001..003.
 
