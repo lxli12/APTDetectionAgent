@@ -36,14 +36,12 @@ from apt_detection_agent.schemas.evaluation import assert_deployable_payload
 
 class RetrieveMemoryArguments(StrictModel):
     query: str = Field(min_length=1, max_length=2048)
-    environment: str | None = None
     pids_id: Identifier | None = None
     top_k: int = Field(default=5, ge=1, le=20)
 
 
 class WriteMemoryArguments(StrictModel):
     layer: MemoryLayer
-    environment: str = Field(min_length=1, max_length=2048)
     observable_behavior: str = Field(min_length=1, max_length=4000)
     pids_id: Identifier
     variant_id: Identifier = "default"
@@ -98,11 +96,14 @@ class MemoryCaseToolService:
     store: CaseMemoryStore
     namespace: MemoryNamespace
     case_id: str
+    environment_profile: str
     report_root: Path
     audit_path: Path
     clock: Clock
 
     def __post_init__(self) -> None:
+        if not self.environment_profile.strip():
+            raise ValueError("executor-owned environment profile is required")
         self.report_root = self.report_root.resolve()
         self.audit_path = self.audit_path.resolve()
         self.report_root.mkdir(parents=True, exist_ok=True)
@@ -173,7 +174,7 @@ class MemoryCaseToolService:
             MemoryQuery(
                 query=arguments.query,
                 namespace=self.namespace,
-                environment=arguments.environment,
+                environment=self.environment_profile,
                 pids_id=arguments.pids_id,
                 top_k=arguments.top_k,
             )
@@ -204,7 +205,7 @@ class MemoryCaseToolService:
             split=self.namespace.split,
             scenario_id=self.namespace.scenario_id,
             episode_id=self.namespace.episode_id,
-            environment=arguments.environment,
+            environment=self.environment_profile,
             observable_behavior=arguments.observable_behavior,
             pids=PIDSRef(pids_id=arguments.pids_id, variant_id=arguments.variant_id),
             action=arguments.action,

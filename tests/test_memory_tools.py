@@ -52,6 +52,7 @@ class MemoryCaseToolTests(unittest.TestCase):
             store=self.store,
             namespace=self.namespace,
             case_id="case-tools",
+            environment_profile="autodl-visible-profile",
             report_root=self.root / "reports",
             audit_path=self.root / "tool_calls.jsonl",
             clock=lambda: NOW,
@@ -78,7 +79,6 @@ class MemoryCaseToolTests(unittest.TestCase):
     def write_arguments(self, **updates: object) -> dict[str, object]:
         values: dict[str, object] = {
             "layer": "episode",
-            "environment": "autodl-visible-profile",
             "observable_behavior": "capability inspection reported a missing checkpoint",
             "pids_id": "velox",
             "variant_id": "default",
@@ -98,7 +98,6 @@ class MemoryCaseToolTests(unittest.TestCase):
                 ToolName.RETRIEVE_MEMORY,
                 {
                     "query": "capability inspection",
-                    "environment": "autodl-visible-profile",
                     "pids_id": "velox",
                     "top_k": 5,
                 },
@@ -108,6 +107,7 @@ class MemoryCaseToolTests(unittest.TestCase):
         self.assertTrue(write.standardized_observation["inserted"])
         self.assertEqual(retrieve.status, RunStatus.SUCCEEDED)
         self.assertEqual(len(retrieve.standardized_observation["records"]), 1)
+        self.assertNotIn("environment", write.validated_arguments)
         record = retrieve.standardized_observation["records"][0]
         self.assertEqual(record["scenario_id"], self.namespace.scenario_id)
         self.assertNotIn("database_path", retrieve.model_dump_json())
