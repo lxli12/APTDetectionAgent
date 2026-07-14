@@ -40,3 +40,18 @@ procedure; it is not authorization for repair. Port 8000 was also not listening.
 The Llama model config identifies a BF16 Llama architecture with a declared maximum
 position length of 131072. This does not approve any serving context length or GPU
 utilization value; those require a conservative smoke profile.
+
+## Subsequent authorized PostgreSQL verification
+
+After the safe-start preconditions were checked, the existing PostgreSQL 17 cluster
+was started with the authorized standard cluster command. On 2026-07-14 it reports
+17.9, data directory `/root/autodl-tmp/postgresql/17/main`, and readiness on the
+local Unix socket/5432. Queryable dataset databases are `cadets_e3` (~9.8 GiB),
+`clearscope_e3` (~4.6 GiB), `clearscope_e5` (~49 GiB), `optc_h201` (~8.7 GiB), and
+`theia_e3` (~12 GiB). `PIDSMaker/pidsmaker/config/config.py` requests `optc_201` for
+`optc_h201`, so that pair is not runnable without an explicit mapping decision.
+
+Role inspection found only the `postgres` login role; no `pids_worker` or
+`hidden_evaluator` role exists. The project must not use the administrator role as
+a silent substitute for a smoke test. Creating roles or changing grants remains a
+database mutation requiring separate confirmation.

@@ -34,9 +34,9 @@ and test path is updated when work lands.
 | REQ-PIDS-005 | PIDSMaker submodule is never directly modified | all | adapter boundary | submodule diff check | implemented |
 | REQ-TOOL-001 | LLM emits typed requests and never constructs shell commands | 1/2/5 | `AgentAction`; `ToolRequest` recursive guard | executor-field/unknown-field tests | implemented |
 | REQ-TOOL-002 | Executor validates parameter/path/resource allowlists and builds argv | 2 | `pidsmaker/adapter.py` | override, path, checkpoint, shell-boundary tests | implemented |
-| REQ-TOOL-003 | Every tool call records validated args, config/checkpoint, command manifest, timing, output, and artifacts | 1/2 | `ToolResult`; `CommandManifest`; Phase 2 adapter | synthetic runtime artifact tests; real stage trace deferred | partial |
+| REQ-TOOL-003 | Every tool call records validated args, config/checkpoint, command manifest, timing, output, and artifacts | 1/2/8 | `ToolResult`; `CommandManifest`; Phase 2 adapter; safe stage summary | synthetic runtime artifacts and stage-runner contract tests; real PIDS trace deferred | partial |
 | REQ-TOOL-004 | Parallel PIDS selection is scheduled by executor, never CUDA-selected by LLM | 2/5 | PIDSMaker tool scheduler; `controller/scheduler.py` | GPU assignment/serialization and hidden CUDA tests | implemented |
-| REQ-TOOL-005 | Timeout, nonzero exit, malformed output, and missing artifact fail closed | 2 | `pidsmaker/adapter.py` | nonzero/start-error/missing-artifact fake-runner tests; typed output parser deferred | partial |
+| REQ-TOOL-005 | Timeout, nonzero exit, malformed output, and missing artifact fail closed | 2/8 | `pidsmaker/adapter.py`; `scripts/pidsmaker_stage_runner.py` | adapter failure tests; stage path/override/env/overwrite negative tests; real typed parser deferred | partial |
 | REQ-MEMORY-001 | Working, episode memory, and case state reset at split/scenario boundaries | 1/4 | `memory/store.py:CaseMemoryStore`; scoped schemas | exact episode reset tests | implemented |
 | REQ-MEMORY-002 | Train memory cannot enter validation; validation cannot enter held-out | 1/4 | `MemoryNamespace`; runtime write scope gate | cross-split/scenario negative tests | implemented |
 | REQ-MEMORY-003 | Frozen deployable static LTM may cross splits only as a sanitized training artifact | 1/4 | `StaticLTMSnapshot`; `StaticLTMSanitizer` | signature/review/schema/leakage tests | implemented |
@@ -52,7 +52,7 @@ and test path is updated when work lands.
 | REQ-EVAL-006 | Evaluation cannot feed hidden config search during held-out | 5/7 | private evaluator process and artifact-reference feedback | subprocess leakage/overwrite tests | implemented |
 | REQ-ARTIFACT-001 | Every artifact records source config, checkpoint hash, code commit, and producing stage | 1/2 | artifact and run manifests | hash/path/provenance tests | implemented |
 | REQ-ARTIFACT-002 | Missing checkpoints produce unavailable status, never fabricated artifacts | 1/2/8 | checkpoint schema; discovery availability | missing-checkpoint retention tests | implemented |
-| REQ-ARTIFACT-003 | Raw PIDSMaker artifacts are mapped and validated before becoming Agent contracts | 2 | `docs/pidsmaker/ARTIFACT_AND_CHECKPOINT_MAP.md`; adapter manifest | missing-artifact fail-closed test; per-PIDS parsers deferred | partial |
+| REQ-ARTIFACT-003 | Raw PIDSMaker artifacts are mapped and validated before becoming Agent contracts | 2/8 | artifact map; compatibility report; stage runner | missing-artifact/stage-boundary tests; real per-PIDS parsers deferred | partial |
 | REQ-RESOURCE-001 | Scheduler uses explicit 32 vCPU/240 GiB/2×24 GiB profile | 0/5 | AutoDL YAML; `controller/scheduler.py` | profile load and quota rejection tests | implemented |
 | REQ-RESOURCE-002 | Initial profile uses GPU 0 for vLLM and one GPU PIDS on GPU 1 | 0/5/8 | explicit executor assignments | separate-device lease test | implemented |
 | REQ-RESOURCE-003 | Same-GPU concurrency waits for per-PIDS smoke profiles | 5/8 | one-unknown-workload admission gate | second same-GPU PIDS rejection | implemented |
@@ -63,9 +63,9 @@ and test path is updated when work lands.
 | REQ-DB-001 | Admin, PIDS worker, hidden evaluator, and controller have distinct DB privileges | 0/7 | security ADR; `DatabaseRolePolicy` | policy separation tests; live roles not created | partial |
 | REQ-DB-002 | Controller has no private-label database access | 7 | evaluator filesystem IPC; role policy | path/public-payload tests; live permission test deferred | partial |
 | REQ-DB-003 | PostgreSQL 17 data is never auto-migrated, rebuilt, or modified by runtime | 0/2 | AGENTS and ADR | command allowlist test | implemented |
-| REQ-WANDB-001 | W&B is disabled, makes no network request, and is not a project dependency | 0/2 | AGENTS; `docs/pidsmaker/WANDB_AUDIT.md`; disabled adapter environment | dependency/source/argv tests; upstream import compatibility remains | partial |
+| REQ-WANDB-001 | W&B is disabled, makes no network request, and is not a project dependency | 0/2/8 | AGENTS; W&B audit; disabled adapter environment; preprocessing runner bypasses eager W&B imports | dependency/source/argv/stage allowlist tests; upstream training compatibility remains | partial |
 | REQ-REPRO-001 | Runs record exact code, environment, data, config, checkpoint, threshold, command, seed, timing, resources, metrics, and failures | 0/1/5 | experiment protocol; planned manifests | completeness tests | partial |
-| REQ-REPRO-002 | Every run has a unique non-overwriting run ID and required local files | 5/8 | planned remote scripts | collision/manifest tests | planned |
+| REQ-REPRO-002 | Every run has a unique non-overwriting run ID and required local files | 5/8 | stage runner direct-child/non-overwrite gate; remote scripts planned | stage-runner collision tests; complete run-directory tests deferred | partial |
 | REQ-REPRO-003 | Long runs use owned tmux sessions and leave status/tail/recovery instructions | 5/8 | planned remote scripts | remote smoke | planned |
 | REQ-SFT-001 | SFT student data contains no privileged label/rationale leakage | 10 | planned sanitizer | dataset negative tests | planned |
 | REQ-SFT-002 | Hidden teacher inputs and student-visible outputs use separate schemas | 1/10 | evaluator namespace and deployable payload guard | boundary tests | partial |
