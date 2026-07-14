@@ -19,7 +19,9 @@ class OSIsolationPolicyTests(unittest.TestCase):
         ):
             self.assertIn(identity, script)
         self.assertIn("/usr/sbin/nologin", script)
-        self.assertIn('chmod 700 "$BASE/evaluator-private"', script)
+        self.assertIn(
+            'find "$BASE/evaluator-private" -type d -exec chmod 700 {} +', script
+        )
         self.assertIn('chmod 2770 "$BASE/feedback-exchange"', script)
         self.assertNotIn("PIDS_WORKER_PASSWORD=$PIDS_WORKER_PASSWORD", script)
         self.assertNotIn("HIDDEN_EVALUATOR_PASSWORD=$HIDDEN_EVALUATOR_PASSWORD", script)
