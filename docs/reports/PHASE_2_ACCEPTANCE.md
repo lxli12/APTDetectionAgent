@@ -77,8 +77,8 @@ scientific acceptance.
 ## Post-acceptance structured backend audit
 
 The original deferral for the available VELOX/CADETS path is closed by
-`/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-006`.
-At commit `a859a3ebe7c23c2769b70768c501b31571d17967`, a typed
+`/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-007`.
+At commit `39f5907f3740e87d84195dd3ea94578403fd8aa8`, a typed
 `PIDSDetectionRequest` reached the isolated causal backend and returned a strict
 five-stage `ToolResult`. Preserved failed runs 002, 004, and 005 demonstrate typed
 failure on missing artifact root, inaccessible frozen assets, and missing

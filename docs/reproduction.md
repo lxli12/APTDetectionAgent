@@ -38,7 +38,7 @@ Accepted append-only evidence:
 - frozen new-window inference:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-frozen-new-window-20260714-001`.
 - real structured tool invocation:
-  `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-006`.
+  `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-007`.
 
 These prove causal mechanics and validation integration only. Each real public
 artifact records `formal_performance_claim=false`; evaluator-private mappings and

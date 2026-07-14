@@ -36,7 +36,7 @@ from apt_detection_agent.schemas import (
 from apt_detection_agent.schemas.common import StrictModel
 
 from .discovery import PIDSMakerDiscovery
-from .results import standardize_frozen_test_scores
+from .results import require_standardized_result_parser, standardize_frozen_test_scores
 
 
 FORBIDDEN_OVERRIDE_PARTS = frozenset(
@@ -192,6 +192,7 @@ class PIDSMakerAdapter:
             raise ValueError("source config is not registered at the pinned commit")
         if capability.pids != request.pids:
             raise ValueError("PIDS identity does not match discovered source config")
+        require_standardized_result_parser(request.pids)
         if request.dataset_id not in self.discovery.dataset_ids():
             raise ValueError("dataset is not registered by PIDSMaker")
         if request.split in {DataSplit.HELD_OUT, DataSplit.DEPLOYMENT}:

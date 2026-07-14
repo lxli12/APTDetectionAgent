@@ -55,7 +55,7 @@ traces. Final run-directory manifests and tmux scripts remain required before
 REQ-REPRO-001..003 can be marked complete.
 
 The later structured backend audit supplies the real PIDSMaker trace previously
-deferred here: `structured-adapter-20260714-006` records validated arguments,
+deferred here: `structured-adapter-20260714-007` records validated arguments,
 frozen config/checkpoint, executor-built argv, timing, artifacts, standardized
 observation, and five internal stages. This does not convert the Phase 5 synthetic
 policy into a formal learned policy or held-out result.

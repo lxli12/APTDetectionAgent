@@ -35,15 +35,15 @@ a synthetic adapter contract.
 - frozen validation bundle:
   `/root/autodl-tmp/apt-agent/pre-sft-bundles/velox-cadets-validation-8eb6f76-003`;
 - real structured tool run:
-  `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-006`;
+  `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-007`;
 - frozen later-window run:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-frozen-new-window-20260714-001`;
 - checkpoint hash:
   `9fd5b64fd65f71faea65b037294dca537c75ab902a4ad92f04bb84315c0f54a2`;
 - featurizer hash:
   `965911178ec53c3c6dc2efc61eb1e365b4c253168ee38df586d44582b4e58cab`;
-- AutoDL commit `a859a3ebe7c23c2769b70768c501b31571d17967`:
-  219/219 tests passed;
+- AutoDL commit `39f5907f3740e87d84195dd3ea94578403fd8aa8`:
+  224/224 tests passed;
 - formal pre-SFT gate run:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-pre-sft-gate-20260714-002`.
 
@@ -59,6 +59,10 @@ frozen featurization, `feat_inference`, and inference traces. Its standardized
 observation contains 1,769 node scores and 46 threshold alerts. A privileged-field
 scan passed, the controller could not read the raw pipeline tree, and the command
 manifest contains environment key names but no credentials.
+Its detection payload is `deployment-detection-result-v2` and is explicitly labeled
+`causal_main/causal`. PIDS without a validated raw-result parser remain visible in
+the capability registry but fail before execution; they cannot silently become
+Agent contracts.
 
 ## Remaining non-bypassable gates
 

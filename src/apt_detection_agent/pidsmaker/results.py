@@ -33,6 +33,14 @@ from apt_detection_agent.schemas import (
 FORBIDDEN_SCORE_COLUMNS = frozenset(
     {"y", "label", "ground_truth", "campaign_id", "tp", "fp", "fn"}
 )
+STANDARDIZED_RESULT_PARSER_IDS = frozenset({("velox", "default")})
+
+
+def require_standardized_result_parser(pids: PIDSRef) -> None:
+    if (pids.pids_id, pids.variant_id) not in STANDARDIZED_RESULT_PARSER_IDS:
+        raise ValueError(
+            "PIDS remains registered but unavailable until its raw artifact parser is validated"
+        )
 
 
 def _json(path: Path) -> dict[str, object]:
@@ -97,6 +105,8 @@ def standardize_frozen_test_scores(
     experiment_class: ExperimentClass = ExperimentClass.CAUSAL_MAIN,
     transductive_status: TransductiveStatus = TransductiveStatus.CAUSAL,
 ) -> StandardizedDetectionResult:
+    selected_pids = pids or PIDSRef(pids_id="velox")
+    require_standardized_result_parser(selected_pids)
     run = pids_run.resolve()
     pipeline = run / "pids_artifacts" / "pipeline"
     checkpoint = _json(pipeline / "checkpoint_manifest.json")
@@ -148,7 +158,7 @@ def standardize_frozen_test_scores(
     return StandardizedDetectionResult(
         result_id=f"{checkpoint['source_config_id']}-{checkpoint['checkpoint_hash'][:12]}",
         split=split,
-        pids=pids or PIDSRef(pids_id="velox"),
+        pids=selected_pids,
         dataset_id=str(checkpoint["dataset_id"]),
         source_config_id=str(checkpoint["source_config_id"]),
         experiment_class=experiment_class,

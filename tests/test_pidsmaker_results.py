@@ -10,11 +10,13 @@ from pathlib import Path
 
 from apt_detection_agent.pidsmaker.results import (
     calibrate_validation_quantile,
+    require_standardized_result_parser,
     standardize_frozen_test_scores,
 )
 from apt_detection_agent.schemas import (
     DataSplit,
     ExperimentClass,
+    PIDSRef,
     ThresholdSourceSplit,
     TransductiveStatus,
 )
@@ -96,6 +98,13 @@ class PIDSMakerResultTests(unittest.TestCase):
                     experiment_class=ExperimentClass.CAUSAL_MAIN,
                     transductive_status=TransductiveStatus.TRANSDUCTIVE,
                 )
+
+    def test_unvalidated_pids_parser_fails_without_removing_registry_identity(self) -> None:
+        require_standardized_result_parser(PIDSRef(pids_id="velox"))
+        with self.assertRaisesRegex(ValueError, "remains registered but unavailable"):
+            require_standardized_result_parser(
+                PIDSRef(pids_id="orthrus", variant_id="fixed")
+            )
 
 
 if __name__ == "__main__":

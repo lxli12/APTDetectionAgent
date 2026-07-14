@@ -23,9 +23,9 @@ Pre-SFT runtime assets are now frozen and independently exercised:
   featurizer refit, checkpoint selection, labels, W&B, or configuration drift;
 - `scripts/run_structured_pids_adapter_smoke.py` exercised the actual typed
   request → adapter → frozen PIDSMaker → standardized observation path in
-  `structured-adapter-20260714-006`;
-- AutoDL commit `a859a3ebe7c23c2769b70768c501b31571d17967`
-  passed 219 tests.
+  `structured-adapter-20260714-007`;
+- AutoDL commit `39f5907f3740e87d84195dd3ea94578403fd8aa8`
+  passed 224 tests.
 
 `scripts/train_agent.sh` no longer reports obsolete Phase 8 blockers. With
 `APT_PRE_SFT_BUNDLE` and `APT_PRE_SFT_BUNDLE_ROOT` set, its PIDS/threshold/config
