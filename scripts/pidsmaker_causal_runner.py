@@ -62,6 +62,10 @@ def validate(args: argparse.Namespace, environ: dict[str, str]) -> tuple[Path, P
         raise CausalRunnerError("training/inference requires an isolated compatibility build")
     if environ.get("WANDB_MODE") != "disabled":
         raise CausalRunnerError("WANDB_MODE=disabled is mandatory")
+    try:
+        prefix.enforce_resource_environment(environ)
+    except prefix.StageRunnerError as exc:
+        raise CausalRunnerError(str(exc)) from exc
     missing = [name for name in prefix.REQUIRED_DATABASE_ENV if not environ.get(name)]
     if missing:
         raise CausalRunnerError("database environment is incomplete")

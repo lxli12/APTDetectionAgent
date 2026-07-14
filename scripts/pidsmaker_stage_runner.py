@@ -47,10 +47,35 @@ FORBIDDEN_OVERRIDE_PARTS = {
     "tuning_mode",
     "wandb",
 }
+MAX_PROJECT_CPU_VCPUS = 32
+NUMERIC_THREAD_ENV = (
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
 
 
 class StageRunnerError(RuntimeError):
     """A fail-closed validation or compatibility error."""
+
+
+def enforce_resource_environment(environ: dict[str, str]) -> int:
+    """Bind numerical libraries to the explicit project allocation, never host visibility."""
+
+    raw_limit = environ.get("APT_PIDS_CPU_THREADS")
+    try:
+        limit = int(raw_limit or "")
+    except ValueError as exc:
+        raise StageRunnerError("APT_PIDS_CPU_THREADS must be an integer") from exc
+    if not 1 <= limit <= MAX_PROJECT_CPU_VCPUS:
+        raise StageRunnerError("APT_PIDS_CPU_THREADS exceeds the project quota")
+    for name in NUMERIC_THREAD_ENV:
+        environ[name] = str(limit)
+        os.environ[name] = str(limit)
+    os.environ["APT_PIDS_CPU_THREADS"] = str(limit)
+    return limit
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -98,6 +123,7 @@ def validate_inputs(args: argparse.Namespace, environ: dict[str, str]) -> tuple[
         raise StageRunnerError("database connection environment is incomplete")
     if environ.get("WANDB_MODE") != "disabled":
         raise StageRunnerError("WANDB_MODE=disabled is mandatory")
+    enforce_resource_environment(environ)
 
     validate_window_contract(args)
 
@@ -228,7 +254,7 @@ def load_stage_module(root: Path, stage: str) -> ModuleType:
 
 
 def sanitized_resolved_config(
-    args: argparse.Namespace, identity: dict[str, object]
+    args: argparse.Namespace, identity: dict[str, object], pids_cpu_threads: int
 ) -> dict[str, object]:
     return {
         "source_config_id": args.source_config_id,
@@ -239,6 +265,7 @@ def sanitized_resolved_config(
         "pidsmaker_commit": identity["upstream_commit"],
         "compatibility_patch_series_hash": identity["patch_series_hash"],
         "wandb_mode": "disabled",
+        "pids_cpu_threads": pids_cpu_threads,
         "database": {"injected_by_environment": True},
         "timezone": "America/New_York",
         "window_size_seconds": args.window_size_seconds,
@@ -280,7 +307,12 @@ def run(args: argparse.Namespace, environ: dict[str, str] | None = None) -> int:
     # JSON is a strict YAML subset; using it here avoids adding a new runtime
     # dependency while preserving the required resolved_config.yaml artifact.
     (artifact_dir / "resolved_config.yaml").write_text(
-        json.dumps(sanitized_resolved_config(args, identity), indent=2, sort_keys=True) + "\n"
+        json.dumps(
+            sanitized_resolved_config(args, identity, int(environ["APT_PIDS_CPU_THREADS"])),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
     )
 
     completed: list[dict[str, object]] = []

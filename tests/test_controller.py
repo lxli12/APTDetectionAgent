@@ -335,6 +335,8 @@ class SchedulerTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         profile = ResourceProfile.from_yaml(root / "configs/resource_profiles/autodl.yaml")
         self.assertEqual((profile.cpu_vcpus, profile.memory_gib), (32, 240))
+        self.assertEqual(profile.pids_worker_cpu_threads, 16)
+        self.assertIn("OPENBLAS_NUM_THREADS", profile.numeric_thread_environment)
         self.assertEqual((profile.vllm_gpu_index, profile.pids_gpu_index), (0, 1))
 
 

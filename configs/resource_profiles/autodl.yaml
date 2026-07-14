@@ -9,4 +9,6 @@ gpu_assignments:
   vllm: 0
   pids_gpu_worker: 1
 max_unknown_gpu_pids_per_device: 1
+pids_worker_cpu_threads: 16
+numeric_thread_environment: OMP_NUM_THREADS,MKL_NUM_THREADS,OPENBLAS_NUM_THREADS,NUMEXPR_NUM_THREADS,VECLIB_MAXIMUM_THREADS
 source: user-confirmed-allocation

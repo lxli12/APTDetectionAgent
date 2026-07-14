@@ -68,6 +68,7 @@ def environment(artifact_root: Path, **updates: str) -> dict[str, str]:
         "PIDS_DB_PASSWORD": "unit-test-secret",
         "PIDS_DB_PORT": "5432",
         "WANDB_MODE": "disabled",
+        "APT_PIDS_CPU_THREADS": "16",
     }
     values.update(updates)
     return values
@@ -129,6 +130,7 @@ class StageRunnerContractTests(unittest.TestCase):
                 "upstream_commit": "a" * 40,
                 "patch_series_hash": "b" * 64,
             },
+            16,
         )
         text = repr(rendered)
         self.assertNotIn("password", text.lower())
@@ -138,6 +140,16 @@ class StageRunnerContractTests(unittest.TestCase):
             ["ground_truth_relative_path", "attack_to_time_window"],
         )
         self.assertEqual(rendered["split_windows"]["train"]["boundary"], "[start,end)")
+        self.assertEqual(rendered["pids_cpu_threads"], 16)
+
+    def test_rejects_host_visible_cpu_count_as_allocation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            artifact_root = Path(temp)
+            args = request(ROOT / "PIDSMaker", artifact_root / "run-1")
+            with self.assertRaisesRegex(runner.StageRunnerError, "project quota"):
+                runner.validate_inputs(
+                    args, environment(artifact_root, APT_PIDS_CPU_THREADS="128")
+                )
 
     def test_windows_are_equal_aligned_chronological_and_date_bound(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

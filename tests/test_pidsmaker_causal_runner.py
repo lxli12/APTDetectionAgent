@@ -71,6 +71,7 @@ def environment(artifact_root: Path, **updates: str) -> dict[str, str]:
         "PIDS_DB_PASSWORD": "secret",
         "PIDS_DB_PORT": "5432",
         "WANDB_MODE": "disabled",
+        "APT_PIDS_CPU_THREADS": "16",
     }
     values.update(updates)
     return values

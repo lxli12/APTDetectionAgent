@@ -31,6 +31,8 @@ class ResourceProfile(StrictModel):
     vllm_gpu_index: int = 0
     pids_gpu_index: int = 1
     max_unknown_gpu_pids_per_device: int = 1
+    pids_worker_cpu_threads: int = Field(default=16, ge=1, le=32)
+    numeric_thread_environment: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def safe_initial_profile(self) -> "ResourceProfile":
@@ -40,6 +42,8 @@ class ResourceProfile(StrictModel):
             raise ValueError("initial vLLM and PIDS GPU assignments must differ")
         if self.max_unknown_gpu_pids_per_device != 1:
             raise ValueError("unknown GPU PIDS concurrency requires smoke profiles")
+        if self.pids_worker_cpu_threads > self.cpu_vcpus:
+            raise ValueError("PIDS worker threads exceed explicit CPU quota")
         return self
 
     @classmethod
@@ -71,6 +75,10 @@ class ResourceProfile(StrictModel):
             vllm_gpu_index=assignments["vllm"],
             pids_gpu_index=assignments["pids_gpu_worker"],
             max_unknown_gpu_pids_per_device=payload["max_unknown_gpu_pids_per_device"],
+            pids_worker_cpu_threads=payload["pids_worker_cpu_threads"],
+            numeric_thread_environment=tuple(
+                str(payload["numeric_thread_environment"]).split(",")
+            ),
         )
 
 

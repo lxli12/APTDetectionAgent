@@ -160,6 +160,29 @@ class PIDSMakerAdapterTests(unittest.TestCase):
         self.assertIsInstance(called_argv, tuple)
         self.assertEqual(called_kwargs["env"]["WANDB_MODE"], "disabled")
         self.assertEqual(called_kwargs["env"]["CUDA_VISIBLE_DEVICES"], "1")
+        self.assertEqual(called_kwargs["env"]["APT_PIDS_CPU_THREADS"], "16")
+        self.assertTrue(
+            all(
+                called_kwargs["env"][name] == "16"
+                for name in (
+                    "OMP_NUM_THREADS",
+                    "MKL_NUM_THREADS",
+                    "OPENBLAS_NUM_THREADS",
+                    "NUMEXPR_NUM_THREADS",
+                    "VECLIB_MAXIMUM_THREADS",
+                )
+            )
+        )
+
+    def test_rejects_cpu_thread_limit_above_project_quota(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(ValueError, "project quota"):
+                PIDSMakerAdapter(
+                    ROOT,
+                    Path(temp_dir),
+                    Path(sys.executable),
+                    cpu_thread_limit=33,
+                )
 
     def test_nonzero_exit_is_typed_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

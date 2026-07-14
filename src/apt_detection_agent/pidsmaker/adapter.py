@@ -49,6 +49,15 @@ FORBIDDEN_OVERRIDE_PARTS = frozenset(
         "wandb",
     }
 )
+MAX_PROJECT_CPU_VCPUS = 32
+DEFAULT_PIDS_CPU_THREADS = 16
+NUMERIC_THREAD_ENV = (
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
 
 
 class PIDSDetectionRequest(StrictModel):
@@ -111,6 +120,7 @@ class PIDSMakerAdapter:
         python_executable: Path,
         *,
         cuda_visible_devices: str | None = None,
+        cpu_thread_limit: int = DEFAULT_PIDS_CPU_THREADS,
         runner: ProcessRunner = _default_runner,
         execution_enabled: bool = False,
     ) -> None:
@@ -119,6 +129,9 @@ class PIDSMakerAdapter:
         self.artifact_root = artifact_root.resolve()
         self.python_executable = python_executable.resolve()
         self.cuda_visible_devices = cuda_visible_devices
+        if not 1 <= cpu_thread_limit <= MAX_PROJECT_CPU_VCPUS:
+            raise ValueError("PIDSMaker CPU thread limit must be within the project quota")
+        self.cpu_thread_limit = cpu_thread_limit
         self.runner = runner
         self.execution_enabled = execution_enabled
         self.discovery = PIDSMakerDiscovery(self.project_root)
@@ -177,6 +190,9 @@ class PIDSMakerAdapter:
         environment = {"PATH": os.environ.get("PATH", "")}
         environment["WANDB_MODE"] = "disabled"
         environment["WANDB_SILENT"] = "true"
+        environment["APT_PIDS_CPU_THREADS"] = str(self.cpu_thread_limit)
+        for name in NUMERIC_THREAD_ENV:
+            environment[name] = str(self.cpu_thread_limit)
         if self.cuda_visible_devices is not None:
             environment["CUDA_VISIBLE_DEVICES"] = self.cuda_visible_devices
         return environment
