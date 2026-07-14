@@ -57,9 +57,9 @@ and test path is updated when work lands.
 | REQ-RESOURCE-002 | Initial profile uses GPU 0 for vLLM and one GPU PIDS on GPU 1 | 0/5/8 | explicit executor assignments | separate-device lease test | implemented |
 | REQ-RESOURCE-003 | Same-GPU concurrency waits for per-PIDS smoke profiles | 5/8 | one-unknown-workload admission gate | second same-GPU PIDS rejection | implemented |
 | REQ-ENV-001 | `pids` and `vllm` environments remain separate and pinned | 0/6 | ADR and resource profile | environment manifest | implemented |
-| REQ-ENV-002 | Controller communicates through subprocess and localhost HTTP, not cross-imports | 1/2/6 | planned adapters | import-boundary tests | planned |
-| REQ-ENV-003 | vLLM host, port, base URL, and model path are environment-driven | 6 | planned client config | no-hardcoded-port test | planned |
-| REQ-ENV-004 | Controller environment stays minimal and excludes PyTorch/PyG/vLLM | 1 | ADR 0005; Pydantic-only Phase 1 dependency | dependency audit | partial |
+| REQ-ENV-002 | Controller communicates through subprocess and localhost HTTP, not cross-imports | 1/2/6 | PIDSMaker subprocess adapter; `llm/vllm_client.py` | transport/import-boundary tests | implemented |
+| REQ-ENV-003 | vLLM host, port, base URL, and model path are environment-driven | 6 | `VLLMConfig.from_environment` | alternate-port, localhost, URL validation tests | implemented |
+| REQ-ENV-004 | Controller environment stays minimal and excludes PyTorch/PyG/vLLM | 1/6 | ADR 0005; stdlib HTTP client | dependency and runtime-import tests | implemented |
 | REQ-DB-001 | Admin, PIDS worker, hidden evaluator, and controller have distinct DB privileges | 0/7 | security ADR | role/connection tests | partial |
 | REQ-DB-002 | Controller has no private-label database access | 7 | planned evaluator topology | permission test | planned |
 | REQ-DB-003 | PostgreSQL 17 data is never auto-migrated, rebuilt, or modified by runtime | 0/2 | AGENTS and ADR | command allowlist test | implemented |
