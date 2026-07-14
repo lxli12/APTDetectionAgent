@@ -25,8 +25,8 @@ REQ-EVAL-001..004, REQ-ARTIFACT-001..003, REQ-ENV-004.
 
 ## Test evidence
 
-The local bundled Python 3.12 runtime provides Pydantic 2.13.4 without changing the
-host environment. The following command passes 49 tests:
+The local bundled Python 3.12 runtime provides a compatible Pydantic release without changing the
+host environment. The following command passes 50 tests:
 
 ```text
 PYTHONPATH=src <bundled-python> -m unittest discover -s tests -v
@@ -40,10 +40,11 @@ campaign exclusions, and incomplete failure provenance.
 ## Dependency and remote status
 
 Read-only AutoDL audit confirms system Python lacks controller dependencies and the
-`pids`/`vllm` environments carry different Pydantic versions. ADR 0005 therefore
-recommends a third lightweight controller environment. No environment was created or
-modified in Phase 1. Remote schema smoke is pending explicit approval to create that
-environment; local schema acceptance is complete.
+`pids`/`vllm` environments carry different Pydantic versions. The user subsequently
+prohibited creation of a new environment and authorized the existing `pids`
+environment. ADR 0005 therefore pins its installed Pydantic 2.12.5 while retaining a
+process/import boundary between the controller and PIDSMaker. Remote schema smoke is
+recorded separately after synchronization.
 
 Process-level evaluator filesystem/database isolation remains assigned to Phase 7;
 Phase 1 establishes the enforceable serialization boundary but does not claim the

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = {text = "Research use; see repository license status"}
 authors = [{name = "APTDetectionAgent contributors"}]
-dependencies = ["pydantic==2.13.4"]
+dependencies = ["pydantic==2.12.5"]
 
 [project.optional-dependencies]
 dev = []

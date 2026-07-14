@@ -9,8 +9,10 @@ Pydantic 2.12.5, PyYAML 6.0.3, and httpx 0.28.1; `vllm` contains Pydantic 2.13.3
 PyYAML 6.0.3, and httpx 0.28.1. Those packages belong to their respective runtime
 environments and do not authorize cross-environment controller imports.
 
-Phase 1 uses only Pydantic 2.13.4 for strict, versioned data contracts. PyYAML and
-an HTTP client are deferred until their owning phases. A third lightweight
-controller environment is recommended for remote runtime, but creating or installing
-it requires explicit approval. It must exclude PyTorch, PyG, PIDSMaker, vLLM, W&B,
-and database administration tooling.
+The user has prohibited creation of another Conda environment and authorized use
+and modification of the existing `pids` environment. The initial controller process
+therefore runs with the `pids` Python and pins the already installed Pydantic 2.12.5.
+This is an interpreter/runtime decision, not permission for the controller to import
+PIDSMaker, PyTorch, or PyG: PIDSMaker remains a separately launched subprocess and
+the controller import allowlist is tested. PyYAML and an HTTP client are deferred
+until their owning phases. The controller must not import vLLM or W&B.

@@ -39,9 +39,20 @@ class GovernanceTests(unittest.TestCase):
 
     def test_controller_dependency_is_minimal_and_pinned(self) -> None:
         pyproject = (ROOT / "pyproject.toml").read_text()
-        self.assertIn('dependencies = ["pydantic==2.13.4"]', pyproject)
+        self.assertIn('dependencies = ["pydantic==2.12.5"]', pyproject)
         for forbidden in ("torch", "torch_geometric", "vllm", "psycopg2"):
             self.assertNotIn(forbidden, pyproject.lower())
+
+    def test_controller_does_not_cross_import_heavy_runtimes(self) -> None:
+        source_root = ROOT / "src/apt_detection_agent"
+        forbidden_imports = re.compile(
+            r"(?m)^\s*(?:from|import)\s+(?:pidsmaker|torch|torch_geometric|vllm|wandb)\b"
+        )
+        violations = []
+        for path in source_root.rglob("*.py"):
+            if forbidden_imports.search(path.read_text()):
+                violations.append(str(path.relative_to(ROOT)))
+        self.assertEqual(violations, [])
 
     def test_matrix_has_unique_requirement_rows(self) -> None:
         matrix = (ROOT / "docs/plans/REQUIREMENT_TRACEABILITY.md").read_text()
