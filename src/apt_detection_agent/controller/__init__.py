@@ -12,6 +12,14 @@ from .frozen_runtime import (
     FrozenWindowStepResult,
     prepare_case_for_window,
 )
+from .observation_builders import (
+    CanonicalObservationInputs,
+    DeterministicCanonicalObservationBuilder,
+    DeterministicPromptBuilder,
+    DeterministicTriggerPolicy,
+    FrozenTriggerProfile,
+    PromptBuilderConfig,
+)
 from .scheduler import ResourceProfile, ResourceRequest, ResourceScheduler, WorkloadKind
 from .trajectory import TrajectoryLogger, TrajectoryStep
 
@@ -23,10 +31,16 @@ __all__ = [
     "CommittedExecutionBundle",
     "CommittedFastPathInferenceRequest",
     "CommittedResultLedger",
+    "CanonicalObservationInputs",
+    "DeterministicCanonicalObservationBuilder",
+    "DeterministicPromptBuilder",
+    "DeterministicTriggerPolicy",
     "FrozenRuntimeConfig",
     "FrozenRuntimeController",
+    "FrozenTriggerProfile",
     "FrozenTransactionLogger",
     "FrozenWindowStepResult",
+    "PromptBuilderConfig",
     "ResourceProfile",
     "ResourceRequest",
     "ResourceScheduler",
