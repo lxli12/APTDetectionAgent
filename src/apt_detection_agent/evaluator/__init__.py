@@ -9,6 +9,13 @@ from apt_detection_agent.schemas.evaluation import (
     EvaluationRecord,
     HiddenGroundTruth,
 )
+from .calibration import (
+    CALIBRATION_DEFINITION_VERSION,
+    PrivateCoverageCalibrationResult,
+    ValidationCoverageCalibrationInput,
+    ValidationCoverageCalibrator,
+    ValidationEntityScore,
+)
 from .engine import (
     METRIC_DEFINITION_VERSION,
     HiddenEvaluationInput,
@@ -19,6 +26,7 @@ from .engine import (
 from .ipc import DatabaseRolePolicy, EvaluatorIPCPaths
 
 __all__ = [
+    "CALIBRATION_DEFINITION_VERSION",
     "CampaignManifest",
     "EvaluationRecord",
     "DatabaseRolePolicy",
@@ -28,5 +36,9 @@ __all__ = [
     "HiddenEvaluator",
     "HiddenGroundTruth",
     "METRIC_DEFINITION_VERSION",
+    "PrivateCoverageCalibrationResult",
     "ScoredEntity",
+    "ValidationCoverageCalibrationInput",
+    "ValidationCoverageCalibrator",
+    "ValidationEntityScore",
 ]

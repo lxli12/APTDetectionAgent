@@ -23,6 +23,9 @@ from apt_detection_agent.evaluator import (
     HiddenEvaluationInput,
     HiddenEvaluator,
     ScoredEntity,
+    ValidationCoverageCalibrationInput,
+    ValidationCoverageCalibrator,
+    ValidationEntityScore,
 )
 from apt_detection_agent.schemas import DataSplit
 
@@ -251,6 +254,70 @@ class FeedbackIsolationTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertNotIn("unique_malicious_node", feedback_text)
         self.assertNotIn("campaign_coverage", feedback_text)
+
+
+class ValidationCoverageCalibrationTests(unittest.TestCase):
+    def calibration_input(self, **updates: object) -> ValidationCoverageCalibrationInput:
+        values: dict[str, object] = {
+            "calibration_id": "coverage-calibration-1",
+            "split": DataSplit.VALIDATION,
+            "source_dataset": "dataset-private",
+            "campaign_manifest_version": "campaigns-v1",
+            "campaigns": (
+                campaign("campaign-1", "node-a", "window-1"),
+                campaign("campaign-2", "node-b", "window-2"),
+            ),
+            "scored_entities": (
+                ValidationEntityScore(entity_id="node-a", score=0.9),
+                ValidationEntityScore(entity_id="node-c", score=0.8),
+                ValidationEntityScore(entity_id="node-b", score=0.7),
+                ValidationEntityScore(entity_id="node-d", score=0.1),
+            ),
+            "universe_entity_ids": ("node-a", "node-b", "node-c", "node-d"),
+            "target_coverage": 1.0,
+            "target_metric": "campaign-coverage",
+            "threshold_id": "threshold-validation-coverage-1",
+            "checkpoint_hash": "1" * 64,
+            "created_at": NOW,
+            "code_commit": "2" * 40,
+        }
+        values.update(updates)
+        return ValidationCoverageCalibrationInput.model_validate(values)
+
+    def test_highest_threshold_meeting_agent_campaign_coverage_is_frozen(self) -> None:
+        result = ValidationCoverageCalibrator().calibrate(self.calibration_input())
+        self.assertEqual(result.threshold.value, 0.7)
+        self.assertEqual(result.achieved_campaign_coverage, 1.0)
+        self.assertAlmostEqual(result.precision_at_threshold, 2 / 3)
+        self.assertEqual(result.threshold.calibration_method.value, "validation_coverage")
+        self.assertEqual(result.threshold.source_split.value, "validation")
+        self.assertEqual(result.threshold.checkpoint_hash, "1" * 64)
+
+    def test_constraint_is_campaign_level_not_malicious_node_fraction(self) -> None:
+        first = campaign("campaign-1", "node-a", "window-1").model_copy(
+            update={"malicious_entity_ids": ("node-a", "node-x")}
+        )
+        request = self.calibration_input(
+            campaigns=(first, campaign("campaign-2", "node-b", "window-2")),
+            universe_entity_ids=("node-a", "node-b", "node-c", "node-d", "node-x"),
+            target_coverage=0.5,
+        )
+        result = ValidationCoverageCalibrator().calibrate(request)
+        self.assertEqual(result.threshold.value, 0.9)
+        self.assertEqual(result.achieved_campaign_coverage, 0.5)
+
+    def test_heldout_or_benign_only_calibration_is_rejected(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.calibration_input(split=DataSplit.HELD_OUT)
+        with self.assertRaises(ValidationError):
+            self.calibration_input(campaigns=())
+
+    def test_unsatisfied_campaign_constraint_fails_closed(self) -> None:
+        request = self.calibration_input(
+            scored_entities=(ValidationEntityScore(entity_id="node-a", score=0.9),)
+        )
+        with self.assertRaises(ValueError):
+            ValidationCoverageCalibrator().calibrate(request)
 
 
 if __name__ == "__main__":

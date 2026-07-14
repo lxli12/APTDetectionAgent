@@ -37,3 +37,12 @@ PIDS worker, read-only hidden evaluator, and Agent controller. The controller ro
 has no private-schema access. Phase 7 validates the policy and filesystem IPC but
 does not create roles or change PostgreSQL; live grants remain a manual deployment
 gate.
+
+`src/apt_detection_agent/evaluator/calibration.py` implements the private
+`campaign-coverage-calibration-v1` workflow. It accepts only validation data, a
+versioned nonempty agent-level campaign manifest, unique scored entities, a declared
+universe, checkpoint hash, and code commit. It selects the highest tied-score-safe
+threshold satisfying the requested campaign coverage and emits complete
+`ThresholdProvenance`. Held-out/deployment and benign-only inputs fail closed. The
+calibration result remains evaluator-private until its threshold record is reviewed,
+frozen, and added to the ApprovedConfig catalog; it is never online Agent feedback.

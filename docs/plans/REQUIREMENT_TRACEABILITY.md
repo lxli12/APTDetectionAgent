@@ -48,7 +48,7 @@ and test path is updated when work lands.
 | REQ-EVAL-002 | Node-window, edge, chain, phase, provenance, latency, GPU, and tool-call metrics have separate denominators | 1/7 | distinct private metric maps | denominator-isolation tests | implemented |
 | REQ-EVAL-003 | P@C=100%, MCC, and ADP definitions are versioned | 1/7 | `agent-eval-v1`; metric protocol | numeric fixtures and tie-safe ranking | implemented |
 | REQ-EVAL-004 | Campaign identity comes from a versioned manifest, not a ground-truth filename | 1/7 | privileged `CampaignManifest` | manifest validation tests | implemented |
-| REQ-EVAL-005 | Validation calibrates coverage constraints using agent-level hidden campaigns | 7 | nonempty versioned campaign input gate | benign-only rejection; calibration workflow deferred | partial |
+| REQ-EVAL-005 | Validation calibrates coverage constraints using agent-level hidden campaigns | 7 | `evaluator/calibration.py` private validation-only workflow | exact campaign-level threshold, provenance, held-out/benign-only/unsatisfied negative tests | implemented |
 | REQ-EVAL-006 | Evaluation cannot feed hidden config search during held-out | 5/7 | private evaluator process and artifact-reference feedback | subprocess leakage/overwrite tests | implemented |
 | REQ-ARTIFACT-001 | Every artifact records source config, checkpoint hash, code commit, and producing stage | 1/2 | artifact and run manifests | hash/path/provenance tests | implemented |
 | REQ-ARTIFACT-002 | Missing checkpoints produce unavailable status, never fabricated artifacts | 1/2/8 | checkpoint schema; discovery availability | missing-checkpoint retention tests | implemented |
