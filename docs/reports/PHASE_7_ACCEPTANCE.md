@@ -22,8 +22,15 @@ Evidence on 2026-07-14:
 - governance and compile checks pass; PIDSMaker remains clean.
 
 Local `compileall`, governance, and diff checks passed with 66 requirement IDs and
-the pinned, clean PIDSMaker submodule. Remote evidence is pending the
-commit/push/pull gate.
+the pinned, clean PIDSMaker submodule.
+
+Remote evidence on 2026-07-14 at commit
+`5e7a520aaa50f7b40c6a8f4388bacfd66d70b3b6`:
+
+- clean-tree fast-forward synchronization succeeded;
+- governance and compile checks passed in the existing `pids` environment;
+- full suite: 142/142 passed in 1.973 seconds;
+- no PostgreSQL service, role, schema, or data was changed.
 
 ## Residual deployment gate
 
