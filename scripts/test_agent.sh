@@ -9,6 +9,8 @@ PRIVATE_BASE="${APT_EVALUATOR_PRIVATE_ROOT:-/root/autodl-tmp/apt-agent/evaluator
 RUN_ID=""
 MODE="synthetic"
 PYTHON_BIN="${APT_AGENT_PYTHON:-python}"
+PIDS_RUN=""
+RUNTIME_ROOT=""
 
 STAGES=(validate_frozen_bundle validate_hidden_evaluator_isolation load_chronological_scenario reset_episode_state run_window_stream update_case_and_memory compute_campaign_metrics compute_node_edge_evidence_metrics generate_report write_reproducibility_manifest)
 while [[ $# -gt 0 ]]; do
@@ -17,7 +19,9 @@ while [[ $# -gt 0 ]]; do
     --run-root) RUN_ROOT="$2"; shift 2 ;;
     --private-root) PRIVATE_BASE="$2"; shift 2 ;;
     --mode) MODE="$2"; shift 2 ;;
-    *) echo "usage: $0 --run-id ID [--mode synthetic|real] [--run-root PATH] [--private-root PATH]" >&2; exit 2 ;;
+    --pids-run) PIDS_RUN="$2"; shift 2 ;;
+    --runtime-root) RUNTIME_ROOT="$2"; shift 2 ;;
+    *) echo "usage: $0 --run-id ID [--mode synthetic|real] [--pids-run PATH --runtime-root PATH] [--run-root PATH] [--private-root PATH]" >&2; exit 2 ;;
   esac
 done
 [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || exit 2
@@ -27,6 +31,10 @@ PRIVATE_ROOT="$PRIVATE_BASE/$RUN_ID"
 [[ ! -e "$RUN_DIR" && ! -e "$PRIVATE_ROOT" ]] || { echo "run already exists" >&2; exit 2; }
 
 if [[ "$MODE" == "real" ]]; then
+  if [[ -n "$PIDS_RUN" && -n "$RUNTIME_ROOT" ]]; then
+    exec "$ROOT/scripts/run_real_e2e.sh" --run-id "$RUN_ID" --run-root "$RUN_ROOT" \
+      --private-root "$PRIVATE_BASE" --pids-run "$PIDS_RUN" --runtime-root "$RUNTIME_ROOT"
+  fi
   mkdir "$RUN_DIR"
   printf '{"stage":"validate_frozen_bundle","status":"blocked","reason":"BLOCKED_BY_PHASE8_REAL_PIDS_GATES"}\n' >"$RUN_DIR/stages.jsonl"
   "$PYTHON_BIN" "$ROOT/scripts/finalize_stage_run.py" --run-dir "$RUN_DIR" --status blocked --reason BLOCKED_BY_PHASE8_REAL_PIDS_GATES --evidence-class real_data_preflight

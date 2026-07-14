@@ -13,6 +13,7 @@ from .common import (
     RunStatus,
     TransductiveStatus,
 )
+from .detection import EntityAnomalyScore, StandardizedDetectionResult
 from .evaluation import EpisodeMetricsFeedback, TrainingStepFeedback, assert_deployable_payload
 from .memory import MemoryLayer, MemoryRecord, StaticLTMSnapshot
 from .pids import (
@@ -59,6 +60,7 @@ __all__ = [
     "DataSplit",
     "DetectionAlert",
     "DetectionUnit",
+    "EntityAnomalyScore",
     "EpisodeMetricsFeedback",
     "ExperimentClass",
     "MemoryLayer",
@@ -74,6 +76,7 @@ __all__ = [
     "ScoreSummary",
     "StageTrace",
     "StaticLTMSnapshot",
+    "StandardizedDetectionResult",
     "ThresholdProvenance",
     "ThresholdSourceSplit",
     "TimeWindow",
