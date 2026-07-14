@@ -9,5 +9,24 @@ from apt_detection_agent.schemas.evaluation import (
     EvaluationRecord,
     HiddenGroundTruth,
 )
+from .engine import (
+    METRIC_DEFINITION_VERSION,
+    HiddenEvaluationInput,
+    HiddenEvaluationOutput,
+    HiddenEvaluator,
+    ScoredEntity,
+)
+from .ipc import DatabaseRolePolicy, EvaluatorIPCPaths
 
-__all__ = ["CampaignManifest", "EvaluationRecord", "HiddenGroundTruth"]
+__all__ = [
+    "CampaignManifest",
+    "EvaluationRecord",
+    "DatabaseRolePolicy",
+    "EvaluatorIPCPaths",
+    "HiddenEvaluationInput",
+    "HiddenEvaluationOutput",
+    "HiddenEvaluator",
+    "HiddenGroundTruth",
+    "METRIC_DEFINITION_VERSION",
+    "ScoredEntity",
+]
