@@ -14,84 +14,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from apt_detection_agent.evaluator import CampaignManifest, HiddenEvaluationInput, ScoredEntity
-from apt_detection_agent.schemas import DataSplit
+from apt_detection_agent.evaluator.synthetic_fixture import build_synthetic_hidden_input
 
 
 ROOT = Path(__file__).resolve().parents[1]
-NOW = datetime(2026, 1, 1, 1, 1, tzinfo=timezone.utc)
-
-
-def private_evaluation_request() -> HiddenEvaluationInput:
-    campaigns = (
-        CampaignManifest(
-            manifest_version="synthetic-campaigns-v1",
-            campaign_id="synthetic-campaign-a",
-            dataset_id="synthetic-private-fixture",
-            attack_date_range=(NOW - timedelta(hours=1), NOW),
-            included_window_ids=("synthetic-window-1",),
-            malicious_entity_ids=("node-a",),
-            ground_truth_sources=("synthetic-private-source",),
-        ),
-        CampaignManifest(
-            manifest_version="synthetic-campaigns-v1",
-            campaign_id="synthetic-campaign-b",
-            dataset_id="synthetic-private-fixture",
-            attack_date_range=(NOW - timedelta(hours=1), NOW),
-            included_window_ids=("synthetic-window-3",),
-            malicious_entity_ids=("node-b",),
-            ground_truth_sources=("synthetic-private-source",),
-        ),
-    )
-    return HiddenEvaluationInput(
-        evaluation_id="synthetic-evaluation-1",
-        split=DataSplit.HELD_OUT,
-        scenario_id="synthetic-scenario-1",
-        episode_id="synthetic-episode-1",
-        campaign_manifest_version="synthetic-campaigns-v1",
-        campaigns=campaigns,
-        scored_entities=(
-            ScoredEntity(
-                entity_id="node-a",
-                score=0.9,
-                alerted=True,
-                window_ids=("synthetic-window-1",),
-                evidence_artifact_ids=("visible-evidence-1",),
-            ),
-            ScoredEntity(
-                entity_id="node-c",
-                score=0.8,
-                alerted=True,
-                window_ids=("synthetic-window-2",),
-            ),
-            ScoredEntity(
-                entity_id="node-b",
-                score=0.7,
-                alerted=True,
-                window_ids=("synthetic-window-3",),
-                evidence_artifact_ids=("visible-evidence-3",),
-            ),
-            ScoredEntity(entity_id="node-d", score=0.1, alerted=False),
-        ),
-        universe_entity_ids=("node-a", "node-b", "node-c", "node-d"),
-        malicious_node_window_occurrences=(
-            ("synthetic-window-1", "node-a"),
-            ("synthetic-window-3", "node-b"),
-        ),
-        malicious_edges=(("node-a", "node-b"),),
-        recovered_edges=(("node-a", "node-b"),),
-        attack_chain_edges=(("node-a", "node-b"),),
-        phase_to_malicious_entities={"execution": ("node-a",), "persistence": ("node-b",)},
-        latency_seconds=1.0,
-        gpu_seconds=0.0,
-        tool_calls=1,
-        computed_at=NOW,
-    )
-
-
 class SyntheticEndToEndTests(unittest.TestCase):
     def _public_environment(self) -> dict[str, str]:
         return {
@@ -135,7 +63,7 @@ class SyntheticEndToEndTests(unittest.TestCase):
             request_path = private_root / "request.json"
             private_metrics_path = private_root / "metrics.json"
             feedback_path = run_dir / "evaluation_feedback.json"
-            request_path.write_text(private_evaluation_request().model_dump_json())
+            request_path.write_text(build_synthetic_hidden_input().model_dump_json())
             evaluator_environment = {
                 **self._public_environment(),
                 "HIDDEN_EVALUATOR_PRIVATE_ROOT": str(private_root),
