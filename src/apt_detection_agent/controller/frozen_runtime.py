@@ -30,8 +30,10 @@ from apt_detection_agent.schemas import (
     FrozenActionDecision,
     FrozenActionType,
     FrozenCaseState,
+    FrozenMemoryExchange,
     FrozenWindowTransactionRecord,
     HighLevelToolOutcome,
+    MemoryDecisionEnvelope,
     ModelPromptObservation,
     PendingDetectionState,
     RawExecutionState,
@@ -48,6 +50,7 @@ class FrozenRuntimeConfig(StrictModel):
     trigger_source_split: DataSplit
     additional_cycle_budget_policy_id: Identifier = "unresolved-requires-experiment"
     max_additional_detector_cycles: int = Field(default=1, ge=0, le=8)
+    require_frozen_memory_protocol: bool = True
 
     @model_validator(mode="after")
     def trigger_is_validation_frozen(self) -> "FrozenRuntimeConfig":
@@ -101,7 +104,10 @@ PromptBuilder = Callable[
     ],
     ModelPromptObservation,
 ]
-SlowPathPolicy = Callable[[ModelPromptObservation, FrozenCaseState], FrozenActionDecision]
+SlowPathPolicy = Callable[
+    [ModelPromptObservation, FrozenCaseState],
+    FrozenActionDecision | MemoryDecisionEnvelope,
+]
 ActionExecutor = Callable[[FrozenActionDecision, FrozenCaseState], ActionExecutionEnvelope]
 
 
@@ -157,6 +163,17 @@ class FrozenTransactionLogger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(record.model_dump_json() + "\n")
+            handle.flush()
+
+    def append_memory_exchange(self, exchange: FrozenMemoryExchange) -> None:
+        path = self.path.with_name("memory_exchanges.jsonl")
+        if path.exists():
+            for line in path.read_text().splitlines():
+                if line.strip() and json.loads(line).get("exchange_id") == exchange.exchange_id:
+                    raise ValueError("memory exchange identity is append-only")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(exchange.model_dump_json() + "\n")
             handle.flush()
 
 
@@ -345,6 +362,7 @@ class FrozenRuntimeController:
         additional_outcomes: list[HighLevelToolOutcome] = []
         additional_results: list[AdditionalDetectorResult] = []
         persistent_outcomes: list[HighLevelToolOutcome] = []
+        memory_exchanges: list[FrozenMemoryExchange] = []
         pending_after = case.pending_state
 
         if not trigger.triggered:
@@ -359,7 +377,14 @@ class FrozenRuntimeController:
                 ):
                     raise ValueError("prompt projection changed canonical/trigger identity")
                 prompts.append(prompt)
-                action = self.policy(prompt, case)
+                policy_output = self.policy(prompt, case)
+                if isinstance(policy_output, MemoryDecisionEnvelope):
+                    action = policy_output.action
+                    memory_exchanges.append(policy_output.exchange)
+                else:
+                    if self.config.require_frozen_memory_protocol:
+                        raise ValueError("slow path requires frozen two-turn memory protocol")
+                    action = policy_output
                 self._validate_agent_action(action, canonical, case)
                 actions.append(action)
                 if action.action_type in {
@@ -439,6 +464,12 @@ class FrozenRuntimeController:
             canonical_observation=canonical,
             trigger=trigger,
             model_prompt_observations=tuple(prompts),
+            memory_protocol_status=(
+                "frozen-two-turn"
+                if self.config.require_frozen_memory_protocol
+                else "legacy-no-memory-protocol"
+            ),
+            memory_exchange_ids=tuple(exchange.exchange_id for exchange in memory_exchanges),
             action_decisions=tuple(actions),
             additional_detector_tool_calls=tuple(additional_outcomes),
             additional_detector_results=tuple(additional_results),
@@ -448,5 +479,7 @@ class FrozenRuntimeController:
             started_at=started_at,
             ended_at=ended_at,
         )
+        for exchange in memory_exchanges:
+            self.transaction_logger.append_memory_exchange(exchange)
         self.transaction_logger.append(record)
         return FrozenWindowStepResult(record=record, next_case=next_case)

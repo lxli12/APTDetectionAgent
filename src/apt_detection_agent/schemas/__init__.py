@@ -50,6 +50,16 @@ from .common import (
 from .detection import EntityAnomalyScore, StandardizedDetectionResult
 from .evaluation import EpisodeMetricsFeedback, TrainingStepFeedback, assert_deployable_payload
 from .memory import MemoryLayer, MemoryRecord, StaticLTMSnapshot
+from .memory_runtime import (
+    FrozenMemoryExchange,
+    MemoryActionResponse,
+    MemoryDecisionEnvelope,
+    MemoryDisposition,
+    MemoryReadRequest,
+    MemoryRetrievalResult,
+    MemoryUseDecision,
+    MemoryWriteCandidate,
+)
 from .pids import (
     ApprovedConfig,
     CalibrationMethod,
@@ -117,10 +127,18 @@ __all__ = [
     "FrozenActionDecision",
     "FrozenActionType",
     "FrozenCaseState",
+    "FrozenMemoryExchange",
     "FrozenWindowTransactionRecord",
     "HighLevelToolOutcome",
     "MemoryLayer",
+    "MemoryActionResponse",
+    "MemoryDecisionEnvelope",
+    "MemoryDisposition",
+    "MemoryReadRequest",
     "MemoryRecord",
+    "MemoryRetrievalResult",
+    "MemoryUseDecision",
+    "MemoryWriteCandidate",
     "ModelPromptObservation",
     "Observation",
     "PIDSCapability",

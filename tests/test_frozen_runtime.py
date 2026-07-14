@@ -205,6 +205,7 @@ class FrozenRuntimeTests(unittest.TestCase):
                 trigger_profile_id="validated-trigger-v1",
                 trigger_source_split=DataSplit.VALIDATION,
                 max_additional_detector_cycles=1,
+                require_frozen_memory_protocol=False,
             ),
             committed_executor=committed_bundle,
             canonical_builder=lambda bundle, state: canonical_observation(),

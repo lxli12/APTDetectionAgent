@@ -20,6 +20,7 @@ from .observation_builders import (
     FrozenTriggerProfile,
     PromptBuilderConfig,
 )
+from .memory_protocol import FrozenMemoryProtocol
 from .scheduler import ResourceProfile, ResourceRequest, ResourceScheduler, WorkloadKind
 from .trajectory import TrajectoryLogger, TrajectoryStep
 
@@ -37,6 +38,7 @@ __all__ = [
     "DeterministicTriggerPolicy",
     "FrozenRuntimeConfig",
     "FrozenRuntimeController",
+    "FrozenMemoryProtocol",
     "FrozenTriggerProfile",
     "FrozenTransactionLogger",
     "FrozenWindowStepResult",

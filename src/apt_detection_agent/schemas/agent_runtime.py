@@ -526,6 +526,8 @@ class FrozenWindowTransactionRecord(StrictModel):
     canonical_observation: CanonicalAgentVisibleObservation
     trigger: TriggerRecord
     model_prompt_observations: tuple[ModelPromptObservation, ...] = ()
+    memory_protocol_status: Identifier
+    memory_exchange_ids: tuple[Identifier, ...] = ()
     action_decisions: tuple[FrozenActionDecision, ...] = Field(min_length=1)
     additional_detector_tool_calls: tuple[HighLevelToolOutcome, ...] = ()
     additional_detector_results: tuple[AdditionalDetectorResult, ...] = ()
@@ -594,6 +596,14 @@ class FrozenWindowTransactionRecord(StrictModel):
                 raise ValueError("slow-path actions must be authored by the LLM Agent")
             if any(prompt.trigger != self.trigger for prompt in self.model_prompt_observations):
                 raise ValueError("prompt trigger provenance changed within transaction")
+            if self.memory_protocol_status == "frozen-two-turn":
+                if len(self.memory_exchange_ids) != len(self.model_prompt_observations):
+                    raise ValueError("each prompt requires one frozen memory exchange")
+            elif self.memory_protocol_status == "legacy-no-memory-protocol":
+                if self.memory_exchange_ids:
+                    raise ValueError("legacy trace cannot claim memory exchanges")
+            else:
+                raise ValueError("unknown memory protocol status")
         if len(self.additional_detector_tool_calls) != len(self.additional_detector_results):
             raise ValueError("each additional detector call requires a separate result")
         if any(result.committed for result in self.additional_detector_results):
