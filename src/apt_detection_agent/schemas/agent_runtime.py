@@ -90,6 +90,8 @@ class PendingDetectionState(StrictModel):
     target_threshold_id: Identifier
     target_resource_preset_id: Identifier
     state_initialization_policy_id: Identifier
+    target_state_token: Identifier
+    target_state_health: Identifier
     rollback_state_id: Identifier
 
     @model_validator(mode="after")
@@ -481,4 +483,119 @@ class FrozenActionDecision(StrictModel):
             FrozenActionType.FINISH_DIAGNOSIS,
         }:
             raise ValueError("fallback must be a terminal no-tool action")
+        return self
+
+
+class HighLevelToolOutcome(StrictModel):
+    schema_version: str = "high-level-tool-outcome-v1"
+    outcome_id: Identifier
+    action_id: Identifier
+    tool_name: ToolName
+    status: RunStatus
+    approved_choice_id: Identifier
+    result_id: Identifier | None = None
+    pending_change_id: Identifier | None = None
+    sanitized_failure_code: Identifier | None = None
+    provenance_id: Identifier
+
+    @model_validator(mode="after")
+    def outcome_is_atomic_and_typed(self) -> "HighLevelToolOutcome":
+        if self.status == RunStatus.SUCCEEDED:
+            if self.sanitized_failure_code:
+                raise ValueError("successful high-level tool cannot carry failure")
+            if not self.result_id and not self.pending_change_id:
+                raise ValueError("successful high-level tool requires one durable outcome")
+        elif not self.sanitized_failure_code:
+            raise ValueError("non-success high-level tool requires typed failure")
+        if self.result_id and self.pending_change_id:
+            raise ValueError("tool outcome cannot be both evidence and pending transition")
+        return self
+
+
+class FrozenWindowTransactionRecord(StrictModel):
+    schema_version: str = "frozen-window-transaction-v1"
+    transaction_id: Identifier
+    case_id: Identifier
+    scenario_id: Identifier
+    episode_id: Identifier
+    split: DataSplit
+    window_id: Identifier
+    window_sequence_number: int = Field(ge=0)
+    committed_fast_path_result: CommittedFastPathResult
+    raw_execution_state: RawExecutionState
+    canonical_observation: CanonicalAgentVisibleObservation
+    trigger: TriggerRecord
+    model_prompt_observations: tuple[ModelPromptObservation, ...] = ()
+    action_decisions: tuple[FrozenActionDecision, ...] = Field(min_length=1)
+    additional_detector_tool_calls: tuple[HighLevelToolOutcome, ...] = ()
+    additional_detector_results: tuple[AdditionalDetectorResult, ...] = ()
+    persistent_tool_outcomes: tuple[HighLevelToolOutcome, ...] = ()
+    pending_state_before_window: PendingDetectionState | None = None
+    pending_state_after_window: PendingDetectionState | None = None
+    started_at: Timestamp
+    ended_at: Timestamp
+
+    @model_validator(mode="after")
+    def transaction_preserves_commit_and_authorship(self) -> "FrozenWindowTransactionRecord":
+        if self.ended_at < self.started_at:
+            raise ValueError("transaction timing is invalid")
+        identity = (
+            self.case_id,
+            self.scenario_id,
+            self.episode_id,
+            self.split,
+            self.window_id,
+            self.window_sequence_number,
+        )
+        committed = self.committed_fast_path_result
+        committed_identity = (
+            committed.case_id,
+            committed.scenario_id,
+            committed.episode_id,
+            committed.split,
+            committed.window.window_id,
+            committed.window.sequence_number,
+        )
+        if identity != committed_identity:
+            raise ValueError("transaction and committed result identities disagree")
+        if self.raw_execution_state.result_id != committed.result_id:
+            raise ValueError("raw state does not describe committed result")
+        if self.canonical_observation.source_raw_state_id != self.raw_execution_state.raw_state_id:
+            raise ValueError("canonical observation does not derive from raw state")
+        if any(
+            self.canonical_observation.observation_id != action.based_on_observation_id
+            for action in self.action_decisions
+        ):
+            raise ValueError("action does not cite canonical observation")
+        if not self.trigger.triggered:
+            action = self.action_decisions[0]
+            if self.model_prompt_observations or len(self.action_decisions) != 1:
+                raise ValueError("untriggered window cannot contain an assistant turn")
+            if self.additional_detector_tool_calls or self.additional_detector_results:
+                raise ValueError("untriggered window cannot contain slow-path evidence")
+            if self.persistent_tool_outcomes:
+                raise ValueError("untriggered window cannot reconfigure state")
+            if self.pending_state_after_window != self.pending_state_before_window:
+                raise ValueError("untriggered window cannot change pending state")
+            if (
+                action.action_type != FrozenActionType.KEEP_CURRENT_CONFIG
+                or action.decision_source != DecisionSource.HARNESS_DEFAULT
+            ):
+                raise ValueError("untriggered action must be harness-default keep")
+        else:
+            if not self.model_prompt_observations:
+                raise ValueError("triggered window requires a prompt observation")
+            if len(self.model_prompt_observations) != len(self.action_decisions):
+                raise ValueError("each slow-path decision requires its own prompt projection")
+            if any(
+                action.decision_source != DecisionSource.LLM_AGENT
+                for action in self.action_decisions
+            ):
+                raise ValueError("slow-path actions must be authored by the LLM Agent")
+            if any(prompt.trigger != self.trigger for prompt in self.model_prompt_observations):
+                raise ValueError("prompt trigger provenance changed within transaction")
+        if len(self.additional_detector_tool_calls) != len(self.additional_detector_results):
+            raise ValueError("each additional detector call requires a separate result")
+        if any(result.committed for result in self.additional_detector_results):
+            raise ValueError("additional detector result cannot replace committed result")
         return self
