@@ -395,3 +395,11 @@
 @@ -215,0 +215,2 @@
 +            from pidsmaker.experiments.uncertainty import activate_dropout_inference
 +
+--- a/pidsmaker/utils/utils.py
++++ b/pidsmaker/utils/utils.py
+@@ -33 +33,4 @@
+-nltk.download("punkt", quiet=True)
++try:
++    nltk.data.find("tokenizers/punkt")
++except LookupError as exc:
++    raise RuntimeError("preinstalled NLTK punkt data is required; runtime downloads are disabled") from exc

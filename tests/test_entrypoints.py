@@ -138,6 +138,8 @@ class FormalEntrypointTests(unittest.TestCase):
         combined = "\n".join(path.read_text() for path in remote_root.glob("*.sh"))
         self.assertIn("BLOCKED_BY_MISSING_TMUX", start)
         self.assertIn("owned_session.txt", stop)
+        self.assertIn("tmux send-keys", stop)
+        self.assertIn("kill -TERM --", stop)
         self.assertNotIn("git reset", combined)
         self.assertNotIn("rm -rf", combined)
 

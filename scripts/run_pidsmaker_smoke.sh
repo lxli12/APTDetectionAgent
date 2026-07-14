@@ -48,6 +48,7 @@ on_exit() {
   fi
 }
 trap on_exit EXIT
+trap 'exit 143' HUP INT TERM
 
 printf '%q ' "$0" --run-id "$RUN_ID" --run-root "$RUN_ROOT" \
   --pidsmaker-root "$PIDSMaker_ROOT" >"$RUN_DIR/command.txt"

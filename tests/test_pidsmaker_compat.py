@@ -45,6 +45,8 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
         self.assertIn("test_data_used_for_selection", patch_text)
         self.assertIn("-import wandb", patch_text)
         self.assertNotIn("+import wandb", patch_text)
+        self.assertIn('-nltk.download("punkt", quiet=True)', patch_text)
+        self.assertIn('nltk.data.find("tokenizers/punkt")', patch_text)
         self.assertIn(
             "from pidsmaker.experiments.uncertainty import activate_dropout_inference",
             patch_text,
@@ -66,6 +68,7 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
             / "training_methods"
             / "training_loop.py",
             source / "pidsmaker" / "model.py",
+            source / "pidsmaker" / "utils" / "utils.py",
         )
         before = tuple(digest(path) for path in tracked)
         with tempfile.TemporaryDirectory() as temp:
@@ -91,6 +94,7 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
                 / "build_default_graphs.py"
             ).read_text()
             patched_model = (output / "pidsmaker" / "model.py").read_text()
+            patched_utils = (output / "pidsmaker" / "utils" / "utils.py").read_text()
             marker_exists = (output / ".apt-pidsmaker-compat.json").is_file()
             git_marker_exists = (output / ".git").exists()
         self.assertEqual(marker["upstream_commit"], builder.PINNED_COMMIT)
@@ -104,6 +108,8 @@ class PIDSMakerCompatibilityBuildTests(unittest.TestCase):
             patched_model,
         )
         self.assertIn("if self.is_running_mc_dropout:", patched_model)
+        self.assertNotIn("nltk.download", patched_utils)
+        self.assertIn('nltk.data.find("tokenizers/punkt")', patched_utils)
         self.assertIn("cur.execute(sql, (start_ns_timestamp, end_ns_timestamp))", patched_query)
         self.assertEqual(before, tuple(digest(path) for path in tracked))
 

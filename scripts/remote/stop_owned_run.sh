@@ -10,5 +10,18 @@ MARKER="$CONTROL_ROOT/$RUN_ID/owned_session.txt"
 [[ -f "$MARKER" && "$(cat "$MARKER")" == "$SESSION" ]] || { echo "not an owned run" >&2; exit 3; }
 command -v tmux >/dev/null || { echo "tmux unavailable" >&2; exit 3; }
 tmux has-session -t "$SESSION" 2>/dev/null || { echo "owned session is not running"; exit 0; }
-tmux kill-session -t "$SESSION"
+pane_pid="$(tmux list-panes -t "$SESSION" -F '#{pane_pid}' | head -1)"
+[[ "$pane_pid" =~ ^[0-9]+$ ]] || { echo "cannot identify owned pane process" >&2; exit 3; }
+tmux send-keys -t "$SESSION" C-c
+for attempt in 1 2 3 4 5; do
+  if ! tmux has-session -t "$SESSION" 2>/dev/null; then break; fi
+  sleep 1
+done
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  pgid="$(ps -o pgid= -p "$pane_pid" | tr -d ' ')"
+  tmux kill-session -t "$SESSION"
+  if [[ "$pgid" =~ ^[0-9]+$ && "$pgid" -gt 1 ]]; then
+    kill -TERM -- "-$pgid" 2>/dev/null || true
+  fi
+fi
 echo "stopped owned session $SESSION"
