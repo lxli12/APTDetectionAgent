@@ -27,9 +27,18 @@ Evidence on 2026-07-14:
 - `git diff --check`: passed;
 - PIDSMaker submodule status: clean.
 
-Remote evidence: pending commit, push, clean-tree fast-forward pull, and execution
-inside the existing `pids` environment. No real pipeline, database, vLLM service,
-or experiment is needed for this synthetic temporal acceptance.
+Remote evidence on 2026-07-14 at main-project commit
+`9f21535abce42b959d7f76571e7da11c7056ad1d` and PIDSMaker commit
+`32602734bc9f896be5fc0f03f0a185c967cd6624`:
+
+- pre-pull main tree and PIDSMaker submodule were clean;
+- GitHub synchronization was a fast-forward pull; the temporary AutoDL academic
+  proxy was cleared in the same SSH shell;
+- governance and `compileall` passed in the existing `pids` environment;
+- full suite: 91/91 passed in 1.618 seconds.
+
+The smoke did not start a real pipeline, PostgreSQL, vLLM, or an experiment and did
+not install or modify any dependency.
 
 ## Invariants exercised
 
