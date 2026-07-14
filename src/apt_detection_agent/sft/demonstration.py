@@ -307,10 +307,7 @@ class CanonicalDemonstrationTrajectory(StrictModel):
         expected_prompt = self.initial_prompt
         visible_ids: set[str] = set(expected_prompt.visible_evidence_ids)
         visible_ids.add(expected_prompt.canonical_observation_id)
-        available_choices: set[str] = set()
-        prompt_payload = json.loads(expected_prompt.rendered_text)
-        for option in prompt_payload.get("canonical_observation", {}).get("capability_options", []):
-            available_choices.update(option.get("approved_candidate_ids", []))
+        available_choices = _visible_approved_choices(expected_prompt)
         for index, exchange in enumerate(self.exchanges):
             if exchange.memory_exchange.prompt != expected_prompt:
                 raise ValueError("demonstration prompt sequence is not causal")
@@ -331,10 +328,7 @@ class CanonicalDemonstrationTrajectory(StrictModel):
                     raise ValueError("supplemental prompt requires a following decision exchange")
                 expected_prompt = exchange.supplemental_prompt
                 visible_ids.update(expected_prompt.visible_evidence_ids)
-                available_choices = set()
-                next_payload = json.loads(expected_prompt.rendered_text)
-                for option in next_payload.get("canonical_observation", {}).get("capability_options", []):
-                    available_choices.update(option.get("approved_candidate_ids", []))
+                available_choices = _visible_approved_choices(expected_prompt)
             elif index + 1 < len(self.exchanges):
                 raise ValueError("new exchange requires a prior supplemental prompt")
         if CoverageClass.SUCCESSFUL_TOOL_USE in self.coverage_classes and not self.source_admission_ids:
@@ -362,3 +356,28 @@ class DemonstrationRejection(StrictModel):
 def _hash(payload: object) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def _visible_approved_choices(prompt: ModelPromptObservation) -> set[str]:
+    """Extract choices only from a canonical structured prompt; opaque text grants none."""
+
+    try:
+        payload = json.loads(prompt.rendered_text)
+    except json.JSONDecodeError:
+        return set()
+    if not isinstance(payload, dict):
+        return set()
+    observation = payload.get("canonical_observation", {})
+    if not isinstance(observation, dict):
+        return set()
+    choices: set[str] = set()
+    options = observation.get("capability_options", [])
+    if not isinstance(options, list):
+        return set()
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        candidate_ids = option.get("approved_candidate_ids", [])
+        if isinstance(candidate_ids, list):
+            choices.update(item for item in candidate_ids if isinstance(item, str))
+    return choices
