@@ -50,6 +50,21 @@ def validate(bundle: Path) -> dict[str, object]:
     checkpoint = child(bundle, availability["checkpoint_relative_path"])
     featurizer = child(bundle, availability["featurizer_relative_path"])
     checkpoint_hash = tree_hash(checkpoint)
+    references = availability.get("reference_windows")
+    if not isinstance(references, dict):
+        raise ValueError("bundle lacks frozen reference windows")
+    reference_intervals: list[tuple[int, int]] = []
+    for split in ("train", "val"):
+        window = references.get(split)
+        if not isinstance(window, dict) or window.get("boundary") != "[start,end)":
+            raise ValueError("bundle reference window is malformed")
+        start_ns = int(window["start_ns"])
+        end_ns = int(window["end_ns"])
+        if end_ns <= start_ns:
+            raise ValueError("bundle reference window is empty")
+        reference_intervals.append((start_ns, end_ns))
+    if reference_intervals[0][1] > reference_intervals[1][0]:
+        raise ValueError("bundle train/validation reference windows overlap")
     if (
         manifest.get("status") != "validation_candidate_frozen"
         or manifest.get("sft_dataset_included") is not False

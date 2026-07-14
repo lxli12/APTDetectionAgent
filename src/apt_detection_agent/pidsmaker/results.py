@@ -89,6 +89,9 @@ def standardize_frozen_test_scores(
     threshold: ThresholdProvenance,
     *,
     created_at: datetime | None = None,
+    split: DataSplit = DataSplit.VALIDATION,
+    pids: PIDSRef | None = None,
+    window: TimeWindow | None = None,
 ) -> StandardizedDetectionResult:
     run = pids_run.resolve()
     pipeline = run / "pids_artifacts" / "pipeline"
@@ -105,6 +108,12 @@ def standardize_frozen_test_scores(
     end = datetime.fromtimestamp(end_ns / 1_000_000_000, zone)
     origin = start.replace(hour=0, minute=0, second=0, microsecond=0)
     sequence = int((start - origin).total_seconds()) // int(resolved["window_size_seconds"])
+    if window is not None and (
+        int(window.start.timestamp() * 1_000_000_000) != start_ns
+        or int(window.end.timestamp() * 1_000_000_000) != end_ns
+        or window.timezone != str(resolved["timezone"])
+    ):
+        raise ValueError("requested window does not match PIDSMaker score provenance")
 
     scores: dict[str, float] = {}
     evidence: dict[str, set[str]] = defaultdict(set)
@@ -133,15 +142,16 @@ def standardize_frozen_test_scores(
         for entity_id, score in sorted(scores.items(), key=lambda item: int(item[0]))
     )
     return StandardizedDetectionResult(
-        result_id=f"velox-cadets-{checkpoint['checkpoint_hash'][:12]}",
-        split=DataSplit.VALIDATION,
-        pids=PIDSRef(pids_id="velox"),
+        result_id=f"{checkpoint['source_config_id']}-{checkpoint['checkpoint_hash'][:12]}",
+        split=split,
+        pids=pids or PIDSRef(pids_id="velox"),
         dataset_id=str(checkpoint["dataset_id"]),
         source_config_id=str(checkpoint["source_config_id"]),
         checkpoint_hash=str(checkpoint["checkpoint_hash"]),
         threshold=threshold,
-        window=TimeWindow(
-            window_id="cadets-e3-20180406t1200",
+        window=window
+        or TimeWindow(
+            window_id=f"{str(checkpoint['dataset_id']).lower()}-{start_ns}",
             sequence_number=sequence,
             origin_time=origin,
             timezone=str(resolved["timezone"]),

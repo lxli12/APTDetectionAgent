@@ -15,6 +15,8 @@ class PreSFTValidationTests(unittest.TestCase):
         self.assertIn('availability.get("held_out_approved") is not False', text)
         self.assertIn('availability.get("deployment_approved") is not False', text)
         self.assertIn('threshold.get("source_split") != "validation"', text)
+        self.assertIn('for split in ("train", "val")', text)
+        self.assertIn('window.get("boundary") != "[start,end)"', text)
 
 
 if __name__ == "__main__":

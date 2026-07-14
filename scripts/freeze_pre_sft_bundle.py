@@ -153,6 +153,9 @@ def main() -> int:
         "checkpoint_relative_path": checkpoint_out.relative_to(output).as_posix(),
         "featurizer_relative_path": featurizer_out.relative_to(output).as_posix(),
         "threshold_id": threshold.threshold_id,
+        "reference_windows": {
+            split: resolved["split_windows"][split] for split in ("train", "val")
+        },
         "held_out_approved": False,
         "deployment_approved": False,
         "unavailable_reason_for_held_out": "full agent-level validation campaign set is not yet complete",

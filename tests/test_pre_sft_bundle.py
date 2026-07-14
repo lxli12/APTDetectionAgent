@@ -23,6 +23,8 @@ class PreSFTBundleTests(unittest.TestCase):
         text = (ROOT / "scripts" / "freeze_pre_sft_bundle.py").read_text()
         self.assertIn("frozen_validation_checkpoint", text)
         self.assertIn("word2vec.model", text)
+        self.assertIn('"reference_windows"', text)
+        self.assertIn('for split in ("train", "val")', text)
         self.assertNotIn("campaign_manifest.json", text)
         self.assertNotIn("evaluator-private", text)
 
