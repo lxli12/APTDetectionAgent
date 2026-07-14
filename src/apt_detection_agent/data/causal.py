@@ -21,7 +21,7 @@ from apt_detection_agent.schemas.common import (
     TransductiveStatus,
     require_utc_offset,
 )
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 from apt_detection_agent.schemas.runtime import TimeWindow
 
 

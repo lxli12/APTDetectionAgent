@@ -13,7 +13,7 @@ from pydantic import Field, field_validator, model_validator
 
 from apt_detection_agent.schemas import AgentAction, DataSplit, Observation
 from apt_detection_agent.schemas.common import GitSha, Identifier, Sha256, StrictModel, Timestamp
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 
 BLOCKED_BY_SFT_DATASET = "BLOCKED_BY_SFT_DATASET"

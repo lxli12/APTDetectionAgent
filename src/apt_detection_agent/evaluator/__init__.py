@@ -4,7 +4,7 @@ This namespace must not be imported by the Agent controller process.
 Requirements: REQ-LABEL-001..004, REQ-EVAL-001..007.
 """
 
-from apt_detection_agent.schemas.evaluation import (
+from .contracts import (
     CampaignManifest,
     EvaluationRecord,
     HiddenGroundTruth,

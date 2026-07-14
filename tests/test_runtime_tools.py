@@ -11,14 +11,17 @@ from apt_detection_agent.schemas import (
     AdmittedUse,
     AdditionalDetectorResult,
     AvailabilityStatus,
+    CacheReuseClass,
     CalibrationMethod,
     DataSplit,
+    DecisionSource,
     DetectionUnit,
     ExperimentClass,
-    FrozenActionDecision,
+    ExecutableAction,
     FrozenActionType,
     PIDSAdmissionRecord,
     PIDSRef,
+    RecomputationScope,
     RunStatus,
     ScoreSummary,
     ThresholdProvenance,
@@ -41,7 +44,6 @@ from apt_detection_agent.tooling import (
 )
 from apt_detection_agent.pidsmaker import PIDSMakerDiscovery
 from tests.test_agent_runtime_contract import NOW, window
-from tests.test_frozen_runtime import action as base_action
 from tests.test_frozen_runtime import case
 from tests.test_pids_admission import record as admission_payload
 
@@ -117,17 +119,34 @@ def decision(
     tool: ToolName,
     *,
     effective: int | None,
-) -> FrozenActionDecision:
-    payload = base_action(FrozenActionType.KEEP_CURRENT_CONFIG).model_dump()
-    payload.update(
-        {
-            "action_type": action_type,
-            "approved_choice_id": choice_id,
-            "requested_tool": tool,
-            "effective_sequence_number": effective,
-        }
+) -> ExecutableAction:
+    return ExecutableAction(
+        proposal_id="proposal-1",
+        action_id="action-1",
+        action_type=action_type,
+        decision_source=DecisionSource.LLM_AGENT,
+        case_id="case-1",
+        window_id="window-1",
+        current_sequence_number=1,
+        based_on_observation_id="observation-1",
+        diagnosis_code="visible-symptom",
+        visible_evidence_ids=("evidence-1",),
+        requested_tool=tool,
+        approved_choice_id=choice_id,
+        expected_effect="bounded-runtime-effect",
+        recomputation_scope=(
+            RecomputationScope.CONFIGURATION_DEPENDENT
+            if effective is not None
+            else RecomputationScope.TRAINING_REQUIRED
+            if action_type == FrozenActionType.RETRAIN_DETECTOR
+            else RecomputationScope.INFERENCE_ONLY
+        ),
+        cache_reuse_class=CacheReuseClass.NONE,
+        effective_sequence_number=effective,
+        confidence=0.8,
+        commit_policy="no-current-window-rewrite",
+        fallback_policy=FrozenActionType.KEEP_CURRENT_CONFIG,
     )
-    return FrozenActionDecision.model_validate(payload)
 
 
 class RuntimeToolTests(unittest.TestCase):

@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from apt_detection_agent.schemas import DataSplit
-from apt_detection_agent.schemas.evaluation import CampaignManifest
+from .contracts import CampaignManifest
 
 from .engine import HiddenEvaluationInput, ScoredEntity
 

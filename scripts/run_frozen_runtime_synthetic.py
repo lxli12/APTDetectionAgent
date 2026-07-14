@@ -33,20 +33,19 @@ from apt_detection_agent.schemas import (
     CommittedDetectionState,
     CommittedFastPathResult,
     DataSplit,
-    DecisionSource,
     DetectionAlert,
     DetectionSignalSummary,
     DetectionUnit,
     EnvironmentSummary,
     ExecutionRole,
     ExecutionSummary,
-    FrozenActionDecision,
     FrozenActionType,
     FrozenCaseState,
     MemoryActionResponse,
     MemoryReadRequest,
     MemoryRetrievalResult,
     PIDSRef,
+    ProposedAction,
     RawExecutionState,
     RecomputationScope,
     RunStatus,
@@ -55,7 +54,7 @@ from apt_detection_agent.schemas import (
     ScoreSummary,
     TimeWindow,
 )
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 
 ORIGIN = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -232,21 +231,14 @@ def _memory_protocol() -> FrozenMemoryProtocol:
         )
 
     def decide(prompt, result, case):
-        action = FrozenActionDecision(
-            action_id=f"synthetic-finish-{prompt.prompt_id}",
+        action = ProposedAction(
+            proposal_id=f"synthetic-finish-{prompt.prompt_id}",
             action_type=FrozenActionType.FINISH_DIAGNOSIS,
-            decision_source=DecisionSource.LLM_AGENT,
-            case_id=case.case_id,
-            window_id=f"synthetic-window-{case.current_window_sequence}",
-            current_sequence_number=case.current_window_sequence,
             based_on_observation_id=prompt.canonical_observation_id,
             diagnosis_code="synthetic-visible-alert-volume",
             visible_evidence_ids=prompt.visible_evidence_ids,
             expected_effect="preserve-current-admitted-state",
-            recomputation_scope=RecomputationScope.NONE,
-            cache_reuse_class=CacheReuseClass.FULL,
             confidence=0.5,
-            commit_policy="no-current-window-rewrite",
             fallback_policy=FrozenActionType.KEEP_CURRENT_CONFIG,
         )
         return MemoryActionResponse(

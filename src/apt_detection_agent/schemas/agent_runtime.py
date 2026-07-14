@@ -24,7 +24,7 @@ from .common import (
     StrictModel,
     Timestamp,
 )
-from .evaluation import assert_deployable_payload
+from .common import assert_deployable_payload
 from .pids import PIDSRef
 from .runtime import DetectionAlert, ScoreSummary, TimeWindow
 from .tools import ToolName
@@ -427,6 +427,41 @@ ACTION_TO_TOOL: dict[FrozenActionType, ToolName] = {
 }
 
 
+class ProposedAction(StrictModel):
+    """Bounded LLM intent without runtime facts.
+
+    Requirements: REQ-RUNTIME-003, REQ-TOOL-001..005, REQ-LABEL-001..004.
+    """
+
+    schema_version: str = "proposed-action-v1"
+    proposal_id: Identifier
+    action_type: FrozenActionType
+    based_on_observation_id: Identifier
+    diagnosis_code: Identifier
+    visible_evidence_ids: tuple[Identifier, ...] = Field(min_length=1)
+    requested_tool: ToolName | None = None
+    approved_choice_id: Identifier | None = None
+    expected_effect: Identifier
+    confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
+    fallback_policy: FrozenActionType
+
+    @model_validator(mode="after")
+    def proposal_has_only_bounded_intent(self) -> "ProposedAction":
+        if self.requested_tool != ACTION_TO_TOOL.get(self.action_type):
+            raise ValueError("proposed action and high-level tool do not match")
+        if self.action_type in ACTION_TO_TOOL and not self.approved_choice_id:
+            raise ValueError("proposed tool action requires an opaque approved choice")
+        if self.action_type not in ACTION_TO_TOOL and self.approved_choice_id:
+            raise ValueError("terminal proposal cannot carry a choice")
+        if self.fallback_policy not in {
+            FrozenActionType.KEEP_CURRENT_CONFIG,
+            FrozenActionType.FINISH_DIAGNOSIS,
+        }:
+            raise ValueError("proposal fallback must be a terminal no-tool action")
+        assert_deployable_payload(self.model_dump(mode="json"), "proposed_action")
+        return self
+
+
 class FrozenActionDecision(StrictModel):
     schema_version: str = "frozen-action-decision-v1"
     action_id: Identifier
@@ -486,6 +521,17 @@ class FrozenActionDecision(StrictModel):
         return self
 
 
+class ExecutableAction(FrozenActionDecision):
+    """Runtime-authored action resolved from a validated proposal.
+
+    Requirements: REQ-CAUSAL-003..004, REQ-CONFIG-003, REQ-RUNTIME-003,
+    REQ-TOOL-001..005.
+    """
+
+    schema_version: str = "executable-action-v1"
+    proposal_id: Identifier
+
+
 class HighLevelToolOutcome(StrictModel):
     schema_version: str = "high-level-tool-outcome-v1"
     outcome_id: Identifier
@@ -528,6 +574,8 @@ class FrozenWindowTransactionRecord(StrictModel):
     model_prompt_observations: tuple[ModelPromptObservation, ...] = ()
     memory_protocol_status: Identifier
     memory_exchange_ids: tuple[Identifier, ...] = ()
+    proposed_actions: tuple[ProposedAction, ...] = ()
+    executable_actions: tuple[ExecutableAction, ...] = ()
     action_decisions: tuple[FrozenActionDecision, ...] = Field(min_length=1)
     additional_detector_tool_calls: tuple[HighLevelToolOutcome, ...] = ()
     additional_detector_results: tuple[AdditionalDetectorResult, ...] = ()
@@ -571,6 +619,8 @@ class FrozenWindowTransactionRecord(StrictModel):
             raise ValueError("action does not cite canonical observation")
         if not self.trigger.triggered:
             action = self.action_decisions[0]
+            if self.proposed_actions or self.executable_actions:
+                raise ValueError("untriggered window cannot contain Agent actions")
             if self.model_prompt_observations or len(self.action_decisions) != 1:
                 raise ValueError("untriggered window cannot contain an assistant turn")
             if self.additional_detector_tool_calls or self.additional_detector_results:
@@ -587,6 +637,22 @@ class FrozenWindowTransactionRecord(StrictModel):
         else:
             if not self.model_prompt_observations:
                 raise ValueError("triggered window requires a prompt observation")
+            if not (
+                len(self.proposed_actions)
+                == len(self.executable_actions)
+                == len(self.action_decisions)
+            ):
+                raise ValueError("proposal, executable and audit action counts differ")
+            for proposal, executable in zip(
+                self.proposed_actions, self.executable_actions, strict=True
+            ):
+                if (
+                    executable.proposal_id != proposal.proposal_id
+                    or executable.action_type != proposal.action_type
+                    or executable.based_on_observation_id
+                    != proposal.based_on_observation_id
+                ):
+                    raise ValueError("runtime action is not bound to its proposal")
             if len(self.model_prompt_observations) != len(self.action_decisions):
                 raise ValueError("each slow-path decision requires its own prompt projection")
             if any(

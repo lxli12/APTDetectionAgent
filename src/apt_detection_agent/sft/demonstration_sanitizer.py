@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 from .demonstration import CanonicalDemonstrationTrajectory, PublicOfflineRunRecord
 

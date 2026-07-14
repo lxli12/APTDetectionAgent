@@ -11,7 +11,7 @@ from datetime import datetime
 from pydantic import Field, model_validator
 
 from apt_detection_agent.schemas.common import DataSplit, Identifier, StrictModel, Timestamp
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 from apt_detection_agent.schemas.runtime import Prediction, TimeWindow
 
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from apt_detection_agent.schemas import EpisodeMetricsFeedback
+from apt_detection_agent.evaluation.public import EpisodeMetricsFeedback
 
 
 def finalize_public_report(*, run_dir: Path, feedback_path: Path, project_root: Path) -> None:

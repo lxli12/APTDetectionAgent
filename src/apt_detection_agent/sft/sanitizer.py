@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 from .contracts import StudentSFTExample
 from .teacher import HiddenTeacherRecord

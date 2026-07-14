@@ -22,21 +22,19 @@ from apt_detection_agent.controller import (
 )
 from apt_detection_agent.schemas import (
     AdditionalDetectorResult,
-    CacheReuseClass,
     CommittedDetectionState,
     CommittedFastPathResult,
     DataSplit,
     DecisionSource,
     ExecutionRole,
-    FrozenActionDecision,
     FrozenActionType,
     FrozenCaseState,
     HighLevelToolOutcome,
     ModelPromptObservation,
     PendingDetectionState,
     PIDSRef,
+    ProposedAction,
     RawExecutionState,
-    RecomputationScope,
     RunStatus,
     ScoreSummary,
     ToolName,
@@ -158,34 +156,21 @@ def prompt(observation: object, decision: TriggerRecord, results: tuple[object, 
     return ModelPromptObservation.model_validate(payload)
 
 
-def action(action_type: FrozenActionType, *, action_id: str = "action-1") -> FrozenActionDecision:
+def action(action_type: FrozenActionType, *, action_id: str = "proposal-1") -> ProposedAction:
     tool = {
         FrozenActionType.RUN_ADDITIONAL_DETECTOR: ToolName.RUN_ADDITIONAL_DETECTOR,
         FrozenActionType.SWITCH_DETECTOR: ToolName.SWITCH_DETECTOR,
     }.get(action_type)
-    persistent = action_type == FrozenActionType.SWITCH_DETECTOR
-    return FrozenActionDecision(
-        action_id=action_id,
+    return ProposedAction(
+        proposal_id=action_id,
         action_type=action_type,
-        decision_source=DecisionSource.LLM_AGENT,
-        case_id="case-1",
-        window_id="window-1",
-        current_sequence_number=1,
         based_on_observation_id="observation-1",
         diagnosis_code="visible-symptom",
         visible_evidence_ids=("evidence-1",),
         requested_tool=tool,
         approved_choice_id="candidate-2" if tool else None,
         expected_effect="different-deployment-visible-signal",
-        recomputation_scope=(
-            RecomputationScope.CONFIGURATION_DEPENDENT
-            if persistent
-            else RecomputationScope.INFERENCE_ONLY if tool else RecomputationScope.NONE
-        ),
-        cache_reuse_class=CacheReuseClass.NONE if tool else CacheReuseClass.FULL,
-        effective_sequence_number=2 if persistent else None,
         confidence=0.8,
-        commit_policy="no-current-window-rewrite",
         fallback_policy=FrozenActionType.KEEP_CURRENT_CONFIG,
     )
 
@@ -224,7 +209,7 @@ class FrozenRuntimeTests(unittest.TestCase):
             calls["prompt"] += 1
             raise AssertionError("untriggered window created a prompt")
 
-        def forbidden_policy(*args: object) -> FrozenActionDecision:
+        def forbidden_policy(*args: object) -> ProposedAction:
             calls["policy"] += 1
             raise AssertionError("untriggered window called the policy")
 
@@ -268,13 +253,37 @@ class FrozenRuntimeTests(unittest.TestCase):
                     case=case(), window=window(), started_at=NOW, ended_at=NOW
                 )
 
+    def test_unprompted_evidence_is_rejected_before_tool_dispatch(self) -> None:
+        proposal = action(FrozenActionType.RUN_ADDITIONAL_DETECTOR).model_copy(
+            update={"visible_evidence_ids": ("unprompted-evidence",)}
+        )
+        tool_calls = 0
+
+        def forbidden_executor(*args: object) -> ActionExecutionEnvelope:
+            nonlocal tool_calls
+            tool_calls += 1
+            raise AssertionError("invalid proposal reached tool dispatch")
+
+        with tempfile.TemporaryDirectory() as temp:
+            controller = self.controller(
+                Path(temp),
+                triggered=True,
+                policy=lambda *args: proposal,
+                executor=forbidden_executor,
+            )
+            with self.assertRaisesRegex(ValueError, "evidence absent"):
+                controller.run_window(
+                    case=case(), window=window(), started_at=NOW, ended_at=NOW
+                )
+        self.assertEqual(tool_calls, 0)
+
     def test_persistent_switch_is_pending_then_activates_next_window(self) -> None:
         switch = action(FrozenActionType.SWITCH_DETECTOR)
         pending = PendingDetectionState(
             pending_change_id="pending-1",
             action_type=FrozenActionType.SWITCH_DETECTOR,
             approved_choice_id="candidate-2",
-            requested_by_action_id=switch.action_id,
+            requested_by_action_id=switch.proposal_id,
             effective_sequence_number=2,
             target_detector=PIDSRef(pids_id="orthrus", variant_id="fixed"),
             target_config_id="config-2",
@@ -288,7 +297,7 @@ class FrozenRuntimeTests(unittest.TestCase):
         )
         outcome = HighLevelToolOutcome(
             outcome_id="outcome-1",
-            action_id=switch.action_id,
+            action_id=switch.proposal_id,
             tool_name=ToolName.SWITCH_DETECTOR,
             status=RunStatus.SUCCEEDED,
             approved_choice_id="candidate-2",
@@ -372,7 +381,7 @@ class FrozenRuntimeTests(unittest.TestCase):
         )
         outcome = HighLevelToolOutcome(
             outcome_id="outcome-preflight-blocked",
-            action_id=request_action.action_id,
+            action_id=request_action.proposal_id,
             tool_name=ToolName.RUN_ADDITIONAL_DETECTOR,
             status=RunStatus.BLOCKED,
             approved_choice_id="candidate-2",

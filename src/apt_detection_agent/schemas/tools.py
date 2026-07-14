@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import Field, JsonValue, field_validator, model_validator
 
 from .common import Identifier, PipelineStage, RunStatus, Sha256, StrictModel, Timestamp
-from .evaluation import assert_deployable_payload
+from .common import assert_deployable_payload
 
 
 class ToolName(str, Enum):

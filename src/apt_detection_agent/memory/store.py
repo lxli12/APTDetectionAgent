@@ -23,7 +23,7 @@ from apt_detection_agent.schemas import (
     StaticLTMSnapshot,
 )
 from apt_detection_agent.schemas.common import Identifier, StrictModel
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 
 def normalized_content_hash(content: str) -> str:

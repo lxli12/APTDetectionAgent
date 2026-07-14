@@ -31,6 +31,34 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, validate_assignment=True)
 
 
+PRIVILEGED_FIELD_NAMES = frozenset(
+    {
+        "ground_truth", "test_labels", "labels", "campaign_mapping",
+        "malicious_entity_ids", "counterfactual_best_action", "attack_identity",
+        "attack_time", "campaign_id", "dataset_identity", "evaluator_notes",
+        "hidden_metrics", "teacher_rationale", "tp", "fp", "fn",
+        "unique_malicious_node_tp", "unique_malicious_node_fp",
+        "unique_malicious_node_fn",
+    }
+)
+
+
+def assert_deployable_payload(value: object, path: str = "payload") -> None:
+    """Reject privileged evaluator fields at a public contract boundary.
+
+    Requirements: REQ-LABEL-001..004.
+    """
+
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if str(key).lower() in PRIVILEGED_FIELD_NAMES:
+                raise ValueError(f"privileged field rejected at {path}.{key}")
+            assert_deployable_payload(child, f"{path}.{key}")
+    elif isinstance(value, (list, tuple)):
+        for index, child in enumerate(value):
+            assert_deployable_payload(child, f"{path}[{index}]")
+
+
 class DataSplit(str, Enum):
     AGENT_TRAINING = "agent_training"
     VALIDATION = "validation"

@@ -14,12 +14,11 @@ from pathlib import Path
 from pydantic import Field, model_validator
 
 from apt_detection_agent.schemas.common import DataSplit, Identifier, StrictModel, Timestamp
-from apt_detection_agent.schemas.evaluation import (
+from .contracts import (
     CampaignManifest,
-    EpisodeMetricsFeedback,
     EvaluationRecord,
-    TrainingStepFeedback,
 )
+from apt_detection_agent.evaluation.public import EpisodeMetricsFeedback, TrainingStepFeedback
 
 
 METRIC_DEFINITION_VERSION = "agent-eval-v2"

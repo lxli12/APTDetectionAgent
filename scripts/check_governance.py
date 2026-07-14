@@ -19,6 +19,7 @@ REQUIRED_FILES = (
     "README.md",
     "pyproject.toml",
     "docs/design/APT_Detection_Agent_Design_v0.4.md",
+    "docs/PROJECT_ARCHITECTURE_DESIGN_v1.1.md",
     "docs/plans/IMPLEMENTATION_PLAN.md",
     "docs/plans/REQUIREMENT_TRACEABILITY.md",
     "docs/data_protocol.md",
@@ -43,6 +44,35 @@ def main() -> None:
         fail(f"requirement matrix unexpectedly small: {len(ids)} IDs")
     if not set(re.findall(r"REQ-[A-Z]+-\d{3}", plan)).issubset(ids):
         fail("implementation plan references unknown requirement IDs")
+
+    schemas_root = ROOT / "src/apt_detection_agent/schemas"
+    forbidden_schema_imports = (
+        "apt_detection_agent.sft",
+        "apt_detection_agent.training",
+        "apt_detection_agent.evaluation",
+        "apt_detection_agent.evaluator",
+        "apt_detection_agent.experiment",
+    )
+    schema_violations = []
+    for path in schemas_root.glob("*.py"):
+        source = path.read_text()
+        if any(name in source for name in forbidden_schema_imports):
+            schema_violations.append(str(path.relative_to(ROOT)))
+    if schema_violations:
+        fail(f"schemas reverse-import domain owners: {', '.join(schema_violations)}")
+    if (schemas_root / "evaluation.py").exists():
+        fail("private/offline evaluation models cannot live in schemas")
+    public_schemas = (schemas_root / "__init__.py").read_text()
+    forbidden_public_names = (
+        "CampaignManifest",
+        "EvaluationRecord",
+        "HiddenGroundTruth",
+        "EpisodeMetricsFeedback",
+        "TrainingStepFeedback",
+    )
+    leaked = [name for name in forbidden_public_names if name in public_schemas]
+    if leaked:
+        fail(f"schemas public surface leaks offline/private types: {', '.join(leaked)}")
 
     actual_sha = subprocess.run(
         ["git", "-C", str(ROOT / "PIDSMaker"), "rev-parse", "HEAD"],

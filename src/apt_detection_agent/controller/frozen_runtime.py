@@ -18,6 +18,7 @@ from typing import Callable
 
 from pydantic import Field, model_validator
 
+from apt_detection_agent.agent.policy import AgentPolicy
 from apt_detection_agent.schemas import (
     AdditionalDetectorResult,
     CacheReuseClass,
@@ -26,6 +27,7 @@ from apt_detection_agent.schemas import (
     CommittedFastPathResult,
     DataSplit,
     DecisionSource,
+    ExecutableAction,
     ExecutionRole,
     FrozenActionDecision,
     FrozenActionType,
@@ -36,6 +38,7 @@ from apt_detection_agent.schemas import (
     MemoryDecisionEnvelope,
     ModelPromptObservation,
     PendingDetectionState,
+    ProposedAction,
     RawExecutionState,
     RecomputationScope,
     RunStatus,
@@ -104,11 +107,77 @@ PromptBuilder = Callable[
     ],
     ModelPromptObservation,
 ]
-SlowPathPolicy = Callable[
-    [ModelPromptObservation, FrozenCaseState],
-    FrozenActionDecision | MemoryDecisionEnvelope,
-]
-ActionExecutor = Callable[[FrozenActionDecision, FrozenCaseState], ActionExecutionEnvelope]
+ActionExecutor = Callable[[ExecutableAction, FrozenCaseState], ActionExecutionEnvelope]
+
+
+class RuntimeActionValidator:
+    """Resolve bounded policy intent into an executor-authorized action.
+
+    This remains internal until the v1.1 physical-split threshold is met.
+    Requirements: REQ-CAUSAL-003..004, REQ-CONFIG-003, REQ-RUNTIME-003,
+    REQ-TOOL-001..005.
+    """
+
+    @staticmethod
+    def resolve(
+        proposal: ProposedAction,
+        prompt: ModelPromptObservation,
+        canonical: CanonicalAgentVisibleObservation,
+        case: FrozenCaseState,
+    ) -> ExecutableAction:
+        if not isinstance(proposal, ProposedAction):
+            raise ValueError("Agent policy must return ProposedAction")
+        if proposal.action_type not in prompt.allowed_actions:
+            raise ValueError("proposal action is not allowed by this prompt")
+        if proposal.based_on_observation_id != canonical.observation_id:
+            raise ValueError("proposal changed canonical observation identity")
+        if not set(proposal.visible_evidence_ids).issubset(prompt.visible_evidence_ids):
+            raise ValueError("proposal cites evidence absent from the exact prompt")
+
+        persistent = {
+            FrozenActionType.SELECT_VALIDATED_THRESHOLD,
+            FrozenActionType.LOAD_APPROVED_CONFIG,
+            FrozenActionType.SWITCH_DETECTOR,
+            FrozenActionType.SELECT_RESOURCE_PRESET,
+        }
+        if proposal.action_type in persistent:
+            scope = RecomputationScope.CONFIGURATION_DEPENDENT
+            cache = CacheReuseClass.NONE
+            effective_sequence = canonical.window.sequence_number + 1
+        elif proposal.action_type == FrozenActionType.RETRAIN_DETECTOR:
+            scope = RecomputationScope.TRAINING_REQUIRED
+            cache = CacheReuseClass.NONE
+            effective_sequence = None
+        elif proposal.action_type == FrozenActionType.RUN_ADDITIONAL_DETECTOR:
+            scope = RecomputationScope.INFERENCE_ONLY
+            cache = CacheReuseClass.NONE
+            effective_sequence = None
+        else:
+            scope = RecomputationScope.NONE
+            cache = CacheReuseClass.FULL
+            effective_sequence = None
+
+        return ExecutableAction(
+            proposal_id=proposal.proposal_id,
+            action_id=proposal.proposal_id,
+            action_type=proposal.action_type,
+            decision_source=DecisionSource.LLM_AGENT,
+            case_id=case.case_id,
+            window_id=canonical.window.window_id,
+            current_sequence_number=canonical.window.sequence_number,
+            based_on_observation_id=proposal.based_on_observation_id,
+            diagnosis_code=proposal.diagnosis_code,
+            visible_evidence_ids=proposal.visible_evidence_ids,
+            requested_tool=proposal.requested_tool,
+            approved_choice_id=proposal.approved_choice_id,
+            expected_effect=proposal.expected_effect,
+            recomputation_scope=scope,
+            cache_reuse_class=cache,
+            effective_sequence_number=effective_sequence,
+            confidence=proposal.confidence,
+            commit_policy="no-current-window-rewrite",
+            fallback_policy=proposal.fallback_policy,
+        )
 
 
 class CommittedResultLedger:
@@ -226,7 +295,7 @@ class FrozenRuntimeController:
     canonical_builder: CanonicalBuilder
     trigger_policy: TriggerPolicy
     prompt_builder: PromptBuilder
-    policy: SlowPathPolicy
+    policy: AgentPolicy
     action_executor: ActionExecutor
     committed_ledger: CommittedResultLedger
     transaction_logger: FrozenTransactionLogger
@@ -313,19 +382,13 @@ class FrozenRuntimeController:
         )
 
     @staticmethod
-    def _validate_agent_action(
-        action: FrozenActionDecision,
+    def _resolve_agent_action(
+        proposal: ProposedAction,
+        prompt: ModelPromptObservation,
         canonical: CanonicalAgentVisibleObservation,
         case: FrozenCaseState,
-    ) -> None:
-        if (
-            action.decision_source != DecisionSource.LLM_AGENT
-            or action.case_id != case.case_id
-            or action.window_id != canonical.window.window_id
-            or action.current_sequence_number != canonical.window.sequence_number
-            or action.based_on_observation_id != canonical.observation_id
-        ):
-            raise ValueError("slow-path action does not match the visible transaction")
+    ) -> ExecutableAction:
+        return RuntimeActionValidator.resolve(proposal, prompt, canonical, case)
 
     def run_window(
         self,
@@ -358,6 +421,8 @@ class FrozenRuntimeController:
             raise ValueError("trigger policy identity is not the frozen runtime profile")
 
         prompts: list[ModelPromptObservation] = []
+        proposals: list[ProposedAction] = []
+        executable_actions: list[ExecutableAction] = []
         actions: list[FrozenActionDecision] = []
         additional_outcomes: list[HighLevelToolOutcome] = []
         additional_results: list[AdditionalDetectorResult] = []
@@ -379,13 +444,15 @@ class FrozenRuntimeController:
                 prompts.append(prompt)
                 policy_output = self.policy(prompt, case)
                 if isinstance(policy_output, MemoryDecisionEnvelope):
-                    action = policy_output.action
+                    proposal = policy_output.action
                     memory_exchanges.append(policy_output.exchange)
                 else:
                     if self.config.require_frozen_memory_protocol:
                         raise ValueError("slow path requires frozen two-turn memory protocol")
-                    action = policy_output
-                self._validate_agent_action(action, canonical, case)
+                    proposal = policy_output
+                action = self._resolve_agent_action(proposal, prompt, canonical, case)
+                proposals.append(proposal)
+                executable_actions.append(action)
                 actions.append(action)
                 if action.action_type in {
                     FrozenActionType.KEEP_CURRENT_CONFIG,
@@ -474,6 +541,8 @@ class FrozenRuntimeController:
                 else "legacy-no-memory-protocol"
             ),
             memory_exchange_ids=tuple(exchange.exchange_id for exchange in memory_exchanges),
+            proposed_actions=tuple(proposals),
+            executable_actions=tuple(executable_actions),
             action_decisions=tuple(actions),
             additional_detector_tool_calls=tuple(additional_outcomes),
             additional_detector_results=tuple(additional_results),

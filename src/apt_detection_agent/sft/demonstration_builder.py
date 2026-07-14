@@ -11,7 +11,7 @@ from pydantic import Field, model_validator
 
 from apt_detection_agent.schemas import AdmittedUse, PIDSCapability, PIDSAdmissionRecord, PIDSRef
 from apt_detection_agent.schemas.common import GitSha, Identifier, Sha256, StrictModel, Timestamp
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 from .demonstration import (
     CanonicalDemonstrationTrajectory,

@@ -19,7 +19,7 @@ from apt_detection_agent.schemas.common import (
     StrictModel,
     Timestamp,
 )
-from apt_detection_agent.schemas.evaluation import CampaignManifest
+from .contracts import CampaignManifest
 from apt_detection_agent.schemas.pids import (
     CalibrationMethod,
     ThresholdProvenance,

@@ -7,8 +7,8 @@ from pydantic import Field, model_validator
 from apt_detection_agent.schemas import (
     CanonicalAgentVisibleObservation,
     DataSplit,
-    FrozenActionDecision,
     FrozenMemoryExchange,
+    ProposedAction,
     ModelPromptObservation,
 )
 from apt_detection_agent.schemas.common import Identifier, StrictModel
@@ -23,7 +23,7 @@ class FrozenHiddenTeacherRecord(StrictModel):
     canonical_observation: CanonicalAgentVisibleObservation
     model_prompt: ModelPromptObservation
     public_memory_exchange: FrozenMemoryExchange
-    target_action: FrozenActionDecision
+    target_action: ProposedAction
     teacher_only_rationale: str = Field(min_length=1)
     privileged_labels: dict[str, str | int | float | bool]
     counterfactual_best_action: str | None = None

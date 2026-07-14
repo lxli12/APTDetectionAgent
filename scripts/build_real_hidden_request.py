@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from apt_detection_agent.evaluator import HiddenEvaluationInput, ScoredEntity
 from apt_detection_agent.schemas import StandardizedDetectionResult
-from apt_detection_agent.schemas.evaluation import CampaignManifest
+from apt_detection_agent.evaluator.contracts import CampaignManifest
 
 
 def child(path: Path, root: Path, description: str) -> Path:

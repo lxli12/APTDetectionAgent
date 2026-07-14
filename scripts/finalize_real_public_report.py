@@ -10,11 +10,11 @@ from pathlib import Path
 
 from apt_detection_agent.schemas import (
     DataSplit,
-    EpisodeMetricsFeedback,
     StandardizedDetectionResult,
     ThresholdProvenance,
     assert_deployable_payload,
 )
+from apt_detection_agent.evaluation.public import EpisodeMetricsFeedback
 
 
 def main() -> int:

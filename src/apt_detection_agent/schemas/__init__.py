@@ -16,6 +16,7 @@ from .agent_runtime import (
     DecisionSource,
     DetectionSignalSummary,
     EnvironmentSummary,
+    ExecutableAction,
     ExecutionRole,
     ExecutionSummary,
     FrozenActionDecision,
@@ -25,6 +26,7 @@ from .agent_runtime import (
     HighLevelToolOutcome,
     ModelPromptObservation,
     PendingDetectionState,
+    ProposedAction,
     RawExecutionState,
     RecomputationScope,
     RuntimeBudgetSummary,
@@ -48,7 +50,7 @@ from .common import (
     TransductiveStatus,
 )
 from .detection import EntityAnomalyScore, StandardizedDetectionResult
-from .evaluation import EpisodeMetricsFeedback, TrainingStepFeedback, assert_deployable_payload
+from .common import assert_deployable_payload
 from .memory import MemoryLayer, MemoryRecord, StaticLTMSnapshot
 from .memory_runtime import (
     FrozenMemoryExchange,
@@ -120,7 +122,7 @@ __all__ = [
     "DetectionUnit",
     "EntityAnomalyScore",
     "EnvironmentSummary",
-    "EpisodeMetricsFeedback",
+    "ExecutableAction",
     "ExecutionRole",
     "ExecutionSummary",
     "ExperimentClass",
@@ -146,6 +148,7 @@ __all__ = [
     "PIDSRef",
     "PendingConfiguration",
     "PendingDetectionState",
+    "ProposedAction",
     "PipelineStage",
     "Prediction",
     "RawExecutionState",
@@ -164,7 +167,6 @@ __all__ = [
     "ToolName",
     "ToolRequest",
     "ToolResult",
-    "TrainingStepFeedback",
     "TransductiveStatus",
     "TriggerRecord",
     "assert_deployable_payload",

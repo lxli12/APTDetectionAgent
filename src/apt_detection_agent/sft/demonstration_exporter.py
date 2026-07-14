@@ -9,7 +9,7 @@ from enum import Enum
 from pydantic import Field, model_validator
 
 from apt_detection_agent.schemas.common import Identifier, Sha256, StrictModel
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 from .demonstration import CanonicalDemonstrationTrajectory
 

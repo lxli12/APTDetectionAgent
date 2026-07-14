@@ -25,7 +25,7 @@ from apt_detection_agent.schemas import (
     RunStatus,
 )
 from apt_detection_agent.schemas.common import GitSha, Identifier, Sha256, StrictModel, Timestamp
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 from apt_detection_agent.tooling.runtime_tools import DetectorCapabilityView
 
 

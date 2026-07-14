@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 from .frozen_contracts import FrozenStudentSFTExample, frozen_example_payload
 from .frozen_teacher import FrozenHiddenTeacherRecord

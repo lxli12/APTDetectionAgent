@@ -22,7 +22,7 @@ from apt_detection_agent.schemas import (
     CacheReuseClass,
     DataSplit,
     DetectionUnit,
-    FrozenActionDecision,
+    ExecutableAction,
     FrozenActionType,
     FrozenCaseState,
     HighLevelToolOutcome,
@@ -495,7 +495,7 @@ class RuntimeToolService:
             recomputation_scope=RecomputationScope.NONE,
         )
 
-    def run_additional_detector(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def run_additional_detector(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         case = self._action_case(action, FrozenActionType.RUN_ADDITIONAL_DETECTOR)
         candidate = self._detector_candidate(action.approved_choice_id, case)
         if candidate.intended_use != IntendedUse.ADDITIONAL_INVESTIGATION:
@@ -565,7 +565,7 @@ class RuntimeToolService:
             cautions=tuple(cautions),
         )
 
-    def select_validated_threshold(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def select_validated_threshold(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         case = self._action_case(action, FrozenActionType.SELECT_VALIDATED_THRESHOLD)
         candidate = self.catalog.threshold_candidates.get(str(action.approved_choice_id))
         if not isinstance(candidate, ApprovedThresholdCandidate):
@@ -592,7 +592,7 @@ class RuntimeToolService:
             "preserve-compatible-state",
         )
 
-    def load_approved_config(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def load_approved_config(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         case = self._action_case(action, FrozenActionType.LOAD_APPROVED_CONFIG)
         candidate = self._detector_candidate(action.approved_choice_id, case)
         self.catalog.require_available(candidate)
@@ -602,7 +602,7 @@ class RuntimeToolService:
             raise ValueError("config load cannot silently switch detector")
         return self._candidate_pending(action, case, candidate)
 
-    def switch_detector(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def switch_detector(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         case = self._action_case(action, FrozenActionType.SWITCH_DETECTOR)
         candidate = self._detector_candidate(action.approved_choice_id, case)
         self.catalog.require_available(candidate)
@@ -612,7 +612,7 @@ class RuntimeToolService:
             raise ValueError("switch requires a different detector")
         return self._candidate_pending(action, case, candidate)
 
-    def retrain_detector(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def retrain_detector(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         case = self._action_case(action, FrozenActionType.RETRAIN_DETECTOR)
         recipe = self.catalog.training_recipes.get(str(action.approved_choice_id))
         if not isinstance(recipe, ApprovedTrainingRecipe):
@@ -634,7 +634,7 @@ class RuntimeToolService:
             )
         )
 
-    def select_resource_preset(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def select_resource_preset(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         case = self._action_case(action, FrozenActionType.SELECT_RESOURCE_PRESET)
         preset = self.catalog.resource_presets.get(str(action.approved_choice_id))
         if not isinstance(preset, ApprovedResourcePreset):
@@ -659,7 +659,7 @@ class RuntimeToolService:
             "preserve-compatible-state",
         )
 
-    def execute_action(self, action: FrozenActionDecision) -> ActionExecutionEnvelope:
+    def execute_action(self, action: ExecutableAction) -> ActionExecutionEnvelope:
         handlers = {
             FrozenActionType.RUN_ADDITIONAL_DETECTOR: self.run_additional_detector,
             FrozenActionType.SELECT_VALIDATED_THRESHOLD: self.select_validated_threshold,
@@ -694,7 +694,7 @@ class RuntimeToolService:
             raise ValueError("case is not in runtime state store") from exc
 
     def _action_case(
-        self, action: FrozenActionDecision, expected: FrozenActionType
+        self, action: ExecutableAction, expected: FrozenActionType
     ) -> FrozenCaseState:
         if action.action_type != expected:
             raise ValueError("action was sent to wrong high-level tool")
@@ -715,7 +715,7 @@ class RuntimeToolService:
 
     def _candidate_pending(
         self,
-        action: FrozenActionDecision,
+        action: ExecutableAction,
         case: FrozenCaseState,
         candidate: ApprovedDetectorCandidate,
     ) -> ActionExecutionEnvelope:
@@ -735,7 +735,7 @@ class RuntimeToolService:
 
     @staticmethod
     def _pending_envelope(
-        action: FrozenActionDecision,
+        action: ExecutableAction,
         case: FrozenCaseState,
         detector: PIDSRef,
         approved_candidate_id: str,

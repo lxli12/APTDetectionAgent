@@ -31,7 +31,7 @@ from apt_detection_agent.schemas import (
     ToolResult,
 )
 from apt_detection_agent.schemas.common import Identifier, StrictModel
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 
 class RetrieveMemoryArguments(StrictModel):

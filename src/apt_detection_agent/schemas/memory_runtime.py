@@ -6,9 +6,9 @@ from enum import Enum
 
 from pydantic import Field, field_validator, model_validator
 
-from .agent_runtime import FrozenActionDecision, ModelPromptObservation
+from .agent_runtime import ModelPromptObservation, ProposedAction
 from .common import Identifier, RunStatus, StrictModel
-from .evaluation import assert_deployable_payload
+from .common import assert_deployable_payload
 from .memory import MemoryLayer, MemoryRecord
 
 
@@ -134,7 +134,7 @@ class MemoryActionResponse(StrictModel):
     retrieval_result_id: Identifier
     use_decisions: tuple[MemoryUseDecision, ...]
     diagnosis_code: Identifier
-    action: FrozenActionDecision
+    action: ProposedAction
     write_candidate: MemoryWriteCandidate | None = None
 
 
@@ -174,7 +174,7 @@ class FrozenMemoryExchange(StrictModel):
 
 
 class MemoryDecisionEnvelope(StrictModel):
-    action: FrozenActionDecision
+    action: ProposedAction
     exchange: FrozenMemoryExchange
 
     @model_validator(mode="after")

@@ -26,7 +26,6 @@ from apt_detection_agent.schemas import (
     CommandManifest,
     DataSplit,
     DetectionUnit,
-    EpisodeMetricsFeedback,
     ExperimentClass,
     MemoryLayer,
     MemoryRecord,
@@ -45,11 +44,11 @@ from apt_detection_agent.schemas import (
     ToolName,
     ToolRequest,
     ToolResult,
-    TrainingStepFeedback,
     TransductiveStatus,
     assert_deployable_payload,
 )
 from apt_detection_agent.evaluator import CampaignManifest
+from apt_detection_agent.evaluation.public import EpisodeMetricsFeedback, TrainingStepFeedback
 import apt_detection_agent.schemas as public_schemas
 
 
@@ -419,6 +418,8 @@ class MemoryAndEvaluatorBoundaryTests(unittest.TestCase):
         self.assertFalse(hasattr(public_schemas, "CampaignManifest"))
         self.assertFalse(hasattr(public_schemas, "HiddenGroundTruth"))
         self.assertFalse(hasattr(public_schemas, "EvaluationRecord"))
+        self.assertFalse(hasattr(public_schemas, "EpisodeMetricsFeedback"))
+        self.assertFalse(hasattr(public_schemas, "TrainingStepFeedback"))
 
     def test_episode_memory_requires_episode_scope(self) -> None:
         with self.assertRaises(ValidationError):

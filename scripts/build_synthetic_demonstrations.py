@@ -15,12 +15,13 @@ from apt_detection_agent.pidsmaker import PIDSMakerDiscovery
 from apt_detection_agent.schemas import (
     AvailabilityStatus,
     DataSplit,
-    FrozenActionDecision,
     FrozenMemoryExchange,
+    FrozenWindowTransactionRecord,
     MemoryActionResponse,
     MemoryReadRequest,
     MemoryRetrievalResult,
     ModelPromptObservation,
+    ProposedAction,
     RunStatus,
 )
 from apt_detection_agent.sft import (
@@ -131,10 +132,10 @@ def _capability_prompt(source: FrozenMemoryExchange, views) -> FrozenMemoryExcha
         retrieval_result_id=result.result_id,
         use_decisions=(),
         diagnosis_code="registered-capabilities-unadmitted",
-        action=FrozenActionDecision.model_validate(
+        action=ProposedAction.model_validate(
             {
                 **source.response.action.model_dump(),
-                "action_id": "synthetic-capability-finish",
+                "proposal_id": "synthetic-capability-finish",
                 "based_on_observation_id": prompt.canonical_observation_id,
                 "visible_evidence_ids": (prompt.canonical_observation_id,),
                 "diagnosis_code": "registered-capabilities-unadmitted",
@@ -190,6 +191,12 @@ def main() -> int:
     )
     if len(exchanges) != 1:
         raise ValueError("synthetic source must contain exactly one frozen memory exchange")
+    transactions = tuple(
+        FrozenWindowTransactionRecord.model_validate_json(line)
+        for line in (source / "trajectory.jsonl").read_text().splitlines()
+        if line.strip()
+    )
+    triggered_transaction = next(item for item in transactions if item.trigger.triggered)
     capabilities = PIDSMakerDiscovery(args.project_root).capabilities()
     views = tuple(_capability_view(item) for item in capabilities)
     refs = tuple(item.pids for item in capabilities)
@@ -247,10 +254,10 @@ def main() -> int:
         unknown_codes=("real-detector-effect-unknown",),
     )
     temporal = TemporalContext(
-        window_id=exchange.response.action.window_id,
-        sequence_number=exchange.response.action.current_sequence_number,
-        start=datetime(2026, 1, 1, 0, 15, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, 0, 30, tzinfo=timezone.utc),
+        window_id=triggered_transaction.window_id,
+        sequence_number=triggered_transaction.window_sequence_number,
+        start=triggered_transaction.canonical_observation.window.start,
+        end=triggered_transaction.canonical_observation.window.end,
         past_range_window_ids=("synthetic-window-0",),
         state_continuity_code="synthetic-continuous",
     )

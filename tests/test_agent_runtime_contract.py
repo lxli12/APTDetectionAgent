@@ -33,6 +33,7 @@ from apt_detection_agent.schemas import (
     FrozenActionType,
     ModelPromptObservation,
     PIDSRef,
+    ProposedAction,
     RawExecutionState,
     RecomputationScope,
     RunStatus,
@@ -333,6 +334,28 @@ class FrozenActionTests(unittest.TestCase):
     def test_action_taxonomy_is_exact_and_has_no_legacy_keep_and_infer(self) -> None:
         self.assertEqual(len(FrozenActionType), 8)
         self.assertNotIn("keep_and_infer", {item.value for item in FrozenActionType})
+
+    def test_policy_proposal_cannot_author_runtime_facts(self) -> None:
+        payload = {
+            "proposal_id": "proposal-1",
+            "action_type": FrozenActionType.FINISH_DIAGNOSIS,
+            "based_on_observation_id": "observation-1",
+            "diagnosis_code": "visible-symptom",
+            "visible_evidence_ids": ("evidence-1",),
+            "expected_effect": "preserve-current-state",
+            "confidence": 0.8,
+            "fallback_policy": FrozenActionType.KEEP_CURRENT_CONFIG,
+        }
+        ProposedAction.model_validate(payload)
+        for forbidden in (
+            "case_id",
+            "window_id",
+            "effective_sequence_number",
+            "cache_reuse_class",
+            "execution_status",
+        ):
+            with self.subTest(forbidden=forbidden), self.assertRaises(ValidationError):
+                ProposedAction.model_validate({**payload, forbidden: "forged"})
 
     def test_harness_default_can_only_keep(self) -> None:
         FrozenActionDecision.model_validate(self.action())

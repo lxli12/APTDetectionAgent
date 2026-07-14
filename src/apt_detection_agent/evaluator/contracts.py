@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .common import DataSplit, Identifier, StrictModel, Timestamp
+from apt_detection_agent.schemas.common import DataSplit, Identifier, StrictModel, Timestamp
 
 
 class CampaignManifest(StrictModel):
@@ -64,67 +64,3 @@ class EvaluationRecord(StrictModel):
     control_metrics: dict[str, float] = Field(default_factory=dict)
     computed_at: Timestamp
 
-
-class TrainingStepFeedback(StrictModel):
-    split: DataSplit
-    step_id: Identifier
-    sanitized_reward: float
-    signal_id: Identifier
-
-    @model_validator(mode="after")
-    def training_only(self) -> "TrainingStepFeedback":
-        if self.split != DataSplit.AGENT_TRAINING:
-            raise ValueError("step feedback is allowed only during agent training")
-        return self
-
-
-class EpisodeMetricsFeedback(StrictModel):
-    split: DataSplit
-    episode_id: Identifier
-    metrics_artifact_id: Identifier
-    emitted_at: Timestamp
-
-    @model_validator(mode="after")
-    def heldout_or_validation_only(self) -> "EpisodeMetricsFeedback":
-        if self.split not in {DataSplit.VALIDATION, DataSplit.HELD_OUT}:
-            raise ValueError("episode metrics feedback is for validation/held-out")
-        return self
-
-
-PRIVILEGED_FIELD_NAMES = frozenset(
-    {
-        "ground_truth",
-        "test_labels",
-        "labels",
-        "campaign_mapping",
-        "malicious_entity_ids",
-        "counterfactual_best_action",
-        "attack_identity",
-        "attack_time",
-        "campaign_id",
-        "dataset_identity",
-        "evaluator_notes",
-        "hidden_metrics",
-        "teacher_rationale",
-        "tp",
-        "fp",
-        "fn",
-        "unique_malicious_node_tp",
-        "unique_malicious_node_fp",
-        "unique_malicious_node_fn",
-    }
-)
-
-
-def assert_deployable_payload(value: object, path: str = "payload") -> None:
-    """Fail closed if a student/Agent payload contains privileged field names."""
-
-    if isinstance(value, dict):
-        for key, child in value.items():
-            normalized = str(key).lower()
-            if normalized in PRIVILEGED_FIELD_NAMES:
-                raise ValueError(f"privileged field rejected at {path}.{key}")
-            assert_deployable_payload(child, f"{path}.{key}")
-    elif isinstance(value, (list, tuple)):
-        for index, child in enumerate(value):
-            assert_deployable_payload(child, f"{path}[{index}]")

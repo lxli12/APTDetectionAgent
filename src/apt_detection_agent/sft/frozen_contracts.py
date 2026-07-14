@@ -10,13 +10,13 @@ from pydantic import Field, model_validator
 from apt_detection_agent.schemas import (
     CanonicalAgentVisibleObservation,
     DataSplit,
-    FrozenActionDecision,
     FrozenMemoryExchange,
     ModelPromptObservation,
+    ProposedAction,
     PIDSAdmissionRecord,
 )
 from apt_detection_agent.schemas.common import GitSha, Identifier, Sha256, StrictModel, Timestamp
-from apt_detection_agent.schemas.evaluation import assert_deployable_payload
+from apt_detection_agent.schemas.common import assert_deployable_payload
 
 
 def frozen_example_payload(
@@ -24,7 +24,7 @@ def frozen_example_payload(
     canonical: CanonicalAgentVisibleObservation,
     prompt: ModelPromptObservation,
     memory_exchange: FrozenMemoryExchange,
-    target_action: FrozenActionDecision,
+    target_action: ProposedAction,
     source_admission_ids: tuple[str, ...],
 ) -> str:
     payload = {
@@ -45,7 +45,7 @@ class FrozenStudentSFTExample(StrictModel):
     canonical_observation: CanonicalAgentVisibleObservation
     model_prompt: ModelPromptObservation
     memory_exchange: FrozenMemoryExchange
-    target_action: FrozenActionDecision
+    target_action: ProposedAction
     source_admission_ids: tuple[Identifier, ...] = Field(min_length=1)
     sanitizer_version: Identifier
     payload_hash: Sha256
@@ -61,7 +61,6 @@ class FrozenStudentSFTExample(StrictModel):
             or self.memory_exchange.prompt != self.model_prompt
             or self.memory_exchange.response.action != self.target_action
             or self.target_action.based_on_observation_id != observation.observation_id
-            or self.target_action.window_id != observation.window.window_id
         ):
             raise ValueError("SFT example diverges from frozen runtime identity/hash")
         assert_deployable_payload(self.model_dump(mode="json"), "frozen_sft_example")
