@@ -119,6 +119,7 @@ def decision(
     payload = base_action(FrozenActionType.KEEP_CURRENT_CONFIG).model_dump()
     payload.update(
         {
+            "action_type": action_type,
             "approved_choice_id": choice_id,
             "requested_tool": tool,
             "effective_sequence_number": effective,
