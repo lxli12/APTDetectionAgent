@@ -10,7 +10,7 @@ and test path is updated when work lands.
 | REQ-GOV-003 | Final design and accepted ADRs are behavioral sources of truth | 0 | `AGENTS.md` | governance checker | implemented |
 | REQ-GOV-004 | SFT work is explicitly blocked when no valid dataset exists | 0/10 | plan; experiment protocol | SFT stage negative test | partial |
 | REQ-GIT-001 | Tracked code changes locally and reaches server only through push + fast-forward pull | 0 | `AGENTS.md` | remote workflow review | implemented |
-| REQ-GIT-002 | Dirty remote worktree stops synchronization; no destructive Git | 0 | `AGENTS.md` | remote script tests | partial |
+| REQ-GIT-002 | Dirty remote worktree stops synchronization; no destructive Git | 0/10 | `AGENTS.md`; `scripts/remote/sync_code.sh` | dirty-tree pre-network failure and destructive-command scan | implemented |
 | REQ-GIT-003 | PIDSMaker remains pinned and unmodified | all | `.gitmodules`; commit pin | submodule status check | implemented |
 | REQ-CAUSAL-001 | No future window or event may enter current computation | 3 | `data/stream.py`; `data/causal.py` | future/boundary/ordering negative tests | implemented |
 | REQ-CAUSAL-002 | Vocabulary, normalization, IDF, statistics, embeddings, model, and threshold freeze before held-out | 1/3 | `data/causal.py:FittedStateArtifact` | split/refit/freeze-cutoff tests | implemented |

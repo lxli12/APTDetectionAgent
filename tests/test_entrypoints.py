@@ -141,6 +141,34 @@ class FormalEntrypointTests(unittest.TestCase):
         self.assertNotIn("git reset", combined)
         self.assertNotIn("rm -rf", combined)
 
+    def test_remote_sync_stops_on_dirty_tree_before_network(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            repository = Path(temp) / "repository"
+            repository.mkdir()
+            subprocess.run(
+                ("git", "init", "-q", str(repository)),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            (repository / "untracked-user-work.txt").write_text("preserve me\n")
+            environment = self.environment()
+            environment["APT_AGENT_PROJECT_ROOT"] = str(repository)
+            environment["APT_USE_NETWORK_TURBO"] = "0"
+            completed = subprocess.run(
+                (
+                    str(ROOT / "scripts" / "remote" / "sync_code.sh"),
+                    "codex/test-ref",
+                ),
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertEqual(completed.returncode, 3)
+        self.assertIn("REMOTE_TREE_DIRTY", completed.stderr)
+        self.assertNotIn("PIDSMaker", completed.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

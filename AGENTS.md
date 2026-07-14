@@ -73,6 +73,12 @@ process exit is never sufficient evidence of correctness.
 5. Record the exact main-project and PIDSMaker SHAs for every remote run.
 6. Never directly edit tracked files on the server.
 
+`scripts/remote/sync_code.sh <remote-ref>` is the executable form of this gate. It
+rejects any main-repository or PIDSMaker dirtiness before network access, performs
+only a fast-forward pull from `origin`, clears temporary proxy variables, and
+re-verifies the fixed PIDSMaker commit. Set `APT_USE_NETWORK_TURBO=1` only for the
+short-lived pull shell when direct GitHub access requires the approved accelerator.
+
 If GitHub access from AutoDL fails, the official academic acceleration service may
 be enabled only inside the SSH shell that performs the pull with
 `source /etc/network_turbo`. Clear lowercase and uppercase HTTP(S) proxy variables
