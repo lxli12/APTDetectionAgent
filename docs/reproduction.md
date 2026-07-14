@@ -39,6 +39,8 @@ Accepted append-only evidence:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-frozen-new-window-20260714-001`.
 - real structured tool invocation:
   `/root/autodl-tmp/apt-agent/structured-tool-runs/structured-adapter-20260714-007`.
+- evaluator-isolated synthetic retrieval sensitivity smoke:
+  `/root/autodl-tmp/apt-agent/memory-sensitivity-runs/memory-sensitivity-synthetic-20260714-001`.
 
 These prove causal mechanics and validation integration only. Each real public
 artifact records `formal_performance_claim=false`; evaluator-private mappings and

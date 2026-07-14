@@ -52,3 +52,8 @@ fixture proves path, split, relevance-reference, candidate-grid, and no-optimali
 guards, but it deliberately makes no 2048/20 selection. REQ-MEMORY-007 remains
 partial until a formal validation relevance manifest and prespecified review rule
 are available.
+
+The isolated synthetic smoke is preserved at
+`/root/autodl-tmp/apt-agent/memory-sensitivity-runs/memory-sensitivity-synthetic-20260714-001`.
+Its private manifest is unreadable by `apt_agent_controller`, stderr is empty, and
+the released aggregate contains no selected default or optimality claim.

@@ -42,8 +42,10 @@ a synthetic adapter contract.
   `9fd5b64fd65f71faea65b037294dca537c75ab902a4ad92f04bb84315c0f54a2`;
 - featurizer hash:
   `965911178ec53c3c6dc2efc61eb1e365b4c253168ee38df586d44582b4e58cab`;
-- AutoDL commit `39f5907f3740e87d84195dd3ea94578403fd8aa8`:
-  224/224 tests passed;
+- AutoDL commit `33040bb2658323c1d2a6fccee4440bddb68a3d26`:
+  225/225 tests passed;
+- evaluator-isolated memory sensitivity smoke:
+  `/root/autodl-tmp/apt-agent/memory-sensitivity-runs/memory-sensitivity-synthetic-20260714-001`;
 - formal pre-SFT gate run:
   `/root/autodl-tmp/apt-agent/experiments/runs/phase10-pre-sft-gate-20260714-002`.
 
@@ -63,6 +65,11 @@ Its detection payload is `deployment-detection-result-v2` and is explicitly labe
 `causal_main/causal`. PIDS without a validated raw-result parser remain visible in
 the capability registry but fail before execution; they cannot silently become
 Agent contracts.
+
+The memory sensitivity harness also ran under `apt_hidden_evaluator` with its
+relevance manifest in evaluator-private storage. The aggregate result is explicitly
+`synthetic_smoke_no_selection`, makes `optimality_claim=false`, and leaves 2048/20
+unvalidated until a formal validation query manifest and review rule exist.
 
 ## Remaining non-bypassable gates
 

@@ -32,6 +32,9 @@ varies token/candidate limits, and releases aggregate recall, precision, recipro
 rank, token use, and truncation only. Synthetic fixtures never select a default;
 formal selection still requires a named agent-level validation manifest and a
 prespecified reviewed selection rule.
+The current AutoDL smoke is
+`/root/autodl-tmp/apt-agent/memory-sensitivity-runs/memory-sensitivity-synthetic-20260714-001`;
+it verifies isolation and aggregation only.
 
 The Agent-facing boundary is `MemoryCaseToolService` in
 `src/apt_detection_agent/tooling/memory_tools.py`. The LLM supplies only observable
