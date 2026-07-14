@@ -21,3 +21,9 @@ AutoDL read-only pre-smoke evidence on 2026-07-14 found the candidate model dire
 idle GPUs, no existing vLLM server, and the pinned `vllm` environment at Python
 3.10.20, vLLM 0.5.3.post1, and PyTorch 2.3.1+cu121. These observations do not alter
 the 32-vCPU/240-GiB/2×24-GiB resource quota.
+
+The accepted Phase 6 smoke profile used GPU 0, localhost port 18000,
+`tensor_parallel_size=1`, `gpu_memory_utilization=0.75`, and
+`max_model_len=2048`. These remain smoke observations, not universally optimal
+deployment values. vLLM's default logs include prompt text; all future formal server
+commands must add `--disable-log-requests`, and logs remain protected run artifacts.
