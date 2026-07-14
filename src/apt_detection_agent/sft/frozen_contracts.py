@@ -132,11 +132,10 @@ class FrozenSFTDatasetValidator:
         if set(admission_by_id) != set(manifest.source_admission_ids):
             raise ValueError("manifest admission identities differ from records")
         for admission in dataset.admissions:
-            if (
-                not admission.admitted_for_formal_trajectory
-                or admission.split != DataSplit.AGENT_TRAINING
-            ):
-                raise ValueError("formal SFT requires agent-training all-gates admission")
+            if admission.split != DataSplit.AGENT_TRAINING:
+                raise ValueError("SFT admission records must be agent-training scoped")
+            if not manifest.synthetic_only and not admission.admitted_for_formal_trajectory:
+                raise ValueError("formal SFT requires all-gates admission")
         for example in dataset.examples:
             if not set(example.source_admission_ids).issubset(admission_by_id):
                 raise ValueError("example cites missing admission")

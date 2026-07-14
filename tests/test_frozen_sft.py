@@ -13,7 +13,8 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from apt_detection_agent.schemas import (
-    AdmittedUse,
+    AdmissionGate,
+    AdmissionGateResult,
     CanonicalAgentVisibleObservation,
     DataSplit,
     FrozenMemoryExchange,
@@ -52,15 +53,28 @@ def training_observation() -> CanonicalAgentVisibleObservation:
     return CanonicalAgentVisibleObservation.model_validate(payload)
 
 
-def admitted() -> PIDSAdmissionRecord:
-    return PIDSAdmissionRecord.model_validate(
-        admission_payload(
-            admission_id="admission-sft-1",
-            dataset_or_scenario_id="scenario-1",
-            split=DataSplit.AGENT_TRAINING,
-            admitted_uses=(AdmittedUse.ADDITIONAL_INVESTIGATION,),
-        )
+def synthetic_unadmitted() -> PIDSAdmissionRecord:
+    payload = admission_payload(
+        admission_id="admission-sft-1",
+        dataset_or_scenario_id="scenario-1",
+        split=DataSplit.AGENT_TRAINING,
     )
+    gates = list(payload["gate_results"])
+    gates[1] = AdmissionGateResult(
+        gate=AdmissionGate.CHECKPOINT,
+        passed=False,
+        verified=True,
+        failure_reason_code="synthetic-fixture-has-no-real-checkpoint",
+    )
+    payload.update(
+        {
+            "gate_results": tuple(gates),
+            "admitted_for_formal_trajectory": False,
+            "admitted_uses": (),
+            "evidence_artifact_ids": (),
+        }
+    )
+    return PIDSAdmissionRecord.model_validate(payload)
 
 
 def frozen_teacher(record_id: str, group_id: str) -> FrozenHiddenTeacherRecord:
@@ -119,7 +133,7 @@ def frozen_teacher(record_id: str, group_id: str) -> FrozenHiddenTeacherRecord:
 def dataset():
     return build_frozen_dataset(
         records=(frozen_teacher("one", "group-a"), frozen_teacher("two", "group-b")),
-        admissions=(admitted(),),
+        admissions=(synthetic_unadmitted(),),
         validation_group_ids=frozenset({"group-b"}),
         dataset_id="synthetic-frozen-sft-v2",
         dataset_version="v2",
@@ -143,17 +157,25 @@ class FrozenSFTTests(unittest.TestCase):
         self.assertNotIn("privileged_labels", text)
         self.assertNotIn("counterfactual_best_action", text)
 
-    def test_dataset_requires_all_gates_admission_and_group_disjoint_partition(self) -> None:
+    def test_synthetic_dataset_is_group_disjoint_but_claims_no_real_admission(self) -> None:
         built = dataset()
         FrozenSFTDatasetValidator.validate(built)
         self.assertEqual(built.manifest.train_group_ids, ("group-a",))
         self.assertEqual(built.manifest.validation_group_ids, ("group-b",))
-        bad_admission = admitted().model_copy(
-            update={"admitted_for_formal_trajectory": False, "admitted_uses": ()}
-        )
-        with self.assertRaises(ValidationError):
-            type(built).model_validate(
-                {**built.model_dump(), "admissions": (bad_admission.model_dump(),)}
+        self.assertFalse(built.admissions[0].admitted_for_formal_trajectory)
+
+    def test_formal_dataset_rejects_unadmitted_synthetic_fixture(self) -> None:
+        with self.assertRaisesRegex(ValueError, "all-gates admission"):
+            build_frozen_dataset(
+                records=(frozen_teacher("one", "group-a"),),
+                admissions=(synthetic_unadmitted(),),
+                validation_group_ids=frozenset(),
+                dataset_id="formal-invalid-sft",
+                dataset_version="v2",
+                code_commit=GIT_SHA,
+                created_at=NOW,
+                synthetic_only=False,
+                formal_training_approved=True,
             )
 
     def test_teacher_cannot_substitute_prompt_or_target_after_runtime(self) -> None:
@@ -173,7 +195,7 @@ class FrozenSFTTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_frozen_dataset(
                 records=(frozen_teacher("one", "group-a"),),
-                admissions=(admitted(),),
+                admissions=(synthetic_unadmitted(),),
                 validation_group_ids=frozenset({"missing-group"}),
                 dataset_id="bad-frozen-sft",
                 dataset_version="v2",
@@ -224,6 +246,45 @@ class FrozenSFTTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(result["status"], "dry_run_validated")
         self.assertIsNone(result["checkpoint_manifest"])
+
+    def test_frozen_runtime_synthetic_smoke_is_non_overwriting_and_nonformal(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            command = (
+                sys.executable,
+                str(ROOT / "scripts" / "run_frozen_runtime_synthetic.py"),
+                "--run-id",
+                "frozen-runtime-fixture",
+                "--run-root",
+                str(root),
+                "--code-commit",
+                GIT_SHA,
+            )
+            environment = {
+                "PATH": os.environ.get("PATH", ""),
+                "PYTHONPATH": str(ROOT / "src"),
+            }
+            first = subprocess.run(
+                command,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            second = subprocess.run(
+                command,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            summary = json.loads(
+                (root / "frozen-runtime-fixture" / "metrics.json").read_text()
+            )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertNotEqual(second.returncode, 0)
+        self.assertFalse(summary["formal_performance_claim"])
+        self.assertTrue(all(summary["checks"].values()))
 
 
 if __name__ == "__main__":
