@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import unittest
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from pydantic import ValidationError
 
@@ -53,8 +53,8 @@ from apt_detection_agent.evaluator import CampaignManifest
 import apt_detection_agent.schemas as public_schemas
 
 
-NOW = datetime(2026, 1, 1, 1, tzinfo=UTC)
-ORIGIN = datetime(2026, 1, 1, 0, tzinfo=UTC)
+NOW = datetime(2026, 1, 1, 1, tzinfo=timezone.utc)
+ORIGIN = datetime(2026, 1, 1, 0, tzinfo=timezone.utc)
 SHA = "a" * 64
 GIT_SHA = "b" * 40
 
