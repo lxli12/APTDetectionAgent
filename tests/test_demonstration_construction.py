@@ -345,6 +345,9 @@ class DemonstrationConstructionTests(unittest.TestCase):
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertNotEqual(second.returncode, 0)
         self.assertGreaterEqual(summary["dynamic_source_config_count"], 8)
+        self.assertEqual(
+            summary["execution_matrix_row_count"], summary["dynamic_source_config_count"]
+        )
         self.assertEqual(summary["successful_tool_use_count"], 0)
         self.assertTrue(all(summary["checks"].values()))
 

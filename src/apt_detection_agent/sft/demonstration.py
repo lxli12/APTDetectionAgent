@@ -13,6 +13,7 @@ from enum import Enum
 from pydantic import Field, model_validator
 
 from apt_detection_agent.schemas import (
+    AdmittedUse,
     AdditionalDetectorResult,
     DataSplit,
     DetectionUnit,
@@ -112,6 +113,32 @@ class ExecutionDisposition(str, Enum):
     EXECUTED = "executed"
     CAPABILITY_ONLY = "capability_only"
     REJECTED = "rejected"
+
+
+class DemonstrationExecutionMatrixRow(StrictModel):
+    schema_version: str = "demonstration-execution-matrix-row-v1"
+    matrix_row_id: Identifier
+    dataset_manifest_id: Identifier
+    episode_id: Identifier
+    temporal_context: "TemporalContext"
+    detector: PIDSRef
+    source_config_id: Identifier
+    admitted_use: AdmittedUse
+    controlled_seed: int = Field(ge=0)
+    repetition_index: int = Field(ge=0)
+    configuration: "OpaqueConfigurationSummary | None" = None
+    admission_id: Identifier | None = None
+    execution_disposition: ExecutionDisposition
+    visible_reason_code: Identifier | None = None
+
+    @model_validator(mode="after")
+    def executable_rows_require_both_admission_and_config(self) -> "DemonstrationExecutionMatrixRow":
+        if self.execution_disposition == ExecutionDisposition.EXECUTED:
+            if not self.admission_id or not self.configuration or self.visible_reason_code:
+                raise ValueError("executable matrix row requires admission and frozen configuration")
+        elif not self.visible_reason_code:
+            raise ValueError("non-executable matrix row requires a visible reason")
+        return self
 
 
 class ObservableBehavior(StrictModel):

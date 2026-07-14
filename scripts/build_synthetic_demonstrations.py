@@ -32,6 +32,7 @@ from apt_detection_agent.sft import (
     ExecutionDisposition,
     build_coverage_report,
     build_dataset_manifest,
+    build_execution_matrix,
     build_offline_run_record,
     build_trajectory,
     corpus_digest,
@@ -50,12 +51,6 @@ from apt_detection_agent.sft.demonstration import (
     VisibleFailureCondition,
 )
 from apt_detection_agent.tooling.runtime_tools import DetectorCapabilityView
-
-
-def _hash(payload: object) -> str:
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
 
 
 def _jsonl(values) -> str:
@@ -93,7 +88,11 @@ def _capability_prompt(source: FrozenMemoryExchange, views) -> FrozenMemoryExcha
         sort_keys=True,
         separators=(",", ":"),
     )
-    prompt_values = source.prompt.model_dump(exclude={"content_hash"})
+    prompt_values = {
+        name: getattr(source.prompt, name)
+        for name in type(source.prompt).model_fields
+        if name != "content_hash"
+    }
     prompt_values.update(
         {
             "builder_version": "synthetic-demonstration-builder-v1",
@@ -307,6 +306,15 @@ def main() -> int:
         )
         for capability, view in zip(capabilities, views, strict=True)
     )
+    matrix = build_execution_matrix(
+        dataset_manifest_id=manifest.dataset_manifest_id,
+        dataset_or_scenario_id=manifest.dataset_id,
+        episode_id="synthetic-episode",
+        temporal_context=temporal,
+        capabilities=capabilities,
+        admissions=(),
+        configurations={},
+    )
     trajectory = build_trajectory(
         trajectory_id="synthetic-capability-trajectory",
         partition_group_id="synthetic-contract-group",
@@ -352,6 +360,7 @@ def main() -> int:
         "canonical_pids_ids": sorted({item.pids.pids_id for item in capabilities}),
         "variant_identity_count": len(refs),
         "offline_record_count": len(offline_records),
+        "execution_matrix_row_count": len(matrix),
         "trajectory_count": 1,
         "successful_tool_use_count": 0,
         "source_admission_count": 0,
@@ -362,6 +371,9 @@ def main() -> int:
             "all_rows_capability_only": all(
                 item.execution_disposition == ExecutionDisposition.CAPABILITY_ONLY
                 for item in offline_records
+            ) and all(
+                item.execution_disposition == ExecutionDisposition.CAPABILITY_ONLY
+                for item in matrix
             ),
             "no_real_admission_claim": not trajectory.source_admission_ids,
             "assistant_only_loss": all(
@@ -373,6 +385,7 @@ def main() -> int:
         raise RuntimeError("synthetic demonstration invariant failed")
     (run_dir / "dataset_manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n")
     (run_dir / "offline_runs.jsonl").write_text(_jsonl(offline_records))
+    (run_dir / "execution_matrix.jsonl").write_text(_jsonl(matrix))
     (run_dir / "trajectories.jsonl").write_text(trajectory.model_dump_json() + "\n")
     (run_dir / "openai_tool_trajectories.jsonl").write_text(export_jsonl)
     (run_dir / "coverage_report.json").write_text(coverage.model_dump_json(indent=2) + "\n")

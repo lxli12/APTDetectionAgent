@@ -9,7 +9,7 @@ from datetime import datetime
 
 from pydantic import Field, model_validator
 
-from apt_detection_agent.schemas import PIDSAdmissionRecord, PIDSRef
+from apt_detection_agent.schemas import AdmittedUse, PIDSCapability, PIDSAdmissionRecord, PIDSRef
 from apt_detection_agent.schemas.common import GitSha, Identifier, Sha256, StrictModel, Timestamp
 from apt_detection_agent.schemas.evaluation import assert_deployable_payload
 
@@ -17,6 +17,7 @@ from .demonstration import (
     CanonicalDemonstrationTrajectory,
     CoverageClass,
     DemonstrationDatasetManifest,
+    DemonstrationExecutionMatrixRow,
     DemonstrationExchange,
     DemonstrationRejection,
     DemonstrationTrainingUse,
@@ -122,6 +123,85 @@ def build_offline_run_record(
     )
     provisional = PublicOfflineRunRecord.model_construct(**values, content_hash="0" * 64)
     return PublicOfflineRunRecord(**values, content_hash=provisional.expected_hash())
+
+
+def build_execution_matrix(
+    *,
+    dataset_manifest_id: str,
+    dataset_or_scenario_id: str,
+    episode_id: str,
+    temporal_context: TemporalContext,
+    capabilities: tuple[PIDSCapability, ...],
+    admissions: tuple[PIDSAdmissionRecord, ...],
+    configurations: dict[tuple[str, str], OpaqueConfigurationSummary],
+    admitted_use: AdmittedUse = AdmittedUse.TRAINING_CANDIDATE_CREATION,
+    controlled_seed: int = 0,
+    repetition_index: int = 0,
+) -> tuple[DemonstrationExecutionMatrixRow, ...]:
+    """Join dynamic capabilities to exact admission/config records without executing."""
+
+    relevant_admissions = tuple(
+        item for item in admissions if item.dataset_or_scenario_id == dataset_or_scenario_id
+    )
+    admission_by_identity = {
+        (item.pids.pids_id, item.pids.variant_id): item
+        for item in relevant_admissions
+    }
+    if len(admission_by_identity) != len(relevant_admissions):
+        raise ValueError("duplicate admission identity")
+    rows: list[DemonstrationExecutionMatrixRow] = []
+    for capability in capabilities:
+        identity = (capability.pids.pids_id, capability.pids.variant_id)
+        admission = admission_by_identity.get(identity)
+        configuration = configurations.get(identity)
+        executable = bool(
+            admission
+            and admission.admitted_for_formal_trajectory
+            and admitted_use in admission.admitted_uses
+            and configuration
+        )
+        if executable:
+            reason = None
+        elif admission is None:
+            reason = "missing-exact-admission"
+        elif not admission.admitted_for_formal_trajectory:
+            reason = "admission-gate-failed"
+        elif admitted_use not in admission.admitted_uses:
+            reason = "admitted-use-not-authorized"
+        else:
+            reason = "missing-frozen-configuration"
+        rows.append(
+            DemonstrationExecutionMatrixRow(
+                matrix_row_id=stable_identifier(
+                    "matrix",
+                    {
+                        "dataset_manifest_id": dataset_manifest_id,
+                        "episode_id": episode_id,
+                        "window_id": temporal_context.window_id,
+                        "pids": identity,
+                        "seed": controlled_seed,
+                        "repetition": repetition_index,
+                    },
+                ),
+                dataset_manifest_id=dataset_manifest_id,
+                episode_id=episode_id,
+                temporal_context=temporal_context,
+                detector=capability.pids,
+                source_config_id=capability.source_config_id,
+                admitted_use=admitted_use,
+                controlled_seed=controlled_seed,
+                repetition_index=repetition_index,
+                configuration=configuration,
+                admission_id=admission.admission_id if executable and admission else None,
+                execution_disposition=(
+                    ExecutionDisposition.EXECUTED
+                    if executable
+                    else ExecutionDisposition.CAPABILITY_ONLY
+                ),
+                visible_reason_code=reason,
+            )
+        )
+    return tuple(rows)
 
 
 def build_trajectory(
