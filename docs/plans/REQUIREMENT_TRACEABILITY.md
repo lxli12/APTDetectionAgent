@@ -8,7 +8,7 @@ and test path is updated when work lands.
 | REQ-GOV-001 | Every module, test, and acceptance item cites a requirement ID | 0 | `AGENTS.md`; this matrix | `tests/test_governance.py` | implemented |
 | REQ-GOV-002 | Phase completion requires invariant evidence, not only exit code zero | 0 | `IMPLEMENTATION_PLAN.md` | governance review | implemented |
 | REQ-GOV-003 | Final design and accepted ADRs are behavioral sources of truth | 0 | `AGENTS.md` | governance checker | implemented |
-| REQ-GOV-004 | SFT work is explicitly blocked when no valid dataset exists | 0/10 | plan; experiment protocol | SFT stage negative test | partial |
+| REQ-GOV-004 | SFT work is explicitly blocked when no valid dataset exists | 0/10 | plan; experiment protocol; formal stage orchestrator | unit negative test and AutoDL blocked preflight artifact | implemented |
 | REQ-GIT-001 | Tracked code changes locally and reaches server only through push + fast-forward pull | 0 | `AGENTS.md` | remote workflow review | implemented |
 | REQ-GIT-002 | Dirty remote worktree stops synchronization; no destructive Git | 0/10 | `AGENTS.md`; `scripts/remote/sync_code.sh` | dirty-tree pre-network failure and destructive-command scan | implemented |
 | REQ-GIT-003 | PIDSMaker remains pinned and unmodified | all | `.gitmodules`; commit pin | submodule status check | implemented |
