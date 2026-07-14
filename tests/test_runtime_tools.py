@@ -37,7 +37,9 @@ from apt_detection_agent.tooling import (
     IntendedUse,
     RuntimeToolService,
     TrainingExecutionResult,
+    build_unadmitted_detector_candidates,
 )
+from apt_detection_agent.pidsmaker import PIDSMakerDiscovery
 from tests.test_agent_runtime_contract import NOW, window
 from tests.test_frozen_runtime import action as base_action
 from tests.test_frozen_runtime import case
@@ -394,6 +396,29 @@ class RuntimeToolTests(unittest.TestCase):
                 output_candidate_prefix="bad",
                 cost_class="high",
             )
+
+    def test_discovery_bridge_retains_every_source_config_but_admits_none(self) -> None:
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        capabilities = PIDSMakerDiscovery(root).capabilities()
+        candidates = build_unadmitted_detector_candidates(
+            capabilities,
+            scenario_id="scenario-inventory",
+            dataset_id="cadets",
+            split=DataSplit.HELD_OUT,
+        )
+        source_ids = {item.source_config_id for item in capabilities}
+        projected_sources = {
+            item.candidate_id.removesuffix(f"-{item.intended_use.value}")
+            for item in candidates
+        }
+        self.assertEqual(projected_sources, source_ids)
+        self.assertEqual(len(candidates), len(capabilities) * 4)
+        self.assertTrue(
+            all(item.availability_status != AvailabilityStatus.AVAILABLE for item in candidates)
+        )
+        self.assertTrue(all(item.admission_id is None for item in candidates))
 
 
 if __name__ == "__main__":

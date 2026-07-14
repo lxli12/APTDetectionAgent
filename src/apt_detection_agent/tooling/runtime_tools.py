@@ -27,6 +27,7 @@ from apt_detection_agent.schemas import (
     FrozenCaseState,
     HighLevelToolOutcome,
     PIDSAdmissionRecord,
+    PIDSCapability,
     PIDSRef,
     PendingDetectionState,
     RecomputationScope,
@@ -336,6 +337,82 @@ class FrozenRuntimeCatalog:
                 "approved choice is not available: "
                 + str(getattr(item, "availability_reason_code"))
             )
+
+
+CAPABILITY_TYPE_BY_PIDS = {
+    "velox": "event-surprise",
+    "orthrus": "temporal-event-model",
+    "kairos": "temporal-event-model",
+    "magic": "embedding-outlier",
+    "flash": "node-role-surprise",
+    "nodlink": "feature-reconstruction",
+    "threatrace": "node-role-surprise",
+    "rcaid": "root-context-anomaly",
+}
+
+
+def build_unadmitted_detector_candidates(
+    capabilities: tuple[PIDSCapability, ...],
+    *,
+    scenario_id: str,
+    dataset_id: str,
+    split: DataSplit,
+) -> tuple[ApprovedDetectorCandidate, ...]:
+    """Project every discovered source config into inspectable, non-executable choices."""
+
+    candidates: list[ApprovedDetectorCandidate] = []
+    for capability in capabilities:
+        status = (
+            AvailabilityStatus.UNAVAILABLE
+            if capability.current_availability_status == AvailabilityStatus.UNAVAILABLE
+            else AvailabilityStatus.UNVERIFIED
+        )
+        reason = (
+            "upstream-or-artifact-unavailable"
+            if status == AvailabilityStatus.UNAVAILABLE
+            else "not-admitted-eight-gate"
+        )
+        capability_type = CAPABILITY_TYPE_BY_PIDS.get(
+            capability.pids.pids_id, "registered-provenance-anomaly"
+        )
+        for intended_use in (
+            IntendedUse.COMMITTED_FAST_PATH,
+            IntendedUse.ADDITIONAL_INVESTIGATION,
+            IntendedUse.CONFIGURATION_CHANGE,
+            IntendedUse.DETECTOR_SWITCH,
+        ):
+            identity = f"{capability.source_config_id}-{intended_use.value}"
+            candidates.append(
+                ApprovedDetectorCandidate(
+                    candidate_id=identity,
+                    pids=capability.pids,
+                    scenario_id=scenario_id,
+                    dataset_id=dataset_id,
+                    split=split,
+                    intended_use=intended_use,
+                    availability_status=status,
+                    availability_reason_code=reason,
+                    purpose="Score deployment-visible provenance anomalies.",
+                    capability_type=capability_type,
+                    detection_unit=capability.detection_unit,
+                    score_semantics="upstream-defined-unverified",
+                    cost_class="unprofiled",
+                    required_state_status="unverified",
+                    limitation_codes=(
+                        "not-admitted-eight-gate",
+                        "no-formal-trajectory-use",
+                    ),
+                    approved_config_id=f"unavailable-{capability.source_config_id}",
+                    config_id=f"unavailable-{capability.source_config_id}",
+                    checkpoint_id="unavailable-checkpoint",
+                    threshold_id="unavailable-threshold",
+                    resource_preset_id="unavailable-resource-profile",
+                    state_initialization_policy_id="unverified-state-reset",
+                    target_state_token="unavailable-state-token",
+                    target_state_health="unverified",
+                )
+            )
+    return tuple(candidates)
 
 
 @dataclass

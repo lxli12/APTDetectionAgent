@@ -22,6 +22,7 @@ from .runtime_tools import (
     IntendedUse,
     RuntimeToolService,
     TrainingExecutionResult,
+    build_unadmitted_detector_candidates,
 )
 
 __all__ = [
@@ -42,6 +43,7 @@ __all__ = [
     "RetrieveMemoryArguments",
     "RuntimeToolService",
     "TrainingExecutionResult",
+    "build_unadmitted_detector_candidates",
     "UpdateCaseArguments",
     "WriteMemoryArguments",
 ]
