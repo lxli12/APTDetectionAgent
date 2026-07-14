@@ -43,9 +43,25 @@ Read-only AutoDL audit confirms system Python lacks controller dependencies and 
 `pids`/`vllm` environments carry different Pydantic versions. The user subsequently
 prohibited creation of a new environment and authorized the existing `pids`
 environment. ADR 0005 therefore pins its installed Pydantic 2.12.5 while retaining a
-process/import boundary between the controller and PIDSMaker. Remote schema smoke is
-recorded separately after synchronization.
+process/import boundary between the controller and PIDSMaker.
 
-Process-level evaluator filesystem/database isolation remains assigned to Phase 7;
-Phase 1 establishes the enforceable serialization boundary but does not claim the
-later runtime boundary is complete.
+## Remote smoke evidence
+
+AutoDL was synchronized from GitHub with a clean-tree `git pull --ff-only` using
+AutoDL's shell-scoped academic network acceleration. Proxy variables were unset in
+the same shell after synchronization. At commit
+`d94a9352ff2cec78af04ae15bab57903e59a9651`, the existing `pids` environment
+(Python 3.10.20, Pydantic 2.12.5) passed:
+
+- governance validation with 66 requirement IDs;
+- `compileall` for `src` and `tests`;
+- all 50 unit and negative tests.
+
+The first remote attempt exposed a Python 3.10 compatibility issue in test code
+(`datetime.UTC`, introduced in Python 3.11). Commit `d94a935` replaced it with
+`timezone.utc`; the full remote rerun then passed. The server working tree remained
+clean and PIDSMaker stayed at the pinned commit.
+
+Result: Phase 1 acceptance criteria are satisfied locally and on AutoDL. Runtime
+process/filesystem/database isolation remains correctly assigned to Phase 7; Phase 1
+establishes the serialization boundary without claiming that later boundary is complete.
