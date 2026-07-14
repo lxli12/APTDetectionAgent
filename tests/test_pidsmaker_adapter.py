@@ -6,6 +6,7 @@ REQ-WANDB-001, REQ-RESOURCE-002, REQ-DB-003.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import tempfile
@@ -259,6 +260,20 @@ class PIDSToolServiceTests(unittest.TestCase):
                     "CADETS_E3",
                     DataSplit.HELD_OUT,
                 )
+
+    def test_catalog_loads_frozen_json_without_runtime_search(self) -> None:
+        config = approved_config(approved_splits=frozenset({DataSplit.VALIDATION}))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "catalog.json"
+            path.write_text(json.dumps([config.model_dump(mode="json")]))
+            catalog = ApprovedConfigCatalog.from_json(path)
+            selected = catalog.select(
+                config_id=config.config_id,
+                pids=config.pids,
+                dataset_id=config.dataset_id,
+                split=DataSplit.VALIDATION,
+            )
+        self.assertEqual(selected, config)
 
     def test_gpu_requests_are_serialized_by_initial_profile(self) -> None:
         runner = FakeRunner()

@@ -6,9 +6,11 @@ REQ-CONFIG-002, REQ-LABEL-004, REQ-RESOURCE-002..003.
 
 from __future__ import annotations
 
+import json
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 
 from pydantic import Field, model_validator
 
@@ -33,6 +35,13 @@ class ApprovedConfigCatalog:
         if len(by_id) != len(entries):
             raise ValueError("ApprovedConfig IDs must be unique")
         self._entries = by_id
+
+    @classmethod
+    def from_json(cls, path: Path) -> "ApprovedConfigCatalog":
+        payload = json.loads(path.read_text())
+        if not isinstance(payload, list) or not payload:
+            raise ValueError("ApprovedConfig catalog must be a nonempty JSON list")
+        return cls(tuple(ApprovedConfig.model_validate(item) for item in payload))
 
     def select(
         self,
