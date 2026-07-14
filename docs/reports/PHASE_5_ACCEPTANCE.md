@@ -27,8 +27,16 @@ rationale rejection, bounded retry, next-window-only reconfiguration, contiguous
 trajectory writes, explicit quota loading, separate GPU assignment, and same-GPU
 unknown-PIDS rejection.
 
-Remote evidence is pending clean-tree fast-forward synchronization and the same
-suite in the existing `pids` environment. No service or experiment is required.
+Remote evidence on 2026-07-14 at commit
+`e4b359a891fd86cb9bb535771e41bbac35e93d6b`:
+
+- clean-tree fast-forward synchronization succeeded and the temporary proxy was
+  cleared in the same shell;
+- governance and `compileall` passed in the existing `pids` environment;
+- full suite: 119/119 passed in 1.579 seconds;
+- PIDSMaker remained pinned and unmodified.
+
+No service, environment modification, or experiment was required.
 
 ## Deferred
 
