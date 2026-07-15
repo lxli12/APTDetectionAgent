@@ -59,7 +59,11 @@ run_worker() {
   for ((index=offset; index<${#CONFIGS[@]}; index+=2)); do
     config="${CONFIGS[index]}"
     log_file="${LOG_ROOT}/${config}.log"
-    if ! CUDA_VISIBLE_DEVICES="${gpu}" python -m pidsmaker_adapter.main prepare +      --config "${config}" +      --output-root "${OUTPUT_ROOT}" +      >"${log_file}" 2>&1
+    if ! CUDA_VISIBLE_DEVICES="${gpu}" PYTHONUNBUFFERED=1 \
+      python -m pidsmaker_adapter.main prepare \
+      --config "${config}" \
+      --output-root "${OUTPUT_ROOT}" \
+      >"${log_file}" 2>&1
     then
       failures=$((failures + 1))
       echo "FAILED gpu=${gpu} config=${config} log=${log_file}" >&2
