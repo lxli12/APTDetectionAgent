@@ -1,0 +1,2 @@
+Evaluate only the supplied recorded Agent outputs. Do not expose ground truth or
+evaluator-only information to the Agent observation stream.

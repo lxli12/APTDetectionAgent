@@ -1,12 +1,13 @@
 # macOS
 .DS_Store
 
-# Credentials
+# Credentials and machine-local settings
 .env
 .env.*
 !.env.example
 *.pem
 *.key
+configs/local/
 
 # Python
 __pycache__/
@@ -16,16 +17,20 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+*.egg-info/
+build/
+dist/
 
-# IDE
-.vscode/
-.idea/
+# Agent-owned generated data and models (keep directory documentation)
+data/*
+!data/README.md
+checkpoints/*
+!checkpoints/README.md
+experiments/runs/
 
-# Data, models and experiments
-data/
+# Generated outputs
 datasets/
 models/
-checkpoints/
 runs/
 outputs/
 logs/
@@ -34,6 +39,3 @@ wandb/
 *.pth
 *.bin
 *.safetensors
-
-# Machine-specific configuration
-configs/local/
