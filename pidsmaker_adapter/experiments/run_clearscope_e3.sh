@@ -5,6 +5,7 @@ REPO_ROOT="${REPO_ROOT:-/root/APTDetectionAgent}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/root/autodl-tmp/apt-detection-agent/pidsmaker-output}"
 LOG_ROOT="${LOG_ROOT:-/root/autodl-tmp/apt-detection-agent/experiments-result/CLEARSCOPE_E3/checkpoint-preparation}"
 CONDA_ENV="${CONDA_ENV:-pids}"
+RUNTIME_ENV="${RUNTIME_ENV:-/root/autodl-tmp/apt-detection-agent/.runtime/db.env}"
 
 find_conda() {
   local candidate
@@ -23,6 +24,11 @@ find_conda() {
 find_conda
 conda activate "${CONDA_ENV}"
 cd "${REPO_ROOT}"
+
+if [[ -f "${RUNTIME_ENV}" ]]; then
+  # shellcheck disable=SC1090
+  source "${RUNTIME_ENV}"
+fi
 
 if ! pg_isready -h "${PIDS_DB_HOST:-localhost}" -p "${PIDS_DB_PORT:-5432}" >/dev/null 2>&1; then
   pg_ctlcluster 17 main start

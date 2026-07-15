@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from pidsmaker_adapter.configuration import checkpoint_slug, load_configuration_space
+
 ROOT = Path(__file__).resolve().parents[1]
 ADAPTER = ROOT / "pidsmaker_adapter"
 
@@ -19,6 +21,14 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert len(ids) == len(set(ids))
     assert len({item["pids"] for item in space["configurations"]}) >= 8
     assert all("seed" not in item["overrides"] for item in space["configurations"])
+
+
+def test_checkpoint_slug_is_readable_and_excludes_seed():
+    space = load_configuration_space()
+    slug = checkpoint_slug(space.get("kairos_base"))
+    assert slug.startswith("checkpoint_embedding_dim-16_hidden_dim-100")
+    assert "learning_rate-5e-5" in slug
+    assert "seed" not in slug
 
 
 def test_production_source_never_imports_installed_pidsmaker():

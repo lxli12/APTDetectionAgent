@@ -189,6 +189,19 @@ def prepare_checkpoint(
     command: list[str] | None = None,
 ) -> Path:
     output_root = output_root.resolve()
+    required_root = Path(
+        "/root/autodl-tmp/apt-detection-agent/pidsmaker-output"
+    ).resolve()
+    if output_root != required_root and required_root not in output_root.parents:
+        raise ValueError(f"Checkpoint outputs must remain under {required_root}")
+    output_root.mkdir(parents=True, exist_ok=True)
+    minimum_free_gib = int(os.environ.get("PIDS_MIN_FREE_GIB", "50"))
+    free_bytes = shutil.disk_usage(output_root).free
+    if free_bytes < minimum_free_gib * 1024**3:
+        raise RuntimeError(
+            f"Refusing checkpoint preparation with less than {minimum_free_gib} GiB free "
+            f"on {output_root}"
+        )
     dataset_root = output_root / space.dataset
     cache_root = output_root / "stage-cache"
     cfg = resolve_runtime_config(legal, space, cache_root, database)

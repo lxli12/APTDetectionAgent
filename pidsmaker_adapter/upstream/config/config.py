@@ -401,112 +401,6 @@ DATASET_DEFAULT_CONFIG = {
             ],
         ],
     },
-    # See https://arxiv.org/pdf/2401.01341
-    "ATLASV2_EDR": {
-        "raw_dir": "",
-        "database": "atlasv2_edr",
-        "database_all_file": "atlasv2_edr",
-        "num_node_types": 3,
-        "num_edge_types": 33,
-        "start_date": "2022-07-15",
-        "end_date": "2022-07-21",
-        "train_dates": [
-            "2022-07-16",
-            # Arbitrarly picked 2022-07-17 for the validation/threshold calibration
-            "2022-07-18",
-        ],
-        "val_dates": [
-            "2022-07-17"
-        ],
-        "test_dates": [
-            "2022-07-19",
-            "2022-07-20"
-        ],
-        "unused_dates": [
-            "2022-07-15"
-        ],
-        "ground_truth_relative_path": [
-            "atlasv2_edr/atlasv2_edr_s1.csv",
-            "atlasv2_edr/atlasv2_edr_s2.csv",
-            "atlasv2_edr/atlasv2_edr_s3.csv",
-            "atlasv2_edr/atlasv2_edr_s4.csv",
-            "atlasv2_edr/atlasv2_edr_m1.csv",
-            "atlasv2_edr/atlasv2_edr_m2.csv",
-            "atlasv2_edr/atlasv2_edr_m3.csv",
-            "atlasv2_edr/atlasv2_edr_m4.csv",
-            "atlasv2_edr/atlasv2_edr_m5.csv",
-            "atlasv2_edr/atlasv2_edr_m6.csv",
-        ],
-        "attack_to_time_window": [
-            # NOTE: the reported attack windows are somewhat inaccurate (i.e., the first and last
-            # true-positive malicious alerts occur OUTSIDE the reported attack windows), so we start
-            # at 2022-07-19 13:00:00 (Rather than 2022-07-19 13:12:00) and end at
-            # 2022-07-20 01:15:00 (Rather than 2022-07-20 01:00:00) to capture all of the true
-            # positives.
-            ["atlasv2_edr/atlasv2_edr_s1.csv", "2022-07-19 13:00:00", "2022-07-19 13:40:00"],
-            ["atlasv2_edr/atlasv2_edr_s2.csv", "2022-07-19 13:45:00", "2022-07-19 14:20:00"],
-            ["atlasv2_edr/atlasv2_edr_s3.csv", "2022-07-19 14:20:00", "2022-07-19 15:05:00"],
-            ["atlasv2_edr/atlasv2_edr_s4.csv", "2022-07-20 00:31:00", "2022-07-20 01:15:00"],
-            ["atlasv2_edr/atlasv2_edr_m1.csv", "2022-07-19 16:00:00", "2022-07-19 17:50:00"],
-            ["atlasv2_edr/atlasv2_edr_m2.csv", "2022-07-19 19:32:00", "2022-07-19 20:02:00"],
-            ["atlasv2_edr/atlasv2_edr_m3.csv", "2022-07-19 20:06:00", "2022-07-19 20:40:00"],
-            ["atlasv2_edr/atlasv2_edr_m4.csv", "2022-07-19 22:31:00", "2022-07-19 23:04:00"],
-            ["atlasv2_edr/atlasv2_edr_m5.csv", "2022-07-19 23:16:00", "2022-07-19 23:46:00"],
-            ["atlasv2_edr/atlasv2_edr_m6.csv", "2022-07-19 23:54:00", "2022-07-20 00:27:00"],
-        ],
-    },
-    # See https://www.ndss-symposium.org/wp-content/uploads/prism2026-12.pdf
-    "CARBANAKV2_EDR": {
-        "raw_dir": "",
-        "database": "carbanakv2_edr",
-        "database_all_file": "carbanakv2_edr",
-        "num_node_types": 3,
-        "num_edge_types": 33,
-        "start_date": "2024-04-18",
-        "end_date": "2024-05-13",
-        "train_dates": [
-            "2024-04-20",
-            "2024-04-21",
-            # Arbitrarly picked 2024-04-22 for the validation/threshold calibration
-            "2024-04-23",
-            "2024-04-24",
-            "2024-04-25",
-            # Arbitrarly picked 2024-04-26 for the validation/threshold calibration
-            "2024-04-27",
-            "2024-04-28",
-            "2024-04-29",
-        ],
-        "val_dates": [
-            "2024-04-22",
-            "2024-04-26",
-        ],
-        "test_dates": [
-            "2024-04-30",
-            "2024-05-01",
-            "2024-05-02",
-            "2024-05-07",
-            "2024-05-08",
-            "2024-05-09",
-            "2024-05-10",
-        ],
-        "unused_dates": [
-            "2024-04-18",
-            "2024-04-19",
-            "2024-05-03",
-            "2024-05-04",
-            "2024-05-05",
-            "2024-05-06",
-            "2024-05-11",
-            "2024-05-12",
-            "2024-05-13",
-        ],
-        "ground_truth_relative_path": [
-            "carbanakv2_edr/carbanakv2_edr.csv",
-        ],
-        "attack_to_time_window": [
-            ["carbanakv2_edr/carbanakv2_edr.csv", "2024-04-30 17:30:00", "2024-05-10 20:30:00"]
-        ],
-    },
 }
 
 # Arguments
@@ -519,7 +413,6 @@ TASK_DEPENDENCIES = {
     "batching": ["feat_inference"],
     "training": ["batching"],
     "evaluation": ["training"],
-    "triage": ["evaluation"],
 }
 
 
@@ -762,15 +655,6 @@ OBJECTIVES_CFG = {
     },
 }
 
-SYNTHETIC_ATTACKS = {
-    "synthetic_attack_naive": {
-        "num_attacks": Arg(int),
-        "num_malicious_process": Arg(int),
-        "num_unauthorized_file_access": Arg(int),
-        "process_selection_method": Arg(str),
-    },
-}
-
 THRESHOLD_METHODS = ["max_val_loss", "mean_val_loss", "threatrace", "magic", "flash", "nodlink"]
 
 # --- Tasks, subtasks, and argument configurations ---
@@ -815,15 +699,12 @@ TASK_ARGS = {
     "transformation": {
         "used_methods": Arg(
             str,
-            vals=AND(
-                ["undirected", "dag", "rcaid_pseudo_graph", "none"] + list(SYNTHETIC_ATTACKS.keys())
-            ),
+            vals=AND(["undirected", "dag", "rcaid_pseudo_graph", "none"]),
             desc="Applies transformations to graphs after their construction. Multiple transformations can be applied sequentially. Example: `used_methods=undirected,dag`",
         ),
         "rcaid_pseudo_graph": {
             "use_pruning": Arg(bool),
         },
-        **SYNTHETIC_ATTACKS,
     },
     "featurization": {
         "emb_dim": Arg(
@@ -1073,21 +954,6 @@ TASK_ARGS = {
                 node is malicious. `both` labels an edge as malicious if both end nodes are malicious.",
             ),
             "threshold_method": Arg(str, vals=OR(THRESHOLD_METHODS)),
-        },
-    },
-    "triage": {
-        "used_method": Arg(
-            str,
-            vals=OR(["depimpact"]),
-            desc="Post-processing step to reconstruct attack paths or reduce false positives. `depimpact` is used in Orthrus.",
-        ),
-        "depimpact": {
-            "used_method": Arg(
-                str, vals=OR(["component", "shortest_path", "1-hop", "2-hop", "3-hop"])
-            ),
-            "score_method": Arg(str, vals=OR(["degree", "recon_loss", "degree_recon"])),
-            "workers": Arg(int),
-            "visualize": Arg(bool),
         },
     },
     "postprocessing": {},

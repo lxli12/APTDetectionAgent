@@ -17,7 +17,6 @@ from .config import (
     EXPERIMENTS_CONFIG,
     OBJECTIVES_EDGE_LEVEL,
     OBJECTIVES_NODE_LEVEL,
-    SYNTHETIC_ATTACKS,
     TASK_ARGS,
     TASK_DEPENDENCIES,
     UNCERTAINTY_EXP_YML_FOLDER,
@@ -305,18 +304,6 @@ def set_task_paths(cfg, subtask_concat_value=None):
     cfg.evaluation._uncertainty_exp_dir = os.path.join(
         cfg.evaluation._task_path, "uncertainty_exp/"
     )
-    cfg.evaluation.queue_evaluation._precision_recall_dir = os.path.join(
-        cfg.evaluation._task_path, "precision_recall_dir/"
-    )
-    cfg.evaluation.queue_evaluation._queues_dir = os.path.join(
-        cfg.evaluation._task_path, "queues_dir/"
-    )
-    cfg.evaluation.queue_evaluation._predicted_queues_dir = os.path.join(
-        cfg.evaluation._task_path, "predicted_queues_dir/"
-    )
-    cfg.evaluation.queue_evaluation._kairos_dir = os.path.join(
-        cfg.evaluation._task_path, "kairos_dir/"
-    )
     cfg.evaluation._results_dir = os.path.join(cfg.evaluation._task_path, "results/")
 
     # Ground Truth paths
@@ -324,8 +311,6 @@ def set_task_paths(cfg, subtask_concat_value=None):
         ROOT_GROUND_TRUTH_DIR, cfg.evaluation.ground_truth_version + "/"
     )
 
-    # Triage paths
-    cfg.triage._tracing_graph_dir = os.path.join(cfg.triage._task_path, "tracing_graphs")
 
 
 def validate_yml_file(yml_file: str, dictionary: dict):
@@ -499,10 +484,7 @@ def check_edge_cases(cfg):
             raise ValueError("These decoders are only working with magic thresholding yet.")
 
     if cfg.training.decoder.use_few_shot:
-        if cfg.transformation.used_methods not in SYNTHETIC_ATTACKS.keys():
-            raise ValueError(
-                "Few-shot mode requires an attack generation method within `preprocessing.transformation.used_methods`"
-            )
+        raise ValueError("Few-shot training is outside the adapter configuration space")
 
     use_multi_dataset = "none" not in cfg.construction.multi_dataset
     if cfg.featurization.multi_dataset_training and use_multi_dataset:
@@ -515,9 +497,6 @@ def check_edge_cases(cfg):
                 "Using multi-dataset mode requires setting `preprocessing.construction.multi_dataset`"
             )
 
-    if cfg.evaluation.used_method == "edge_evaluation":
-        if cfg._is_node_level:
-            raise ValueError("Edge evaluation not implemented for node-level detection.")
 
 
 def set_subtasks_to_restart(yml_file: str, cfg):

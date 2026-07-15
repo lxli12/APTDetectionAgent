@@ -201,13 +201,13 @@ def format_number(value: Any) -> str:
 
 def checkpoint_slug(legal: LegalConfiguration) -> str:
     aliases = {
-        "featurization.emb_dim": "emb",
-        "featurization.epochs": "fep",
-        "training.node_hid_dim": "hd",
-        "training.node_out_dim": "od",
-        "training.lr": "lr",
-        "training.weight_decay": "wd",
-        "training.num_epochs": "ep",
+        "featurization.emb_dim": "embedding_dim",
+        "featurization.epochs": "featurization_epochs",
+        "training.node_hid_dim": "hidden_dim",
+        "training.node_out_dim": "output_dim",
+        "training.lr": "learning_rate",
+        "training.weight_decay": "weight_decay",
+        "training.num_epochs": "training_epochs",
     }
     ordered = [
         key

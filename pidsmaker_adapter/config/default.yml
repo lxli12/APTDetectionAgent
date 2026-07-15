@@ -1,10 +1,5 @@
 transformation:
   used_methods: none
-  synthetic_attack_naive:
-    num_attacks: 1
-    num_malicious_process: 5
-    num_unauthorized_file_access: 20
-    process_selection_method: random # TODO: try new methods
 
 featurization:
   temporal_rw:
