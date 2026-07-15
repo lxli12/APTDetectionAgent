@@ -6,7 +6,7 @@ adapter and does not modify, duplicate, or manage PIDSMaker internals.
 
 ## Documentation
 
-- [Project architecture v1.1](docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.1.md)
+- [Project architecture v1.2](docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.2.md)
   is frozen and defines repository structure, ownership, dependencies, and the
   PIDSMaker integration boundary.
 - [Agent design v0.4](docs/design/APT_Detection_Agent_Design_v0.4.md) defines the
@@ -30,11 +30,14 @@ configs/                     stable YAML configuration
 prompts/                     runtime-loaded plain-text prompts
 scripts/                     thin reproducible entry points
 tests/                       architecture-aligned tests
-data/                        Agent-owned local-only datasets
-checkpoints/                 Agent-owned local-only checkpoints
-experiments/                 Agent run definitions and generated outputs
+checkpoints/                 checkpoint layout documentation only
+experiments/                 Agent run definitions; outputs are external
 docs/                        architecture, current design, and archive
 ```
+
+Runtime datasets are not stored in the repository. On AutoDL, raw inputs live
+under `/root/autodl-tmp/data/raw_datasets` and generated SFT data lives under
+`/root/autodl-tmp/data/sft_data`.
 
 PIDSMaker continues to own provenance preprocessing, PIDS implementations,
 backend training/inference/evaluation, intermediate artifacts, and PIDS

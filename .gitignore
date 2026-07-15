@@ -21,9 +21,7 @@ venv/
 build/
 dist/
 
-# Agent-owned generated data and models (keep directory documentation)
-data/*
-!data/README.md
+# Agent-owned generated models (keep directory documentation)
 checkpoints/*
 !checkpoints/README.md
 experiments/runs/

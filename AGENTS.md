@@ -5,7 +5,7 @@ development.
 
 ## 1. Sources of truth
 
-- `docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.1.md` is the frozen source
+- `docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.2.md` is the frozen source
   of truth for repository structure, module ownership, dependency direction,
   and the PIDSMaker boundary.
 - `docs/design/APT_Detection_Agent_Design_v0.4.md` is the current source of truth
@@ -70,7 +70,9 @@ development.
 
   ```text
   /root/autodl-tmp/
-  ├── data/                       raw dataset dumps and extracted datasets
+  ├── data/
+  │   ├── raw_datasets/          raw dataset dumps and extracted datasets
+  │   └── sft_data/              generated SFT manifests/examples/exports
   ├── llm-models/                 explicitly managed model weights
   ├── huggingface/                Hugging Face home and download cache
   ├── postgresql/                 PostgreSQL data directory
@@ -93,8 +95,9 @@ development.
 - PostgreSQL 17 is configured to use
   `/root/autodl-tmp/postgresql/17/main`. Its service was not running during the
   2026-07-15 inspection; check readiness before work that depends on it.
-- Dataset dumps currently live under `/root/autodl-tmp/data`, and the default
-  Llama model lives under `/root/autodl-tmp/llm-models/Llama-3.1-8B`.
+- Dataset dumps currently live under `/root/autodl-tmp/data/raw_datasets`, SFT
+  datasets belong under `/root/autodl-tmp/data/sft_data`, and the default Llama
+  model lives under `/root/autodl-tmp/llm-models/Llama-3.1-8B`.
 - Set package/model caches such as `HF_HOME`, model downloads, temporary
   training data, and large build caches to data-disk paths. Inspect free space
   before every large download or experiment and fail early if the reserved

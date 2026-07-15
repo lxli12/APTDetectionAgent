@@ -6,7 +6,7 @@ Last updated: 2026-07-15
 
 Design input: `docs/design/APT_Detection_Agent_Design_v0.4.md`
 
-Architecture boundary: `docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.1.md`
+Architecture boundary: `docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.2.md`
 
 ## 1. Objective
 
@@ -284,9 +284,9 @@ training examples from controlled Agent-training scenarios.
 
 Architecture gate:
 
-The frozen v1.1 architecture intentionally reserves `sft/` without Python
+The frozen v1.2 architecture intentionally reserves `sft/` without Python
 implementation, and the current architecture test enforces that state. Before
-adding SFT source files, publish an architecture v1.2 that activates the agreed
+adding SFT source files, publish an architecture v1.3 that activates the agreed
 SFT modules while retaining the PIDSMaker and data-ownership boundaries. Update
 the architecture test explicitly; do not silently bypass it.
 

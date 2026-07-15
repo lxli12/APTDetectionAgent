@@ -1,4 +1,4 @@
-"""Repository-level checks for the frozen v1.1 boundaries."""
+"""Repository-level checks for the frozen v1.2 boundaries."""
 
 from pathlib import Path
 
@@ -10,6 +10,10 @@ def test_pidsmaker_is_only_a_submodule_boundary():
     assert (ROOT / "PIDSMaker" / ".git").is_file()
     assert not (ROOT / "src" / "apt_detection_agent" / "pidsmaker").exists()
     assert (ROOT / "src" / "apt_detection_agent" / "pidsmaker_adapter").is_dir()
+
+
+def test_runtime_data_is_external_to_repository():
+    assert not (ROOT / "data").exists()
 
 
 def test_prompt_assets_are_plain_text():
