@@ -131,3 +131,12 @@ def test_magic_inference_returns_reconstruction_scores():
     ).read_text(encoding="utf-8")
     assert "torch.zeros((x.shape[0],)" not in source
     assert "self.loss_fn(x_rec, x_init, inference=inference)" in source
+
+
+def test_word_embedding_model_paths_do_not_require_trailing_separator():
+    root = ADAPTER / "upstream" / "featurization" / "feat_inference_methods"
+    for filename in ("feat_inference_word2vec.py", "feat_inference_TRW.py"):
+        source = (root / filename).read_text(encoding="utf-8")
+        assert "cfg.featurization._model_dir +" not in source
+        assert "import os" in source
+        assert "os.path.join(" in source

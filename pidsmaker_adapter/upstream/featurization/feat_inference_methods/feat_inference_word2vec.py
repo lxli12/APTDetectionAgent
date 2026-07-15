@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from gensim.models import Word2Vec
 
@@ -18,7 +20,9 @@ def main(cfg):
     log_start(__file__)
     indexid2msg = get_indexid2msg(cfg)
 
-    word2vec_model_path = cfg.featurization._model_dir + "word2vec.model"
+    word2vec_model_path = os.path.join(
+        cfg.featurization._model_dir, "word2vec.model"
+    )
     model = Word2Vec.load(word2vec_model_path)
 
     decline_percentage = cfg.featurization.word2vec.decline_rate
