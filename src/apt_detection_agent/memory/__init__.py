@@ -1,6 +1,3 @@
-"""Fixed Agent memory subsystem."""
+"""Reserved namespace for the fixed Agent memory subsystem."""
 
-from .memory_manager import MemoryManager
-from .store import InMemoryStore, MemoryStore
-
-__all__ = ["InMemoryStore", "MemoryManager", "MemoryStore"]
+__all__: list[str] = []

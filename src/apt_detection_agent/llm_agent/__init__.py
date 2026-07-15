@@ -1,5 +1,5 @@
-"""Agent decision policy boundary."""
+"""Provider-neutral LLM client boundary."""
 
-from .policy import AgentPolicy, PolicyError
+from .llm_client import GenerationConfig, LLMClient
 
-__all__ = ["AgentPolicy", "PolicyError"]
+__all__ = ["GenerationConfig", "LLMClient"]

@@ -4,7 +4,7 @@ These rules apply to the entire repository and must be followed throughout
 development.
 
 ## 1. Sources of truth
-- `docs/design/APT_Detection_Agent_Design` is the current source of truth
+- `docs/design/APT_Detection_Agent_Design.md` is the current source of truth
   for research behavior, deployment protocol, memory policy, tool actions,
   training, and evaluation.
 
@@ -144,9 +144,6 @@ development.
 - Record provider, exact model/revision, tokenizer, generation parameters,
   context limit, input/output tokens, latency, and serving mode in every run.
   Never silently fall back from one provider/model to another.
-- Store Hugging Face caches under `/root/autodl-tmp/huggingface` and explicit
-  retained weights under `/root/autodl-tmp/llm-models`. Do not download model
-  weights to `/root/.cache`, the repository, or another system-disk location.
 
 ## 5. PIDSMaker boundary
 
@@ -174,7 +171,7 @@ development.
   in ablations. Prefer explicit typed schemas at module boundaries.
 - Names should state purpose directly without becoming verbose. Reuse a shared
   abstraction only when ownership and semantics are genuinely shared.
-- Keep the dependency direction defined by the frozen architecture. In
+- Keep the dependency direction defined by the current design. In
   particular, controller and policy code must not import PIDSMaker internals or
   construct arbitrary backend shell commands.
 - Expose only validated discrete actions and candidates. Preserve stage
@@ -185,7 +182,7 @@ development.
 - For uncertain style or organization choices, consult
   [LHY-24/TuneAgent](https://github.com/LHY-24/TuneAgent) and
   [AI45Lab/AgentDoG](https://github.com/AI45Lab/AgentDoG), while preserving this
-  repository's frozen architecture and ownership rules.
+  repository's current design and ownership rules.
 
 ## 7. Verification and Git discipline
 
@@ -193,4 +190,3 @@ development.
   code and architecture; experimental conclusions require AutoDL runs.
 - Add or update tests for public contracts, dependency boundaries, sanitization,
   invalid actions, fallbacks, and failure handling.
-

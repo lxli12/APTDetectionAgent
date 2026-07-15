@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Evaluation is provided by apt_detection_agent.evaluation; compose an approved experiment config before running."
+echo "Agent evaluation is not implemented; follow docs/design/APT_Detection_Agent_Design.md." >&2
+exit 2
