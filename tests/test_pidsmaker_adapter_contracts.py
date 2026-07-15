@@ -113,3 +113,12 @@ def test_tgn_runtime_neighbors_are_not_checkpoint_state():
     save_section = source[source.index("def save_model(") : source.index("def load_model(")]
     assert "neighbor_loader.pkl" not in save_section
     assert "memory.pkl" not in save_section
+
+
+def test_remote_runner_uses_only_data_disk_for_generated_artifacts():
+    source = (ADAPTER / "experiments" / "run_clearscope_e3.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "/root/autodl-tmp/apt-detection-agent/pidsmaker-output" in source
+    assert "/root/autodl-tmp/apt-detection-agent/experiments-result" in source
+    assert "for candidate in +" not in source

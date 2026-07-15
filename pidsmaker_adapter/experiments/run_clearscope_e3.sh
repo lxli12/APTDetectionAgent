@@ -9,7 +9,10 @@ RUNTIME_ENV="${RUNTIME_ENV:-/root/autodl-tmp/apt-detection-agent/.runtime/db.env
 
 find_conda() {
   local candidate
-  for candidate in +    /root/miniconda3/etc/profile.d/conda.sh +    /root/miniforge3/etc/profile.d/conda.sh +    /opt/conda/etc/profile.d/conda.sh
+  for candidate in \
+    /root/miniconda3/etc/profile.d/conda.sh \
+    /root/miniforge3/etc/profile.d/conda.sh \
+    /opt/conda/etc/profile.d/conda.sh
   do
     if [[ -f "${candidate}" ]]; then
       # shellcheck disable=SC1090
