@@ -1,4 +1,4 @@
-版本：v0.4（固定 Memory Harness + SFT 读写利用策略实现稿）
+版本：v0.4（PIDSMaker Harness 固定流程 + Agent 有限配置适配 + SFT 轨迹学习实现稿）
 
 状态：已统一 construction-graph step、事件触发双路径、C=100% 硬约束、TP evidence recovery、固定 Memory Harness、SFT 学习 memory 读写与利用策略、受约束 tool API 与 SFT-first 路线。
 
@@ -51,29 +51,90 @@ subject to complete attack-campaign coverage.
 
 ## 2.1 Pipeline 边界
 
-PIDSMaker 包含 construction、transformation、featurization、batching、training、evaluation、triage 七个阶段。第一版排除 triage，只控制前六个 detection-relevant stages。PIDSMaker 基于阶段参数和上游依赖生成 hash 并缓存输出，因此不同动作具有不同的 stage invalidation、cache reuse 和计算成本。
+PIDSMaker 原始 pipeline 包含 construction、transformation、featurization、batching、training、evaluation、triage 等阶段。APTDetectionAgent 不直接暴露完整 PIDSMaker 搜索空间，而是基于 PIDSMaker framework 做受约束适配。
 
-| **Stage**                | **PIDSMaker 含义**                                  | **第一版 Agent 边界**                                                    |
-|--------------------------|-----------------------------------------------------|--------------------------------------------------------------------------|
-| 1\. Construction         | 解析 raw provenance，按 time_window_size 构造时间图 | 固定为 scenario 配置；第一版不作为常规在线动作，仅做离线消融或高级恢复。 |
-| 2\. Transformation       | 图结构与属性转换                                    | 第一版固定；后续扩展。                                                   |
-| 3\. Featurization        | 实体/文本属性表示                                   | 第一版由 validated config 或 tuned PIDS 固定；不允许任意组合。           |
-| 4\. Batching             | 组织 temporal graph/model input                     | 仅资源恢复时允许有限调整。                                               |
-| 5\. Training             | 训练或重训 PIDS                                     | Slow path 可调用，使用 train/val 边界。                                  |
-| 6\. Evaluation/Inference | 生成 anomaly scores 与 thresholded alerts           | 每图执行；阈值调整是第一版核心动作。                                     |
-| 7\. Triage               | 攻击追踪与后处理                                    | 第一版排除。                                                             |
+第一版将 pipeline 分为：
+
+1. **Harness 固定流程**：construction、transformation、batching、objective、node_evaluation。
+这些阶段定义实验语义、数据处理和评价协议，Agent 不修改。
+
+2. **Agent 可调整能力空间**：featurization、training 使用的 encoder/decoder、threshold。
+这些选择来自预验证的 capability registry，不允许任意组合。
+
+有效配置必须满足：
+
+```
+Environment × PIDS × Featurization × Encoder/Decoder × Threshold
+```
+
+的 compatibility constraint。
+
+此外，threshold 只考虑 no-snoop 场景，即不依赖 test attack label 或 visible ground truth 的阈值策略。
+
+| **Stage** | **第一版边界** |
+|---|---|
+| Construction | 固定 scenario 配置，产生 construction time-window graph。 |
+| Transformation | 固定，不进入 Agent action space。 |
+| Featurization | 从 validated candidates 中选择；禁止任意组合。 |
+| Batching | 固定为实验配置；仅资源异常恢复时允许有限候选调整。 |
+| Objective | 固定 detection objective，不作为 Agent action。 |
+| Training | Agent 可调用已有 PIDS training/configuration adaptation，但只能使用合法 train/val boundary。 |
+| Encoder/Decoder | 从 PIDS-specific validated candidates 中选择。 |
+| Threshold | 从 no-snoop validated candidates 中选择。 |
+| Node Evaluation | 固定评价协议。 |
+| Triage | 第一版排除。 |
 
 ## 2.2 两层数据划分
 
-PIDSMaker 文档中的 train/validation/test 是单个 dataset 内供 PIDS 使用的数据划分，不是 agent-level 的训练/测试划分。Agent-level split 是跨 dataset 的：agent-training datasets 用于生成 SFT 数据、offline run table 和 memory；held-out datasets 用于评估 frozen agent 对新环境的泛化。
+PIDSMaker train/validation/test 是每个环境内部的 detector lifecycle 划分；Agent-level training/evaluation 是跨环境的 policy 泛化划分。两者不是替代关系。
 
-| **层级**       | **分区**          | **用途**                                             | **Agent 可见性**                                          |
-|----------------|-------------------|------------------------------------------------------|-----------------------------------------------------------|
-| PIDSMaker 内部 | train_dates       | benign graphs，用于训练 PIDS                         | 可见；无攻击标签指标。                                    |
-| PIDSMaker 内部 | val_dates         | benign graphs，用于阈值校准与正常参考                | 可见；无 TP/FP/ADP/MCC。                                  |
-| PIDSMaker 内部 | test_dates        | 含 benign 与 attacks 的 deployment/evaluation period | provenance、score、alerts 可见；ground truth 不可见。     |
-| Agent-level    | training datasets | 构造 SFT、counterfactual runs、memory                | hidden labels 与完整攻击链可作为 privileged supervision。 |
-| Agent-level    | held-out datasets | 评估 frozen agent 泛化                               | labels 只给 post-hoc evaluator。                          |
+Held-out evaluation environment 仍然需要先使用该环境自己的 train/val 完成 PIDSMaker adaptation：
+
+```
+environment train split
+        |
+        v
+PIDS training / checkpoint
+
+environment validation split
+        |
+        v
+no-snoop threshold and configuration selection
+
+environment test split
+        |
+        v
+frozen Agent detection evaluation
+```
+
+Agent training environments:
+
+| Environment |
+|---|
+| CADETS_E3 |
+| THEIA_E3 |
+| CLEARSCOPE_E3 |
+| FIVEDIRECTIONS_E3 |
+| TRACE_E3 |
+| optc_h201 |
+| optc_h501 |
+
+Held-out evaluation environments:
+
+| Environment |
+|---|
+| CADETS_E5 |
+| THEIA_E5 |
+| CLEARSCOPE_E5 |
+| FIVEDIRECTIONS_E5 |
+| TRACE_E5 |
+| optc_h051 |
+
+因此：
+- PIDSMaker train/val/test 控制 detector 生命周期；
+- Agent training/evaluation environment 控制 LLM policy 泛化；
+- Agent test environment 的 train/val 不是泄漏，而是 deployment initialization/adaptation data；
+- 最终检测指标只在该环境 test period 上计算。
 
 ## 2.3 train/val 上可获得的信号
 
@@ -159,15 +220,19 @@ Token usage 只作为预算约束和实验评价指标，不进入第一版 SFT 
 
 Offline training:
 
-agent-training datasets
+agent-training environments
 
--\> controlled PIDSMaker runs + privileged attack-chain analysis
+-> PIDSMaker train/validation based detector preparation
 
--\> offline run table + weak diagnosis labels
+-> controlled PIDSMaker runs over valid capability configurations
 
--\> privileged-to-deployable experience distillation
+-> privileged attack-chain analysis and counterfactual evaluation
 
--\> SFT trajectories + static task-aware LTM
+-> offline run table + weak diagnosis labels
+
+-> privileged-to-deployable experience distillation
+
+-> SFT trajectories + static task-aware LTM
 
 Held-out deployment:
 

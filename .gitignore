@@ -1,5 +1,6 @@
 # macOS
 .DS_Store
+._*
 
 # Credentials and machine-local settings
 .env
@@ -7,33 +8,73 @@
 !.env.example
 *.pem
 *.key
-configs/local/
+/configs/local/
+*.local.yaml
+*.local.yml
 
-# Python
+# Editors and local tooling
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python bytecode, environments, builds, and test output
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.ipynb_checkpoints/
+.cache/
 .venv/
 venv/
+env/
 *.egg-info/
 build/
 dist/
 
-# Agent-owned generated models (keep directory documentation)
-checkpoints/*
-!checkpoints/README.md
-experiments/runs/
+# Agent run state and generated artifacts
+/checkpoints/*
+!/checkpoints/README.md
+/experiments/runs/
+/runs/
+/outputs/
+/logs/
+/wandb/
+/mlruns/
+/artifacts/
+/experiments-result/
+/sft-checkpoints/
 
-# Generated outputs
-datasets/
-models/
-runs/
-outputs/
-logs/
-wandb/
+# Data, databases, caches, and model weights belong on /root/autodl-tmp
+/data/
+/datasets/
+/raw-datasets/
+/sft-data/
+/models/
+/llm-models/
+/huggingface/
+/postgresql/
+/pidsmaker-output/
+*.db
+*.sqlite
+*.sqlite3
+*.ckpt
 *.pt
 *.pth
 *.bin
 *.safetensors
+*.onnx
+
+# Logs and transient process files
+*.log
+*.pid
+*.tmp
+*.temp

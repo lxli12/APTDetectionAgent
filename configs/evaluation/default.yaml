@@ -1,5 +1,0 @@
-metrics:
-  - precision
-  - coverage
-  - runtime_seconds
-  - token_cost

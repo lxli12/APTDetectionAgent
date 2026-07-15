@@ -1,2 +1,0 @@
-run_root: experiments/runs
-trace_filename: execution_traces/trace.jsonl

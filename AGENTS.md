@@ -4,17 +4,9 @@ These rules apply to the entire repository and must be followed throughout
 development.
 
 ## 1. Sources of truth
-
-- `docs/architecture/PROJECT_ARCHITECTURE_DESIGN_v1.2.md` is the frozen source
-  of truth for repository structure, module ownership, dependency direction,
-  and the PIDSMaker boundary.
-- `docs/design/APT_Detection_Agent_Design_v0.4.md` is the current source of truth
+- `docs/design/APT_Detection_Agent_Design` is the current source of truth
   for research behavior, deployment protocol, memory policy, tool actions,
   training, and evaluation.
-- If the two documents appear to conflict, preserve the frozen repository and
-  ownership boundary first, then implement the research behavior through the
-  Agent-owned schemas, adapter, tools, controller, memory, evaluation, and
-  experiment modules. Record any unresolved conflict before implementation.
 
 ## 2. Local development boundary
 
@@ -24,6 +16,11 @@ development.
   workloads, or environment-reproduction experiments locally.
 - No experiment data is available locally. Do not fabricate local data or use a
   local result as evidence for an experimental claim.
+- Delete ad hoc Python or shell scripts (including temporary `.py` and `.sh`
+  probes) as soon as the check is complete. Do not keep one-off test, inspection,
+  migration, or debugging scripts after their result has been incorporated into
+  project code or documentation. Keep only files required to build, test,
+  operate, document, or reproduce the completed project.
 - Keep generated data, checkpoints, caches, logs, and run outputs out of Git.
 
 ## 3. Authoritative remote environment
@@ -71,32 +68,29 @@ development.
   ```text
   /root/autodl-tmp/
   ├── data/
-  │   ├── raw_datasets/          raw dataset dumps and extracted datasets
-  │   └── sft_data/              generated SFT manifests/examples/exports
-  ├── llm-models/                 explicitly managed model weights
-  ├── huggingface/                Hugging Face home and download cache
+  │   ├── raw-datasets/          raw dataset dumps and extracted datasets
+  │       ├── training-environments/
+          └── evaluation-environments/ 
+  │   └── sft-data/              generated SFT manifests/examples/exports
+  ├── llm-models/                 explicitly managed model weights and Hugging Face home and download cache
+      └──vllm/
   ├── postgresql/                 PostgreSQL data directory
-  ├── pidsmaker/
-  │   ├── cache/                  stage/hash cache
-  │   ├── intermediate/           construction through batching artifacts
-  │   ├── checkpoints/            PIDS-owned checkpoints
-  │   └── outputs/                backend inference/evaluation output
   └── apt-detection-agent/
-      ├── experiments/            Agent run outputs, traces, metrics, reports
-      ├── checkpoints/            Agent/SFT checkpoints
-      └── offline-run-table/      controlled-run records and generated data
+      ├── pidsmaker-output/
+      ├── experiments-result/            Agent run outputs, traces, metrics, reports
+      ├── sft-checkpoints/            Agent/SFT checkpoints
   ```
 
-- Route PIDSMaker-generated preprocessing, construction, transformation,
-  featurization, batching, checkpoints, cache, and other large intermediate
-  artifacts to `/root/autodl-tmp/pidsmaker` through Agent-owned environment,
-  configuration, and adapter arguments. Do not change PIDSMaker internals to
-  achieve this routing.
+- Route native pipeline preprocessing, construction, transformation,
+  featurization, batching, checkpoints, cache, and other large artifacts to
+  `/root/autodl-tmp/apt-detection-agent/pidsmaker-output`. Reference-only PIDSMaker
+  equivalence outputs may use `/root/autodl-tmp/pidsmaker` but must never be
+  mixed with production Agent artifacts.
 - PostgreSQL 17 is configured to use
   `/root/autodl-tmp/postgresql/17/main`. Its service was not running during the
   2026-07-15 inspection; check readiness before work that depends on it.
-- Dataset dumps currently live under `/root/autodl-tmp/data/raw_datasets`, SFT
-  datasets belong under `/root/autodl-tmp/data/sft_data`, and the default Llama
+- Dataset dumps currently live under `/root/autodl-tmp/data/raw-datasets`, SFT
+  datasets belong under `/root/autodl-tmp/data/sft-data`, and the default Llama
   model lives under `/root/autodl-tmp/llm-models/Llama-3.1-8B`.
 - Set package/model caches such as `HF_HOME`, model downloads, temporary
   training data, and large build caches to data-disk paths. Inspect free space
@@ -112,12 +106,9 @@ development.
 
 - At the 2026-07-15 inspection, no repository existed under `/root`. Clone it to
   `/root/APTDetectionAgent` before remote development or experiments.
-- The installed `pidsmaker` editable metadata points to the stale, nonexistent
-  path `/root/ATP-Detection-Agent/PIDSMaker`; consequently `import pidsmaker`
-  fails. After the canonical repository is checked out with its pinned
-  submodule, reinstall PIDSMaker editable from
-  `/root/APTDetectionAgent/PIDSMaker` into the `pids` environment and verify the
-  import. Do not repair this by copying or modifying PIDSMaker source.
+- Production Agent code must not import the `pidsmaker` package. A reference
+  equivalence run may install the unchanged submodule in an isolated environment
+  and must record the pinned revision.
 - AutoDL's built-in academic proxy may be enabled for a download session with
   `source /etc/network_turbo`. It is intended for academic GitHub and Hugging
   Face access, is not guaranteed to be stable, and should be disabled afterward
@@ -159,16 +150,20 @@ development.
 
 ## 5. PIDSMaker boundary
 
-- `PIDSMaker/` is an unchanged, pinned upstream git submodule. Do not modify its
+- `PIDSMaker/` is an unchanged, pinned upstream reference submodule. Do not modify its
   source, configuration logic, package metadata, tests, or internal behavior.
-- Do not copy PIDSMaker implementation or artifacts into Agent-owned modules.
-- Integrate only through `src/apt_detection_agent/pidsmaker_adapter/` and typed,
-  validated tools. Adapt request construction and result normalization on the
-  Agent side when the live environment requires compatibility work.
-- PIDSMaker owns preprocessing, features, intermediate artifacts, PIDS models,
-  PIDS checkpoints, training, inference, and backend evaluation. The Agent owns
-  orchestration, memory, decisions, execution traces, Agent evaluation, and
-  Agent/SFT artifacts.
+- Migrate the required node-level PIDSMaker subset into
+  `src/apt_detection_agent/tools/pidsmaker/` while retaining recognizable
+  upstream module boundaries (`config`, preprocessing, featurization, tasks,
+  models, and node evaluation). Record the upstream commit/path and material
+  changes. Exclude triage, edge/queue evaluation, synthetic attacks, and the
+  `ATLASV2_EDR` and `CARBANAKV2_EDR` datasets.
+- Agent-owned paths, schemas, candidates, hashes, checkpoints, and typed tool
+  interfaces are authoritative. Production code must not invoke PIDSMaker CLI,
+  import `pidsmaker`, or expose arbitrary internal functions to the LLM.
+- The Agent owns incorporated preprocessing, features, intermediate artifacts,
+  detector checkpoints, training, inference, orchestration, memory, traces,
+  evaluation, and SFT artifacts. PIDSMaker remains a reference oracle only.
 - Preserve PIDSMaker's native train/validation/test boundaries and never expose
   test labels, attack identity, malicious nodes, attack times, or label-derived
   metrics to held-out online observations or deployable memory.
@@ -198,10 +193,4 @@ development.
   code and architecture; experimental conclusions require AutoDL runs.
 - Add or update tests for public contracts, dependency boundaries, sanitization,
   invalid actions, fallbacks, and failure handling.
-- Review `git status` before staging. Never commit secrets, `.env` files, data,
-  checkpoints, caches, logs, or generated experiment outputs.
-- Make timely, focused commits after a coherent change is verified. Use messages
-  that describe the implemented behavior. Push maintained work to GitHub rather
-  than accumulating unrelated local changes.
-- Do not hide an unverified assumption in code or documentation. Mark pending
-  server validation, experimental evidence, and design decisions explicitly.
+

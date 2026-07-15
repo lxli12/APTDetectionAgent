@@ -5,7 +5,7 @@ from __future__ import annotations
 from apt_detection_agent.schemas import MemoryQuery, MemoryRecord
 
 from .memory_retriever import MemoryRetriever
-from .memory_store import MemoryStore
+from .store import MemoryStore
 
 
 class MemoryManager:
