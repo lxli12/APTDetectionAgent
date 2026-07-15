@@ -53,10 +53,6 @@ class GMAEFeatReconstruction(nn.Module):
             x_init = x
             x_rec = recon
 
-        if inference:
-            losses = torch.zeros((x.shape[0],), device=x.device)
-            return {"loss": losses}
-
         loss = self.loss_fn(x_rec, x_init, inference=inference)
 
         return {"loss": loss}

@@ -31,6 +31,8 @@ Material changes:
 - removed stale TGN neighbor-loader/runtime-memory pickle handling; checkpoints
   contain reset state dictionaries while temporal neighbor graphs remain immutable
   batching artifacts.
+- replaced MAGIC's placeholder zero-vector inference output with per-node
+  reconstruction loss for validation selection and deployment thresholds.
 
 Production adapter code does not import the installed `pidsmaker` package or invoke
 its CLI. The submodule remains an unchanged reference oracle.

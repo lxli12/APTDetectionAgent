@@ -122,3 +122,11 @@ def test_remote_runner_uses_only_data_disk_for_generated_artifacts():
     assert "/root/autodl-tmp/apt-detection-agent/pidsmaker-output" in source
     assert "/root/autodl-tmp/apt-detection-agent/experiments-result" in source
     assert "for candidate in +" not in source
+
+
+def test_magic_inference_returns_reconstruction_scores():
+    source = (
+        ADAPTER / "upstream" / "objectives" / "reconstruct_masked_feat.py"
+    ).read_text(encoding="utf-8")
+    assert "torch.zeros((x.shape[0],)" not in source
+    assert "self.loss_fn(x_rec, x_init, inference=inference)" in source

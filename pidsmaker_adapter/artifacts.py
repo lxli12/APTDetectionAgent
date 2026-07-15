@@ -27,7 +27,7 @@ STAGE_CODE_VERSIONS = {
     "featurization": "1",
     "feat_inference": "2",
     "batching": "2",
-    "training": "3",
+    "training": "4",
 }
 
 
