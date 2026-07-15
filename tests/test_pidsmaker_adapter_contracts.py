@@ -104,3 +104,12 @@ def test_training_preserves_unused_lazy_parameters():
     assert "UninitializedParameter" in source
     assert "UninitializedBuffer" in source
     assert "copy.deepcopy(value)" in source
+
+
+def test_tgn_runtime_neighbors_are_not_checkpoint_state():
+    source = (ADAPTER / "upstream" / "utils" / "data_utils.py").read_text(
+        encoding="utf-8"
+    )
+    save_section = source[source.index("def save_model(") : source.index("def load_model(")]
+    assert "neighbor_loader.pkl" not in save_section
+    assert "memory.pkl" not in save_section

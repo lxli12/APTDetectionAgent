@@ -887,18 +887,9 @@ def save_model(model, path: str, cfg):
         pickle_protocol=pickle.HIGHEST_PROTOCOL,
     )
 
-    if isinstance(model.encoder, TGNEncoder):
-        torch.save(
-            model.encoder.neighbor_loader,
-            os.path.join(path, "neighbor_loader.pkl"),
-            pickle_protocol=pickle.HIGHEST_PROTOCOL,
-        )
-        if cfg.training.encoder.tgn.use_memory or "time_encoding" in cfg.batching.edge_features:
-            torch.save(
-                model.encoder.memory,
-                os.path.join(path, "memory.pkl"),
-                pickle_protocol=pickle.HIGHEST_PROTOCOL,
-            )
+    # Temporal neighbor graphs are immutable batch artifacts, not model state.
+    # Transient TGN memory is reset before save; its registered tensors and learned
+    # time encoder parameters are already represented in state_dict.
 
 
 def load_model(model, path: str, cfg, map_location=None):
@@ -908,15 +899,6 @@ def load_model(model, path: str, cfg, map_location=None):
     model.load_state_dict(
         torch.load(os.path.join(path, "state_dict.pkl"), map_location=map_location)
     )
-
-    if isinstance(model.encoder, TGNEncoder):
-        model.encoder.neighbor_loader = torch.load(
-            os.path.join(path, "neighbor_loader.pkl"), map_location=map_location
-        )
-        if cfg.training.encoder.tgn.use_memory or "time_encoding" in cfg.batching.edge_features:
-            model.encoder.memory = torch.load(
-                os.path.join(path, "memory.pkl"), map_location=map_location
-            )
 
     return model
 

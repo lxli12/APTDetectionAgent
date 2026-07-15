@@ -28,6 +28,9 @@ Material changes:
 - versioned cache compatibility independently per pipeline stage; manifests still
   record the exact adapter Git revision without invalidating unrelated upstream
   stages for a training-only fix.
+- removed stale TGN neighbor-loader/runtime-memory pickle handling; checkpoints
+  contain reset state dictionaries while temporal neighbor graphs remain immutable
+  batching artifacts.
 
 Production adapter code does not import the installed `pidsmaker` package or invoke
 its CLI. The submodule remains an unchanged reference oracle.
