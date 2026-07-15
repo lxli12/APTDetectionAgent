@@ -140,3 +140,25 @@ def test_word_embedding_model_paths_do_not_require_trailing_separator():
         assert "cfg.featurization._model_dir +" not in source
         assert "import os" in source
         assert "os.path.join(" in source
+
+
+def test_rcaid_early_pruning_matches_legacy_post_pruning():
+    import networkx as nx
+
+    from pidsmaker_adapter.upstream.preprocessing.transformation_methods import (
+        transformation_rcaid_pseudo_graph as rcaid,
+    )
+
+    graph = nx.DiGraph()
+    graph.add_edges_from([("n0", "n1"), ("n1", "n2"), ("n2", "n3")])
+    for index, (source, target) in enumerate(graph.edges()):
+        graph[source][target]["time"] = index
+    roots = rcaid.identify_root_nodes(graph)
+
+    legacy = rcaid.create_pseudo_graph(graph, roots)
+    legacy = rcaid.prune_pseudo_roots(legacy, graph, 0.5)
+    optimized = rcaid.create_pseudo_graph(graph, roots, prune_threshold=0.5)
+    optimized = rcaid.prune_pseudo_roots(optimized, graph, 0.5)
+
+    assert set(optimized.nodes()) == set(legacy.nodes())
+    assert set(optimized.edges()) == set(legacy.edges())

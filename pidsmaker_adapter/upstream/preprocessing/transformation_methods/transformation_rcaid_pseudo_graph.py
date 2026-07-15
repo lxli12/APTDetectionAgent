@@ -24,7 +24,7 @@ def identify_root_nodes(G):
     return root_nodes
 
 
-def create_pseudo_graph(G, root_nodes):
+def create_pseudo_graph(G, root_nodes, prune_threshold=None):
     """
     Create a pseudo-graph G' based on the original graph G.
     Each pseudo-root retains the initial feature vector of the original root node,
@@ -42,14 +42,26 @@ def create_pseudo_graph(G, root_nodes):
     for node, attr in G.nodes(data=True):
         pseudo_graph.add_node(node, **attr)
 
-    # Step 3: Create pseudo-root nodes and add edges to descendants
+    max_allowed_connections = (
+        None if prune_threshold is None else prune_threshold * len(G.nodes())
+    )
+
+    # Step 3: Create pseudo-root nodes and add edges to descendants. When
+    # pruning is enabled, skip roots that the legacy post-pass would remove
+    # instead of materializing their potentially enormous temporary edge sets.
     for root in root_nodes:
+        descendants = nx.descendants(G, root)
+        if (
+            max_allowed_connections is not None
+            and len(descendants) > max_allowed_connections
+        ):
+            continue
+
         # Create pseudo-root node (retaining the same initial feature vector)
         pseudo_root = f"pseudo_{root}"
         pseudo_graph.add_node(pseudo_root, **G.nodes[root])  # Copy features from root node
 
         # Add edges from pseudo-root to all descendants of the original root
-        descendants = nx.descendants(G, root)
         for descendant in descendants:
             pseudo_graph.add_edge(pseudo_root, descendant)
 
@@ -99,11 +111,14 @@ def remove_pseudo_prefix(graph):
 
 def main(graph: nx.Graph, cfg) -> nx.Graph:
     root_nodes = identify_root_nodes(graph)
-    pseudo_graph = create_pseudo_graph(graph, root_nodes)
-
     use_pruning = cfg.transformation.rcaid_pseudo_graph.use_pruning
+    prune_threshold = 0.5 if use_pruning else None
+    pseudo_graph = create_pseudo_graph(
+        graph, root_nodes, prune_threshold=prune_threshold
+    )
+
     if use_pruning:
-        pseudo_graph = prune_pseudo_roots(pseudo_graph, graph, 0.5)
+        pseudo_graph = prune_pseudo_roots(pseudo_graph, graph, prune_threshold)
 
     pseudo_graph = remove_pseudo_prefix(pseudo_graph)
     pseudo_graph = add_arbitrary_timestamps_to_graph(original_G=graph, new_G=pseudo_graph)
