@@ -16,6 +16,9 @@ adapter and does not modify, duplicate, or manage PIDSMaker internals.
 - [Development rules](AGENTS.md) record the local/remote execution boundary,
   authoritative AutoDL environment, coding conventions, PIDSMaker protection,
   and Git discipline for all future work.
+- [Implementation tasks](docs/implementation/IMPLEMENTATION_TASKS.md) divide the
+  complete v0.4 implementation into dependency-ordered tasks with deliverables,
+  acceptance criteria, milestones, and local/AutoDL verification boundaries.
 
 ## Repository layout
 
