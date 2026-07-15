@@ -1,12 +1,16 @@
 import math
 import os
+from collections import defaultdict
 
 import numpy as np
 import torch
 from gensim.models import Word2Vec
 
-from pidsmaker_adapter.upstream.featurization.featurization_methods.featurization_flash import get_node2corpus
-from pidsmaker_adapter.upstream.utils.utils import log_start, log_tqdm
+from pidsmaker_adapter.upstream.utils.utils import (
+    get_indexid2msg,
+    log_start,
+    tokenize_arbitrary_label,
+)
 
 
 def infer(document, w2vmodel, encoder):
@@ -45,16 +49,55 @@ class PositionalEncoder:
         return x + self.pe[: x.size(0)]
 
 
+def load_components(cfg):
+    trained_w2v_dir = cfg.featurization._model_dir
+    model = Word2Vec.load(os.path.join(trained_w2v_dir, "word2vec_model_final.model"))
+    encoder = PositionalEncoder(cfg.featurization.emb_dim)
+    return model, encoder
+
+
+def infer_graph(graph_path, cfg, components=None):
+    """Infer node embeddings from one construction graph only.
+
+    The upstream implementation merged a node's context across train, validation,
+    and test before embedding it. That leaks future windows into earlier online
+    observations. The adapter instead derives every node document from the current
+    15-minute graph while keeping the Word2Vec model frozen after train.
+    """
+    w2vmodel, encoder = components or load_components(cfg)
+    graph = torch.load(graph_path)
+    indexid2msg = get_indexid2msg(cfg)
+    nodes = defaultdict(list)
+    sorted_edges = sorted(
+        (
+            (u, v, attr["label"], int(attr["time"]))
+            for u, v, _, attr in graph.edges(data=True, keys=True)
+        ),
+        key=lambda item: item[3],
+    )
+    for src, dst, operation, _ in sorted_edges:
+        _, src_msg = indexid2msg[src]
+        _, dst_msg = indexid2msg[dst]
+        properties = (src_msg, operation, dst_msg)
+        if len(nodes[src]) < 300:
+            nodes[src].extend(properties)
+        if len(nodes[dst]) < 300:
+            nodes[dst].extend(properties)
+
+    token_cache = {}
+    indexid2vec = {}
+    for node_id, properties in nodes.items():
+        document = []
+        for sentence in properties:
+            if sentence not in token_cache:
+                token_cache[sentence] = tokenize_arbitrary_label(sentence)
+            document.extend(token_cache[sentence])
+        indexid2vec[node_id] = infer(document, w2vmodel, encoder)
+    return indexid2vec
+
+
 def main(cfg):
     log_start(__file__)
-
-    trained_w2v_dir = cfg.featurization._model_dir
-    w2vmodel = Word2Vec.load(os.path.join(trained_w2v_dir, "word2vec_model_final.model"))
-    w2v_vector_size = cfg.featurization.emb_dim
-
-    node2corpus = get_node2corpus(cfg, splits=["train", "val", "test"])
-    indexid2vec = {}
-    for indexid, corpus in log_tqdm(node2corpus.items(), desc="Embeding all nodes in the dataset"):
-        indexid2vec[indexid] = infer(corpus, w2vmodel, PositionalEncoder(w2v_vector_size))
-
-    return indexid2vec
+    raise RuntimeError(
+        "FLASH embeddings are graph-local; call infer_graph for each 15-minute graph"
+    )

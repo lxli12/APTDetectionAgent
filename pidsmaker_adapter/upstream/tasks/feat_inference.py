@@ -111,19 +111,38 @@ def main_from_config(cfg):
     base_dir = cfg.transformation._graphs_dir
     split_to_files = get_split_to_files(cfg, base_dir)
 
-    # Here we get a mapping {node_id => embedding vector}
-    indexid2vec = get_indexid2vec(cfg)
-
     # Create edges for Train, Val, Test sets
-    for split, sorted_paths in split_to_files.items():
-        feat_inference(
-            indexid2vec=indexid2vec,
-            etype2oh=etype2onehot,
-            ntype2oh=ntype2onehot,
-            sorted_paths=sorted_paths,
-            out_dir=os.path.join(cfg.feat_inference._edge_embeds_dir, f"{split}/"),
-            cfg=cfg,
-        )
+    if cfg.featurization.used_method.strip() == "flash":
+        components = feat_inference_flash.load_components(cfg)
+        for split, sorted_paths in split_to_files.items():
+            for graph_path in log_tqdm(
+                sorted_paths,
+                desc=f"Computing graph-local FLASH features for {split}",
+            ):
+                feat_inference(
+                    indexid2vec=feat_inference_flash.infer_graph(
+                        graph_path,
+                        cfg,
+                        components=components,
+                    ),
+                    etype2oh=etype2onehot,
+                    ntype2oh=ntype2onehot,
+                    sorted_paths=[graph_path],
+                    out_dir=os.path.join(cfg.feat_inference._edge_embeds_dir, f"{split}/"),
+                    cfg=cfg,
+                )
+    else:
+        # Static label-derived embeddings are frozen by the legal configuration.
+        indexid2vec = get_indexid2vec(cfg)
+        for split, sorted_paths in split_to_files.items():
+            feat_inference(
+                indexid2vec=indexid2vec,
+                etype2oh=etype2onehot,
+                ntype2oh=ntype2onehot,
+                sorted_paths=sorted_paths,
+                out_dir=os.path.join(cfg.feat_inference._edge_embeds_dir, f"{split}/"),
+                cfg=cfg,
+            )
 
 
 def main(cfg):

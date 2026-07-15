@@ -17,6 +17,7 @@
     "seed",
     "stage_digests",
     "cache_status",
+    "environment",
     "agent_initialization_artifacts",
     "excluded_from_agent_initialization"
   ],

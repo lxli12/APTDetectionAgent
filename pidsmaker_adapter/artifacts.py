@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import json
 import os
+import subprocess
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,6 +53,18 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def adapter_revision() -> str | None:
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def atomic_json(path: Path, value: Any) -> None:
@@ -103,6 +116,7 @@ def stage_signatures(cfg: Any, scoring: str) -> dict[str, dict[str, Any]]:
     }
     result: dict[str, dict[str, Any]] = {}
     dependency_digest = ""
+    code_revision = adapter_revision()
     for stage in STAGES:
         signature = {
             "schema_version": "stage_signature_v1",
@@ -111,6 +125,7 @@ def stage_signatures(cfg: Any, scoring: str) -> dict[str, dict[str, Any]]:
             "configuration": sections[stage],
             "dependency_digest": dependency_digest,
             "upstream_revision": UPSTREAM_REVISION,
+            "adapter_revision": code_revision,
         }
         signature["digest"] = digest(signature)
         result[stage] = signature

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -50,6 +52,47 @@ from pidsmaker_adapter.upstream.tasks import (
 from pidsmaker_adapter.upstream.tasks.batching import get_preprocessed_graphs
 from pidsmaker_adapter.upstream.utils.data_utils import load_model
 from pidsmaker_adapter.upstream.utils.utils import get_device
+
+
+def _read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+
+def _environment_snapshot(output_root: Path) -> dict[str, Any]:
+    try:
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        revision = None
+    visible_gpu_names = [
+        torch.cuda.get_device_name(index)
+        for index in range(torch.cuda.device_count())
+    ]
+    disk = shutil.disk_usage(output_root)
+    return {
+        "adapter_revision": revision,
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "torch": torch.__version__,
+        "torch_cuda": torch.version.cuda,
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "visible_gpu_names": visible_gpu_names,
+        "cgroup": {
+            "cpu_max": _read_text(Path("/sys/fs/cgroup/cpu.max")),
+            "memory_max": _read_text(Path("/sys/fs/cgroup/memory.max")),
+        },
+        "output_disk": {
+            "total_bytes": disk.total,
+            "free_bytes": disk.free,
+        },
+    }
 
 
 def _run_cached_stage(
@@ -395,6 +438,7 @@ def prepare_checkpoint(
         "threshold_artifact": str(thresholds_path),
         "resolved_config": str(resolved_path),
         "command": command or sys.argv,
+        "environment": _environment_snapshot(output_root),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "agent_initialization_artifacts": [
             str(checkpoint_dir / "train_result.json"),

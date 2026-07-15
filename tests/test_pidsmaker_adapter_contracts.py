@@ -71,3 +71,29 @@ def test_excluded_upstream_subsets_are_not_vendored():
         / "attack_generation"
         / "synthetic_attack_naive.py"
     ).exists()
+
+
+def test_flash_inference_is_current_graph_only():
+    flash = (
+        ADAPTER
+        / "upstream"
+        / "featurization"
+        / "feat_inference_methods"
+        / "feat_inference_flash.py"
+    ).read_text(encoding="utf-8")
+    task = (ADAPTER / "upstream" / "tasks" / "feat_inference.py").read_text(
+        encoding="utf-8"
+    )
+    assert "def infer_graph(" in flash
+    assert "get_node2corpus" not in flash
+    assert "feat_inference_flash.infer_graph" in task
+
+
+def test_tgn_preprocessing_resets_native_split_state():
+    source = (ADAPTER / "upstream" / "utils" / "data_utils.py").read_text(
+        encoding="utf-8"
+    )
+    boundary = source.index("event_offset = 0")
+    reset = source.index("neighbor_loader.reset_state()", boundary)
+    loop_body = source.index("for data_list in dataset:", boundary)
+    assert boundary < reset < loop_body

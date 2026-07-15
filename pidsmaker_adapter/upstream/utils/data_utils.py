@@ -609,7 +609,15 @@ def compute_tgn_graphs(
     node_type_cache = torch.zeros((max_node, node_type_dim), device=device)
     assoc = torch.empty(max_node, dtype=torch.long, device=device)
 
+    event_offset = 0
     for dataset in datasets:
+        # Native splits are independent detector-state sequences. Preserve the
+        # global event offset used to address full_data, but never carry temporal
+        # neighbors or node-feature state from train to validation or test.
+        neighbor_loader.reset_state()
+        neighbor_loader.cur_e_id = event_offset
+        node_feat_cache.zero_()
+        node_type_cache.zero_()
         for data_list in dataset:
             for batch in log_tqdm(data_list, desc="Computing TGN last neighbor graphs"):
                 batch = batch.to(device)
@@ -688,6 +696,7 @@ def compute_tgn_graphs(
 
                 if not insert_neighbors_before:
                     neighbor_loader.insert(src, dst)
+                event_offset += src.numel()
 
     return datasets
 
