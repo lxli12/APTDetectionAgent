@@ -149,13 +149,13 @@ development.
 
 - `PIDSMaker/` is an unchanged, pinned upstream reference submodule. Do not modify its
   source, configuration logic, package metadata, tests, or internal behavior.
-- Migrate the required node-level PIDSMaker subset into
-  `src/apt_detection_agent/tools/pidsmaker/` while retaining recognizable
+- Migrate the required node-level PIDSMaker subset into the repository-level
+  runnable `pidsmaker_adapter/` directory while retaining recognizable
   upstream module boundaries (`config`, preprocessing, featurization, tasks,
   models, and node evaluation). Record the upstream commit/path and material
   changes. Exclude triage, edge/queue evaluation, synthetic attacks, and the
   `ATLASV2_EDR` and `CARBANAKV2_EDR` datasets.
-- Agent-owned paths, schemas, candidates, hashes, checkpoints, and typed tool
+- Agent-owned paths, schemas, finite configuration options, hashes, checkpoints, and typed tool
   interfaces are authoritative. Production code must not invoke PIDSMaker CLI,
   import `pidsmaker`, or expose arbitrary internal functions to the LLM.
 - The Agent owns incorporated preprocessing, features, intermediate artifacts,
@@ -174,7 +174,7 @@ development.
 - Keep the dependency direction defined by the current design. In
   particular, controller and policy code must not import PIDSMaker internals or
   construct arbitrary backend shell commands.
-- Expose only validated discrete actions and candidates. Preserve stage
+- Expose only validated discrete actions and finite configuration options. Preserve stage
   invalidation, cache reuse, fallback, and cost information in tool contracts.
 - Keep prompt text in runtime-loaded `.txt` files and stable settings in YAML.
 - Keep experiments reproducible: version configs and thin entry points; snapshot

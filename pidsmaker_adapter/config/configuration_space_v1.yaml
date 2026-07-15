@@ -1,0 +1,196 @@
+schema_version: configuration_space_v1
+dataset: CLEARSCOPE_E3
+frozen:
+  construction:
+    time_window_size_minutes: 15
+  reproducibility:
+    seed: 42
+  threshold:
+    method: validation_quantile
+    quantiles: [0.95, 0.99, 0.995, 0.999]
+  scoring:
+    edge_objective: max_incident_edge_loss
+    node_objective: direct_node_loss
+configurations:
+  - id: flash_base
+    pids: flash
+    base_model: flash
+    scoring: direct_node_loss
+    overrides:
+      featurization.emb_dim: 30
+      featurization.epochs: 10
+      training.node_hid_dim: 30
+      training.node_out_dim: 3
+      training.lr: 0.01
+      training.weight_decay: 0.0005
+      training.num_epochs: 12
+  - id: flash_wide
+    pids: flash
+    base_model: flash
+    scoring: direct_node_loss
+    overrides:
+      featurization.emb_dim: 64
+      featurization.epochs: 10
+      training.node_hid_dim: 64
+      training.node_out_dim: 3
+      training.lr: 0.001
+      training.weight_decay: 0.0005
+      training.num_epochs: 12
+  - id: kairos_base
+    pids: kairos
+    base_model: kairos
+    scoring: max_incident_edge_loss
+    overrides:
+      featurization.emb_dim: 16
+      training.node_hid_dim: 100
+      training.node_out_dim: 100
+      training.lr: 0.00005
+      training.weight_decay: 0.01
+      training.num_epochs: 12
+  - id: kairos_wide
+    pids: kairos
+    base_model: kairos
+    scoring: max_incident_edge_loss
+    overrides:
+      featurization.emb_dim: 32
+      training.node_hid_dim: 128
+      training.node_out_dim: 128
+      training.lr: 0.0001
+      training.weight_decay: 0.01
+      training.num_epochs: 12
+  - id: magic_base
+    pids: magic
+    base_model: magic
+    scoring: direct_node_loss
+    overrides:
+      training.node_hid_dim: 64
+      training.node_out_dim: 64
+      training.lr: 0.001
+      training.weight_decay: 0.0005
+      training.num_epochs: 12
+  - id: magic_wide
+    pids: magic
+    base_model: magic
+    scoring: direct_node_loss
+    overrides:
+      training.node_hid_dim: 128
+      training.node_out_dim: 128
+      training.lr: 0.0005
+      training.weight_decay: 0.0005
+      training.num_epochs: 12
+  - id: nodlink_base
+    pids: nodlink
+    base_model: nodlink
+    scoring: direct_node_loss
+    overrides:
+      featurization.emb_dim: 256
+      featurization.epochs: 100
+      training.node_hid_dim: 256
+      training.node_out_dim: 256
+      training.lr: 0.001
+      training.weight_decay: 0.00001
+      training.num_epochs: 12
+  - id: nodlink_compact
+    pids: nodlink
+    base_model: nodlink
+    scoring: direct_node_loss
+    overrides:
+      featurization.emb_dim: 128
+      featurization.epochs: 100
+      training.node_hid_dim: 128
+      training.node_out_dim: 128
+      training.lr: 0.0001
+      training.weight_decay: 0.00001
+      training.num_epochs: 12
+  - id: orthrus_base
+    pids: orthrus
+    base_model: orthrus_non_snooped
+    scoring: max_incident_edge_loss
+    overrides:
+      featurization.emb_dim: 128
+      featurization.epochs: 50
+      training.node_hid_dim: 128
+      training.node_out_dim: 128
+      training.lr: 0.0001
+      training.weight_decay: 0.00001
+      training.num_epochs: 12
+  - id: orthrus_compact
+    pids: orthrus
+    base_model: orthrus_non_snooped
+    scoring: max_incident_edge_loss
+    overrides:
+      featurization.emb_dim: 64
+      featurization.epochs: 50
+      training.node_hid_dim: 64
+      training.node_out_dim: 64
+      training.lr: 0.0001
+      training.weight_decay: 0.00001
+      training.num_epochs: 12
+  - id: rcaid_base
+    pids: rcaid
+    base_model: rcaid
+    scoring: direct_node_loss
+    overrides:
+      featurization.emb_dim: 128
+      featurization.epochs: 5
+      training.node_hid_dim: 128
+      training.node_out_dim: 3
+      training.lr: 0.0001
+      training.weight_decay: 0.0001
+      training.num_epochs: 12
+  - id: rcaid_compact
+    pids: rcaid
+    base_model: rcaid
+    scoring: direct_node_loss
+    overrides:
+      featurization.emb_dim: 64
+      featurization.epochs: 5
+      training.node_hid_dim: 64
+      training.node_out_dim: 3
+      training.lr: 0.0005
+      training.weight_decay: 0.0001
+      training.num_epochs: 12
+  - id: threatrace_base
+    pids: threatrace
+    base_model: threatrace
+    scoring: direct_node_loss
+    overrides:
+      training.node_hid_dim: 32
+      training.node_out_dim: 3
+      training.lr: 0.01
+      training.weight_decay: 0.0005
+      training.num_epochs: 12
+  - id: threatrace_wide
+    pids: threatrace
+    base_model: threatrace
+    scoring: direct_node_loss
+    overrides:
+      training.node_hid_dim: 64
+      training.node_out_dim: 3
+      training.lr: 0.001
+      training.weight_decay: 0.0005
+      training.num_epochs: 12
+  - id: velox_base
+    pids: velox
+    base_model: velox
+    scoring: max_incident_edge_loss
+    overrides:
+      featurization.emb_dim: 128
+      featurization.epochs: 50
+      training.node_hid_dim: 128
+      training.node_out_dim: 128
+      training.lr: 0.0001
+      training.weight_decay: 0.00001
+      training.num_epochs: 12
+  - id: velox_compact
+    pids: velox
+    base_model: velox
+    scoring: max_incident_edge_loss
+    overrides:
+      featurization.emb_dim: 64
+      featurization.epochs: 50
+      training.node_hid_dim: 64
+      training.node_out_dim: 64
+      training.lr: 0.001
+      training.weight_decay: 0.00001
+      training.num_epochs: 12

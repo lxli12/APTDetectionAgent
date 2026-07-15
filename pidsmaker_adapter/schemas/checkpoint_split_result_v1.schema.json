@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checkpoint_split_result_v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset",
+    "pids",
+    "checkpoint_id",
+    "split",
+    "status",
+    "visibility",
+    "metric_definitions",
+    "metrics",
+    "runtime",
+    "resource",
+    "artifact_refs",
+    "privileged_metrics"
+  ],
+  "properties": {
+    "schema_version": {"const": "checkpoint_split_result_v1"},
+    "dataset": {"type": "string"},
+    "pids": {"type": "string"},
+    "checkpoint_id": {"type": "string"},
+    "split": {"enum": ["train", "val", "test"]},
+    "status": {"enum": ["success", "failed"]},
+    "visibility": {
+      "type": "object",
+      "required": ["labels_used", "agent_initialization", "posthoc_only"],
+      "properties": {
+        "labels_used": {"const": false},
+        "agent_initialization": {"type": "boolean"},
+        "posthoc_only": {"type": "boolean"}
+      }
+    },
+    "metric_definitions": {"type": "object"},
+    "metrics": {
+      "type": "object",
+      "required": ["loss", "score_distribution", "alerts_by_threshold", "workload"]
+    },
+    "runtime": {"type": "object"},
+    "resource": {"type": "object"},
+    "artifact_refs": {"type": "object"},
+    "privileged_metrics": {"type": "null"}
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "threshold_artifact_v1",
+  "type": "object",
+  "required": ["schema_version", "labels_used", "source_split", "scoring", "options"],
+  "properties": {
+    "schema_version": {"const": "threshold_artifact_v1"},
+    "labels_used": {"const": false},
+    "source_split": {"const": "val"},
+    "scoring": {"enum": ["direct_node_loss", "max_incident_edge_loss"]},
+    "options": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["method", "parameter", "resolved_value"],
+        "properties": {
+          "method": {"const": "validation_quantile"},
+          "parameter": {
+            "type": "object",
+            "required": ["quantile"],
+            "properties": {"quantile": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}}
+          },
+          "resolved_value": {"type": "number"}
+        }
+      }
+    }
+  }
+}

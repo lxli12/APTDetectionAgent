@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checkpoint_manifest_v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "checkpoint_id",
+    "pids",
+    "dataset",
+    "configuration_id",
+    "configuration_space_version",
+    "checkpoint_path",
+    "checkpoint_hash",
+    "trained_on",
+    "selected_on",
+    "selected_epoch",
+    "seed",
+    "stage_digests",
+    "cache_status",
+    "agent_initialization_artifacts",
+    "excluded_from_agent_initialization"
+  ],
+  "properties": {
+    "schema_version": {"const": "checkpoint_manifest_v1"},
+    "trained_on": {"const": "train"},
+    "selected_on": {"const": "val"},
+    "seed": {"const": 42},
+    "checkpoint_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

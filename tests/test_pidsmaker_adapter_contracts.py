@@ -1,0 +1,63 @@
+import ast
+import json
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+ADAPTER = ROOT / "pidsmaker_adapter"
+
+
+def test_finite_space_has_fixed_no_snoop_contract():
+    space = yaml.safe_load(
+        (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(encoding="utf-8")
+    )
+    assert space["dataset"] == "CLEARSCOPE_E3"
+    assert space["frozen"]["construction"]["time_window_size_minutes"] == 15
+    assert space["frozen"]["reproducibility"]["seed"] == 42
+    ids = [item["id"] for item in space["configurations"]]
+    assert len(ids) == len(set(ids))
+    assert len({item["pids"] for item in space["configurations"]}) >= 8
+    assert all("seed" not in item["overrides"] for item in space["configurations"])
+
+
+def test_production_source_never_imports_installed_pidsmaker():
+    violations = []
+    for path in ADAPTER.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                violations.extend(
+                    (path, alias.name)
+                    for alias in node.names
+                    if alias.name == "pidsmaker" or alias.name.startswith("pidsmaker.")
+                )
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.module == "pidsmaker" or node.module.startswith("pidsmaker."):
+                    violations.append((path, node.module))
+    assert violations == []
+
+
+def test_result_schema_forbids_privileged_metrics():
+    schema = json.loads(
+        (ADAPTER / "schemas" / "checkpoint_split_result_v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert schema["properties"]["privileged_metrics"]["type"] == "null"
+    assert schema["properties"]["visibility"]["properties"]["labels_used"]["const"] is False
+
+
+def test_excluded_upstream_subsets_are_not_vendored():
+    assert not (ADAPTER / "upstream" / "triage").exists()
+    assert not (ADAPTER / "upstream" / "tasks" / "triage.py").exists()
+    assert not (ADAPTER / "upstream" / "tasks" / "evaluation.py").exists()
+    assert not (ADAPTER / "upstream" / "detection" / "evaluation_methods").exists()
+    assert not (
+        ADAPTER
+        / "upstream"
+        / "preprocessing"
+        / "transformation_methods"
+        / "attack_generation"
+        / "synthetic_attack_naive.py"
+    ).exists()
