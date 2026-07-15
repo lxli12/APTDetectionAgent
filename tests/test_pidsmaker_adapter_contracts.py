@@ -97,3 +97,10 @@ def test_tgn_preprocessing_resets_native_split_state():
     reset = source.index("neighbor_loader.reset_state()", boundary)
     loop_body = source.index("for data_list in dataset:", boundary)
     assert boundary < reset < loop_body
+
+
+def test_training_preserves_unused_lazy_parameters():
+    source = (ADAPTER / "training.py").read_text(encoding="utf-8")
+    assert "UninitializedParameter" in source
+    assert "UninitializedBuffer" in source
+    assert "copy.deepcopy(value)" in source

@@ -21,6 +21,14 @@ STAGES = (
     "batching",
     "training",
 )
+STAGE_CODE_VERSIONS = {
+    "construction": "1",
+    "transformation": "1",
+    "featurization": "1",
+    "feat_inference": "2",
+    "batching": "2",
+    "training": "2",
+}
 
 
 def plain(value: Any) -> Any:
@@ -126,8 +134,14 @@ def stage_signatures(cfg: Any, scoring: str) -> dict[str, dict[str, Any]]:
             "dependency_digest": dependency_digest,
             "upstream_revision": UPSTREAM_REVISION,
             "adapter_revision": code_revision,
+            "stage_code_version": STAGE_CODE_VERSIONS[stage],
         }
-        signature["digest"] = digest(signature)
+        cache_identity = {
+            key: value
+            for key, value in signature.items()
+            if key != "adapter_revision"
+        }
+        signature["digest"] = digest(cache_identity)
         result[stage] = signature
         dependency_digest = signature["digest"]
     return result

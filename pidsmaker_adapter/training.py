@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from torch.nn.parameter import UninitializedBuffer, UninitializedParameter
 
 from pidsmaker_adapter.upstream.factory import build_model, optimizer_factory
 from pidsmaker_adapter.upstream.tasks.batching import get_preprocessed_graphs
@@ -20,6 +21,16 @@ def _batches(data_groups):
     for group in data_groups:
         for batch in group:
             yield batch
+
+
+def _state_dict_to_cpu(model: Any) -> dict[str, Any]:
+    result = {}
+    for name, value in model.state_dict().items():
+        if isinstance(value, (UninitializedParameter, UninitializedBuffer)):
+            result[name] = copy.deepcopy(value)
+        else:
+            result[name] = value.detach().cpu().clone()
+    return result
 
 
 @torch.no_grad()
@@ -115,9 +126,7 @@ def train_and_select(cfg: Any) -> tuple[Any, dict[str, Any], Any, Any, Any, int]
         if selected:
             best_val_loss = val_loss
             best_epoch = epoch
-            best_state = copy.deepcopy(
-                {name: tensor.detach().cpu() for name, tensor in model.state_dict().items()}
-            )
+            best_state = _state_dict_to_cpu(model)
             patience_counter = 0
         else:
             patience_counter += 1
