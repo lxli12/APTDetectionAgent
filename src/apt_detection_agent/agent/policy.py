@@ -6,7 +6,7 @@ import json
 from typing import Protocol, Sequence
 from uuid import uuid4
 
-from apt_detection_agent.schemas import Action, ActionType, Observation
+from apt_detection_agent.schemas import Action, Observation
 
 from .prompt_loader import PromptLoader
 
@@ -33,14 +33,10 @@ class AgentPolicy:
         raw = self.client.complete(system, user)
         try:
             payload = json.loads(raw)
-            action_type = ActionType(payload["action_type"])
-            return Action(
-                action_id=str(payload.get("action_id") or uuid4()),
-                action_type=action_type,
-                rationale=str(payload["rationale"]),
-                tool_name=payload.get("tool_name"),
-                arguments=payload.get("arguments", {}),
-                memory_content=payload.get("memory_content"),
-            )
+            if not isinstance(payload, dict):
+                raise TypeError("action payload must be an object")
+            payload.setdefault("schema_version", "1.0")
+            payload.setdefault("action_id", str(uuid4()))
+            return Action.from_dict(payload)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise PolicyError("LLM response is not a valid Agent action") from exc

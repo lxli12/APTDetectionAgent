@@ -1,24 +1,17 @@
 import json
-from datetime import datetime, timezone
-
 import pytest
 
 from apt_detection_agent.agent.policy import AgentPolicy
 from apt_detection_agent.agent.prompt_loader import PromptLoader
-from apt_detection_agent.schemas import ActionType, Observation
+from apt_detection_agent.schemas import ActionType
+from tests.test_contracts import action, observation
 
 
 class FakeClient:
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         assert "shell commands" in system_prompt
         assert "available_tools" in user_prompt
-        return json.dumps({
-            "action_type": "call_tool",
-            "rationale": "inspect the visible anomaly",
-            "tool_name": "run_pids",
-            "arguments": {"detector": "VELOX"},
-            "memory_content": None,
-        })
+        return action().to_json()
 
 
 def test_prompt_loader_rejects_non_text_and_traversal(tmp_path):
@@ -34,7 +27,6 @@ def test_policy_returns_typed_action(tmp_path):
     prompt.parent.mkdir()
     prompt.write_text("Never emit shell commands.")
     policy = AgentPolicy(FakeClient(), PromptLoader(tmp_path))
-    observation = Observation("o1", "w1", datetime.now(timezone.utc))
-    action = policy.propose(observation, ("run_pids",))
-    assert action.action_type is ActionType.CALL_TOOL
-    assert action.tool_name == "run_pids"
+    proposed = policy.propose(observation(), ("run_current_pids",))
+    assert proposed.action_type is ActionType.KEEP_AND_INFER
+    assert proposed.tool_name == "run_current_pids"
