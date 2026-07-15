@@ -3,7 +3,8 @@ set -uo pipefail
 
 REPO_ROOT="${REPO_ROOT:-/root/APTDetectionAgent}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/root/autodl-tmp/apt-detection-agent/pidsmaker-output}"
-LOG_ROOT="${LOG_ROOT:-/root/autodl-tmp/apt-detection-agent/experiments-result/CLEARSCOPE_E3/checkpoint-preparation}"
+RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
+LOG_ROOT="${LOG_ROOT:-/root/autodl-tmp/apt-detection-agent/experiments-result/CLEARSCOPE_E3/checkpoint-preparation/${RUN_ID}}"
 CONDA_ENV="${CONDA_ENV:-pids}"
 RUNTIME_ENV="${RUNTIME_ENV:-/root/autodl-tmp/apt-detection-agent/.runtime/db.env}"
 

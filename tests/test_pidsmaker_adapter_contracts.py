@@ -121,6 +121,7 @@ def test_remote_runner_uses_only_data_disk_for_generated_artifacts():
     )
     assert "/root/autodl-tmp/apt-detection-agent/pidsmaker-output" in source
     assert "/root/autodl-tmp/apt-detection-agent/experiments-result" in source
+    assert "RUN_ID=" in source
     assert "for candidate in +" not in source
 
 
