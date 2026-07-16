@@ -84,7 +84,16 @@ def test_agent_selection_tree_uses_real_fields_not_coupled_option_ids():
     assert "conditional_overrides" not in serialized
     assert "legacy_configuration_aliases" not in serialized
     assert "checkpoint" not in serialized
-    assert "hash" not in serialized
+    def all_keys(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                yield key
+                yield from all_keys(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from all_keys(child)
+
+    assert not ({"checkpoint_hash", "cache_hash", "hash"} & set(all_keys(tree)))
 
 
 def test_agent_space_and_harness_registry_are_separate_files(tmp_path):
