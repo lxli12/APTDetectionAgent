@@ -45,9 +45,11 @@ class ResourceMonitor:
         self._cpu_limit = _effective_cpu_limit()
         self._gpu_indices: list[int] = []
         if torch.cuda.is_available():
+            torch.cuda.init()
             self._gpu_indices = list(range(torch.cuda.device_count()))
             for index in self._gpu_indices:
-                torch.cuda.reset_peak_memory_stats(index)
+                with torch.cuda.device(index):
+                    torch.cuda.reset_peak_memory_stats()
         self._thread = threading.Thread(target=self._sample_loop, daemon=True)
         self._thread.start()
 
