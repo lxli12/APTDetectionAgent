@@ -118,9 +118,21 @@ def load_all_datasets(cfg, device, only_keep=None):
         val_data = val_data[:only_keep]
         test_data = test_data[:only_keep]
 
-    full_data = get_full_data([train_data, val_data, test_data])
-
-    max_node = torch.cat([full_data.src, full_data.dst]).max().item() + 1
+    datasets = [train_data, val_data, test_data]
+    use_tgn_neighbors = "tgn_last_neighbor" in {
+        method.strip()
+        for method in cfg.batching.intra_graph_batching.used_methods.split(",")
+    }
+    full_data = get_full_data(datasets) if use_tgn_neighbors else None
+    max_node = (
+        max(
+            max(int(data.src.max().item()), int(data.dst.max().item()))
+            for dataset_group in datasets
+            for dataset in dataset_group
+            for data in dataset
+        )
+        + 1
+    )
     print(f"Max node in {cfg.dataset.name}: {max_node}")
 
     graph_reindexer = GraphReindexer(

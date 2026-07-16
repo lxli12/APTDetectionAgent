@@ -210,3 +210,10 @@ def test_rcaid_preserves_non_persistent_batching(tmp_path):
         },
     )
     assert flash.batching.save_on_disk is True
+
+
+def test_full_dataset_collation_is_reserved_for_tgn_neighbors():
+    source = (ADAPTER / "upstream" / "utils" / "data_utils.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'full_data = get_full_data(datasets) if use_tgn_neighbors else None' in source
