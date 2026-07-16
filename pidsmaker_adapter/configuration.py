@@ -17,11 +17,14 @@ DEFAULT_SPACE = CONFIG_ROOT / "configuration_space_v1.yaml"
 ALLOWED_DATASET = "CLEARSCOPE_E3"
 ALLOWED_SCORING = {"direct_node_loss", "max_incident_edge_loss"}
 ALLOWED_THRESHOLD_METHODS = {
+    "validation_quantile",
     "max_val_loss",
     "mean_val_loss",
-    "threatrace",
-    "flash",
-    "nodlink",
+}
+ALLOWED_SCORE_CHANNELS = {
+    "objective_loss",
+    "flash_confidence",
+    "threatrace_ratio",
 }
 
 
@@ -31,6 +34,7 @@ class LegalConfiguration:
     pids: str
     base_model: str
     scoring: str
+    score_channel: str
     overrides: dict[str, Any]
     decision_values: dict[str, Any]
     source_files: tuple[str, ...]
@@ -59,12 +63,24 @@ class ConfigurationSpace:
         except KeyError as exc:
             raise ValueError(f"No threshold space declared for PIDS {pids!r}") from exc
 
-    def default_threshold(self, pids: str) -> dict[str, Any]:
-        try:
-            return dict(self.threshold_spaces[pids]["default"])
-        except KeyError as exc:
-            raise ValueError(f"No default threshold declared for PIDS {pids!r}") from exc
-
+    def selection_tree(self) -> dict[str, Any]:
+        """Return the compact conditional tree exposed to the Agent/Harness."""
+        branches: dict[str, Any] = {}
+        for pids, spec in self.decision_spaces.items():
+            branches[pids] = {
+                "train": {
+                    "coupled_parameters": spec.get("coupled_parameters", {}),
+                    "parameters": spec.get("parameters", {}),
+                },
+                "threshold": spec["threshold"],
+                "constraints": {"membership": "reachable_prebuilt_leaf_only"},
+            }
+        return {
+            "pids": {
+                "values": list(branches),
+                "branches": branches,
+            }
+        }
 
 def _source_files(
     source_keys: list[str], source_sets: dict[str, Any], config_id: str
@@ -98,31 +114,53 @@ def _validate_numeric_domain(name: str, values: list[Any]) -> None:
         raise ValueError(f"Numeric decision field {name} must expose 3-5 distinct values")
 
 
+def _coupled_marker(overrides: dict[str, Any]) -> str:
+    labels = {
+        "featurization.emb_dim": "emb",
+        "training.node_hid_dim": "hid",
+        # node_out_dim normally mirrors node_hid_dim and is intentionally not
+        # repeated in the readable internal marker.
+        "training.node_out_dim": "out",
+    }
+    fields = [field for field in overrides if field != "training.node_out_dim"]
+    if not fields:
+        fields = list(overrides)
+    return "-".join(
+        f"{labels.get(field, field.replace('.', '-'))}{format_number(overrides[field])}"
+        for field in fields
+    )
+
+
 def _parse_threshold_spaces(raw_spaces: dict[str, Any]) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for pids, spec in raw_spaces.items():
-        unit = spec.get("threshold_decision_unit")
-        if not isinstance(unit, dict) or unit.get("fields") != ["method"]:
-            raise ValueError(f"{pids} must declare a method-only threshold decision unit")
-        default = unit.get("default")
-        options = unit.get("options")
-        if not isinstance(default, dict) or not isinstance(options, list) or not options:
-            raise ValueError(f"{pids} must declare default and legal threshold options")
-        normalized: list[dict[str, Any]] = []
-        for option in options:
-            if not isinstance(option, dict) or set(option) != {"method"}:
-                raise ValueError(f"Invalid threshold option for {pids}: {option!r}")
-            method = option["method"]
-            if method == "magic":
-                raise ValueError("MAGIC thresholding is disabled because it uses test scores")
-            if method not in ALLOWED_THRESHOLD_METHODS:
-                raise ValueError(f"Illegal threshold method for {pids}: {method!r}")
-            normalized.append({"method": method})
-        if default not in normalized:
-            raise ValueError(f"Default threshold for {pids} must be a legal option")
-        if len({option["method"] for option in normalized}) != len(normalized):
+        threshold = spec.get("threshold")
+        if not isinstance(threshold, dict):
+            raise ValueError(f"{pids} must declare its threshold branch")
+        method_spec = threshold.get("method")
+        value_spec = threshold.get("value")
+        if not isinstance(method_spec, dict) or not isinstance(value_spec, dict):
+            raise ValueError(f"Invalid threshold branch for {pids}")
+        methods = method_spec.get("values")
+        if (
+            not isinstance(methods, list)
+            or set(methods) != ALLOWED_THRESHOLD_METHODS
+        ):
+            raise ValueError(f"Invalid threshold methods for {pids}")
+        if value_spec.get("when") != {"method": "validation_quantile"}:
+            raise ValueError(f"{pids}.threshold.value must be conditional on validation_quantile")
+        values = value_spec.get("values")
+        if not isinstance(values, list) or not values:
+            raise ValueError(f"{pids} must declare threshold.value.values")
+        _validate_numeric_domain(f"{pids}.threshold.value", values)
+        normalized = [
+            {"method": "validation_quantile", "value": float(value)}
+            for value in values
+        ]
+        normalized.extend({"method": method} for method in methods if method != "validation_quantile")
+        if len({tuple(option.items()) for option in normalized}) != len(normalized):
             raise ValueError(f"Duplicate threshold options for {pids}")
-        result[pids] = {"default": dict(default), "options": tuple(normalized)}
+        result[pids] = {"options": tuple(normalized)}
     return result
 
 
@@ -137,6 +175,9 @@ def _expand_pids_spaces(
         scoring = spec.get("scoring")
         if scoring not in ALLOWED_SCORING:
             raise ValueError(f"Illegal scoring rule for {pids}: {scoring!r}")
+        score_channel = spec.get("score_channel")
+        if score_channel not in ALLOWED_SCORE_CHANNELS:
+            raise ValueError(f"Illegal score channel for {pids}: {score_channel!r}")
         fixed = dict(spec.get("fixed_overrides", {}))
         base_values = dict(spec.get("base_values", {}))
         dimensions: list[tuple[str, list[dict[str, Any]]]] = []
@@ -148,19 +189,14 @@ def _expand_pids_spaces(
             normalized: list[dict[str, Any]] = []
             field_values: dict[str, list[Any]] = {}
             for option in options:
-                option_id = option.get("id")
-                overrides = option.get("overrides")
-                if not (
-                    isinstance(option_id, str)
-                    and isinstance(overrides, dict)
-                    and overrides
-                ):
+                if not isinstance(option, dict) or not option:
                     raise ValueError(f"Invalid coupled option in {pids}.{unit_name}")
+                overrides = dict(option)
                 for field, value in overrides.items():
                     field_values.setdefault(field, []).append(value)
                 normalized.append(
                     {
-                        "marker": option_id,
+                        "marker": _coupled_marker(overrides),
                         "overrides": dict(overrides),
                         "decision_values": dict(overrides),
                     }
@@ -229,6 +265,7 @@ def _expand_pids_spaces(
                     pids=pids,
                     base_model=str(spec["base_model"]),
                     scoring=scoring,
+                    score_channel=score_channel,
                     overrides=overrides,
                     decision_values=decision_values,
                     source_files=sources,
@@ -249,7 +286,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
     threshold_space_version = frozen.get("threshold", {}).get("space_version")
     if seed != 42 or window != 15:
         raise ValueError("Detector seed=42 and construction window=15 minutes are mandatory")
-    if threshold_space_version != "pids_specific_v1":
+    if threshold_space_version != "pids_tree_quantile_v1":
         raise ValueError("Unsupported threshold-space version")
 
     items: list[LegalConfiguration] = []
@@ -281,6 +318,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
                 pids=str(item["pids"]),
                 base_model=str(item["base_model"]),
                 scoring=scoring,
+                score_channel=str(item.get("score_channel", "objective_loss")),
                 overrides=overrides,
                 decision_values=dict(overrides),
                 source_files=source_files,
@@ -407,9 +445,11 @@ def resolve_runtime_config(
     cfg.batching.save_on_disk = True
     cfg.evaluation.used_method = "node_evaluation"
     cfg.evaluation.node_evaluation.use_kmeans = False
-    cfg.evaluation.node_evaluation.threshold_method = space.default_threshold(legal.pids)[
-        "method"
-    ]
+    # Keep the upstream PIDS-native method for its internal compatibility checks.
+    # Agent-visible threshold selection/calibration is owned separately by the
+    # adapter and is always validation_quantile.
+    if legal.pids == "magic":
+        cfg.evaluation.node_evaluation.threshold_method = "magic"
     cfg.training.decoder.use_few_shot = False
     cfg._is_running_mc_dropout = False
     set_shortcut_variables(cfg)

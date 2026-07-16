@@ -2,28 +2,35 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "threshold_artifact_v1",
   "type": "object",
-  "required": ["schema_version", "threshold_space_version", "pids", "labels_used", "source_split", "scoring", "options"],
+  "required": ["schema_version", "threshold_space_version", "pids", "labels_used", "source_split", "scoring", "score_channel", "options"],
   "properties": {
     "schema_version": {"const": "threshold_artifact_v1"},
-    "threshold_space_version": {"const": "pids_specific_v1"},
-    "pids": {"enum": ["flash", "kairos", "nodlink", "orthrus", "rcaid", "threatrace", "velox"]},
+    "threshold_space_version": {"const": "pids_tree_quantile_v1"},
+    "pids": {"enum": ["flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"]},
     "labels_used": {"const": false},
     "source_split": {"const": "val"},
     "scoring": {"enum": ["direct_node_loss", "max_incident_edge_loss"]},
+    "score_channel": {"enum": ["objective_loss", "flash_confidence", "threatrace_ratio"]},
     "options": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "method", "parameter", "resolution", "resolved_value"],
+        "required": ["id", "method", "resolution", "resolved_value", "expected_benign_exceedance_rate"],
         "properties": {
           "id": {"type": "string"},
-          "method": {"enum": ["max_val_loss", "mean_val_loss", "threatrace", "flash", "nodlink"]},
-          "parameter": {"type": "object"},
+          "method": {"enum": ["validation_quantile", "max_val_loss", "mean_val_loss"]},
+          "value": {"enum": [0.9, 0.95, 0.99]},
           "resolution": {"type": "string"},
-          "resolved_value": {"type": "number"}
-        }
+          "resolved_value": {"type": "number"},
+          "expected_benign_exceedance_rate": {"type": "number", "minimum": 0, "maximum": 1}
+        },
+        "allOf": [{
+          "if": {"properties": {"method": {"const": "validation_quantile"}}},
+          "then": {"required": ["value"]},
+          "else": {"not": {"required": ["value"]}}
+        }]
       }
     }
   }

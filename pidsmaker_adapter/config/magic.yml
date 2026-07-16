@@ -74,5 +74,8 @@ evaluation:
   node_evaluation:
     # Upstream default retained for provenance but disabled because it derives
     # the threshold from the held-out test score distribution.
-    # threshold_method: magic
+    # PIDSMaker native default/reference: threshold_method: magic. It derives a
+    # threshold from test scores and is never published as the Agent threshold.
+    # The adapter sets it only in-memory for upstream decoder compatibility;
+    # deployable checkpoints use benign-validation quantiles.
     use_dst_node_loss: True

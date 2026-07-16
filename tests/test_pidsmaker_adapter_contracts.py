@@ -21,10 +21,11 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert space["frozen"]["reproducibility"]["seed"] == 42
     ids = [item.config_id for item in load_configuration_space().configurations]
     assert len(ids) == len(set(ids))
-    assert len(ids) == space["expected_configuration_count"] == 295
+    assert len(ids) == space["expected_configuration_count"] == 311
     assert {item.pids for item in load_configuration_space().configurations} == {
         "flash",
         "kairos",
+        "magic",
         "nodlink",
         "orthrus",
         "rcaid",
@@ -52,7 +53,7 @@ def test_every_numeric_decision_field_has_three_to_five_values():
             cardinality *= len(options)
             by_field = {}
             for option in options:
-                for field, value in option["overrides"].items():
+                for field, value in option.items():
                     if isinstance(value, (int, float)):
                         by_field.setdefault(field, set()).add(value)
             assert all(3 <= len(values) <= 5 for values in by_field.values()), (
@@ -62,6 +63,18 @@ def test_every_numeric_decision_field_has_three_to_five_values():
             )
         generated_count += cardinality
     assert generated_count == raw["expected_configuration_count"]
+
+
+def test_agent_selection_tree_uses_real_fields_not_coupled_option_ids():
+    tree = load_configuration_space().selection_tree()
+    assert tree["pids"]["values"] == [
+        "flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"
+    ]
+    for branch in tree["pids"]["branches"].values():
+        for option in branch["train"]["coupled_parameters"]["model_capacity"]["values"]:
+            assert "id" not in option
+            assert "overrides" not in option
+            assert all("." in field for field in option)
 
 
 def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
@@ -165,31 +178,27 @@ def test_result_schema_forbids_privileged_metrics():
     assert schema["properties"]["visibility"]["properties"]["labels_used"]["const"] is False
 
 
-def test_threshold_methods_are_pids_specific_and_magic_is_not_selectable():
+def test_threshold_tree_is_validation_derived_and_magic_is_selectable():
     configuration = load_configuration_space()
-    expected = {
-        "flash": "flash",
-        "kairos": "max_val_loss",
-        "nodlink": "nodlink",
-        "orthrus": "max_val_loss",
-        "rcaid": "max_val_loss",
-        "threatrace": "threatrace",
-        "velox": "max_val_loss",
+    assert set(configuration.threshold_spaces) == {
+        "flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"
     }
-    assert {
-        pids: configuration.default_threshold(pids)["method"] for pids in expected
-    } == expected
-    assert "magic" not in configuration.threshold_spaces
     assert all(
-        option["method"] != "magic"
-        for space in configuration.threshold_spaces.values()
-        for option in space["options"]
+        {option["method"] for option in threshold_space["options"]}
+        == {"validation_quantile", "max_val_loss", "mean_val_loss"}
+        and {
+            option["value"]
+            for option in threshold_space["options"]
+            if option["method"] == "validation_quantile"
+        } == {0.90, 0.95, 0.99}
+        for threshold_space in configuration.threshold_spaces.values()
     )
     source = (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(
         encoding="utf-8"
     )
-    assert "# magic:" in source
-    assert "#     options: [{method: magic}]" in source
+    assert "values: [0.90, 0.95, 0.99]  # PIDSMaker default: 0.90" in source
+    assert "values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss" in source
+    assert "\n        default:" not in source
 
 
 def test_special_threshold_score_channels_gate_incorrect_predictions():
@@ -206,12 +215,12 @@ def test_special_threshold_score_channels_gate_incorrect_predictions():
         )
     }
     objective = torch.ones(3)
-    for method in ("flash", "threatrace"):
+    for score_channel in ("flash_confidence", "threatrace_ratio"):
         scores = _pids_node_scores(
             result=result,
             batch=batch,
             objective_loss=objective,
-            threshold_method=method,
+            score_channel=score_channel,
         )
         assert scores.shape == objective.shape
         assert scores[0] > 0
@@ -219,24 +228,26 @@ def test_special_threshold_score_channels_gate_incorrect_predictions():
         assert scores[2] > 0
 
 
-def test_threshold_resolution_produces_pids_specific_scalar_artifact(tmp_path):
+def test_threshold_resolution_produces_validation_quantile_artifact(tmp_path):
     from pidsmaker_adapter.inference import calibrate_thresholds
 
     output = tmp_path / "thresholds.json"
     resolved = calibrate_thresholds(
         [1.0, 2.0, 3.0, 100.0],
-        ({"method": "nodlink"},),
+        ({"method": "validation_quantile", "value": 0.9},),
         output,
         pids="nodlink",
         scoring="direct_node_loss",
-        threshold_space_version="pids_specific_v1",
+        score_channel="objective_loss",
+        threshold_space_version="pids_tree_quantile_v1",
     )
     artifact = json.loads(output.read_text(encoding="utf-8"))
-    assert set(resolved) == {"nodlink"}
-    assert abs(resolved["nodlink"] - 70.9) < 1e-9
-    assert artifact["options"][0]["method"] == "nodlink"
-    assert artifact["options"][0]["parameter"] == {"quantile": 0.9}
-    assert artifact["options"][0]["resolved_value"] == resolved["nodlink"]
+    assert set(resolved) == {"validation_quantile_q0.9"}
+    assert abs(resolved["validation_quantile_q0.9"] - 70.9) < 1e-9
+    assert artifact["options"][0]["method"] == "validation_quantile"
+    assert artifact["options"][0]["value"] == 0.9
+    assert artifact["score_channel"] == "objective_loss"
+    assert artifact["options"][0]["resolved_value"] == resolved["validation_quantile_q0.9"]
 
 
 def test_excluded_upstream_subsets_are_not_vendored():

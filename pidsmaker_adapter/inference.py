@@ -41,7 +41,7 @@ def _distribution(values: list[float]) -> dict[str, Any]:
             "quantiles": {},
         }
     array = np.asarray(values, dtype=np.float64)
-    quantiles = (0.5, 0.9, 0.95, 0.99, 0.995, 0.999)
+    quantiles = (0.5, 0.9, 0.95, 0.99)
     return {
         "count": int(array.size),
         "mean": float(array.mean()),
@@ -74,22 +74,24 @@ def _pids_node_scores(
     result: dict[str, Any],
     batch: Any,
     objective_loss: torch.Tensor,
-    threshold_method: str,
+    score_channel: str,
 ) -> torch.Tensor:
-    """Return the score channel required by the selected PIDS threshold method."""
-    if threshold_method not in {"flash", "threatrace"}:
+    """Return the fixed PIDS score channel, independently of its threshold."""
+    if score_channel == "objective_loss":
         return objective_loss
+    if score_channel not in {"flash_confidence", "threatrace_ratio"}:
+        raise ValueError(f"Unsupported score channel {score_channel!r}")
 
     out = result.get("out")
     if out is None or out.ndim != 2:
-        raise ValueError(f"{threshold_method} thresholding requires node classifier outputs")
+        raise ValueError(f"{score_channel} requires node classifier outputs")
     detached = out.detach()
     probabilities = torch.softmax(detached, dim=1)
     predicted = probabilities.argmax(dim=1)
     expected = batch.node_type.argmax(dim=1)
     correct = predicted.eq(expected)
 
-    if threshold_method == "threatrace":
+    if score_channel == "threatrace_ratio":
         top_two = probabilities.topk(k=2, dim=1).values
         score = torch.log(top_two[:, 0] / top_two[:, 1].clamp_min(1e-5) + 1e-12)
     else:
@@ -111,7 +113,7 @@ def run_split_inference(
     data_groups: Iterable[Iterable[Any]],
     split: str,
     scoring: str,
-    threshold_method: str,
+    score_channel: str,
     output_dir: Path,
     threshold_values: dict[str, float] | None = None,
 ) -> dict[str, Any]:
@@ -138,7 +140,7 @@ def run_split_inference(
             result=result,
             batch=batch,
             objective_loss=loss,
-            threshold_method=threshold_method,
+            score_channel=score_channel,
         ).detach().reshape(-1).float().cpu()
         batch_losses = score_tensor.tolist()
         losses.extend(float(value) for value in loss.tolist())
@@ -186,7 +188,7 @@ def run_split_inference(
                     "graph_id": graph_id,
                     "node_id": node_id,
                     "node_score": float(score),
-                    "score_method": threshold_method,
+                    "score_channel": score_channel,
                 }
                 handle.write(json.dumps(record, sort_keys=True) + "\n")
                 all_scores.append(float(score))
@@ -235,6 +237,7 @@ def calibrate_thresholds(
     *,
     pids: str,
     scoring: str,
+    score_channel: str,
     threshold_space_version: str,
 ) -> dict[str, float]:
     if not validation_scores:
@@ -244,34 +247,35 @@ def calibrate_thresholds(
     artifact_options: list[dict[str, Any]] = []
     for option in threshold_options:
         method = option["method"]
-        if method == "max_val_loss":
+        if method == "validation_quantile":
+            quantile = float(option["value"])
+            value = float(np.quantile(array, quantile))
+            option_id = f"validation_quantile_q{quantile:g}"
+            option_fields = {
+                "value": quantile,
+                "expected_benign_exceedance_rate": 1.0 - quantile,
+            }
+            resolution = "quantile of benign validation node scores"
+        elif method == "max_val_loss":
             value = float(array.max())
-            parameter: dict[str, Any] = {}
-            resolution = "maximum validation node score"
+            option_id = method
+            option_fields = {"expected_benign_exceedance_rate": 0.0}
+            resolution = "maximum benign validation node score"
         elif method == "mean_val_loss":
             value = float(array.mean())
-            parameter = {}
-            resolution = "mean validation node score"
-        elif method == "nodlink":
-            value = float(np.quantile(array, 0.9))
-            parameter = {"quantile": 0.9}
-            resolution = "90th percentile of validation node scores"
-        elif method == "threatrace":
-            value = 1.5
-            parameter = {"constant": value}
-            resolution = "upstream fixed ThreaTrace threshold"
-        elif method == "flash":
-            value = 0.53
-            parameter = {"constant": value}
-            resolution = "upstream fixed FLASH threshold"
+            option_id = method
+            option_fields = {
+                "expected_benign_exceedance_rate": float(np.mean(array >= value))
+            }
+            resolution = "mean benign validation node score"
         else:
             raise ValueError(f"Unsupported threshold method {method!r}")
-        resolved[method] = value
+        resolved[option_id] = value
         artifact_options.append(
             {
-                "id": method,
+                "id": option_id,
                 "method": method,
-                "parameter": parameter,
+                **option_fields,
                 "resolution": resolution,
                 "resolved_value": value,
             }
@@ -285,6 +289,7 @@ def calibrate_thresholds(
             "labels_used": False,
             "source_split": "val",
             "scoring": scoring,
+            "score_channel": score_channel,
             "options": artifact_options,
         },
     )

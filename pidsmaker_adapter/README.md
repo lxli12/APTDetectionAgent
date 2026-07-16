@@ -14,10 +14,9 @@ explicit `values`. Numeric decision fields expose three to five upstream-anchore
 values. Embedding and hidden dimensions are represented as validated
 `model_capacity` tuples rather than an unsafe Cartesian product. The declared
 capacity, representation, and learning-rate dimensions are expanded with
-`coverage: full_factorial`, producing 295 concrete train configurations across
-seven selectable PIDS. MAGIC remains in the adapter as commented/reference code
-but is excluded from the Agent configuration space because its native threshold
-calibration observes held-out test scores. The 14 active, previously published
+`coverage: full_factorial`, producing 311 concrete train configurations across
+eight selectable PIDS. MAGIC remains selectable, but its native held-out-test
+threshold is reference-only. The 14 active, previously published
 `base`/`compact`/`wide` identifiers are aliases for matching tuples and retain
 their existing checkpoint paths.
 
@@ -52,10 +51,12 @@ transformation, featurization, feature inference, and batching without retaining
 duplicate edge-embedding corpora.
 
 `train_result.json` and `val_result.json` are eligible initialization references.
-Threshold selection is PIDS-specific: FLASH uses `flash`, ThreaTrace uses
-`threatrace`, Nodlink uses `nodlink`, and Kairos/Orthrus/R-CAID/Velox use
-`max_val_loss`. Selecting a method resolves a scalar in `thresholds.json`; it
-does not change model weights or the checkpoint hash. MAGIC is not selectable.
+Each PIDS has a fixed score channel. Agent-selectable threshold methods are
+`validation_quantile`, `max_val_loss`, and `mean_val_loss`; the quantile branch
+then selects `0.90`, `0.95`, or `0.99`. The scalar is
+resolved from benign validation scores into `thresholds.json`; threshold choice
+does not change model weights or the checkpoint hash. PIDSMaker-native methods
+and fixed values remain annotated as provenance references in the YAML.
 `train_val_resource_usage.json` records the consistently named resource scope from
 construction through train and validation, including cache reuse, wall time, CPU,
 peak RSS, and per-visible-GPU peaks. Runs completed before resource monitoring was

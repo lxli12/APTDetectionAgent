@@ -1,6 +1,6 @@
 schema_version: configuration_space_v1
 dataset: CLEARSCOPE_E3
-expected_configuration_count: 295
+expected_configuration_count: 311
 
 frozen:
   construction:
@@ -8,7 +8,7 @@ frozen:
   reproducibility:
     seed: 42
   threshold:
-    space_version: pids_specific_v1
+    space_version: pids_tree_quantile_v1
   scoring:
     edge_objective: max_incident_edge_loss
     node_objective: direct_node_loss
@@ -51,36 +51,34 @@ pids_spaces:
     base_model: flash
     scoring: direct_node_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: flash}
-      options: [{method: flash}]
+    score_channel: flash_confidence
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: flash with fixed scalar 0.53 (reference only)
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95; no upstream quantile default
     sources: [flash, generic_tuning]
     base_values:
       featurization.used_method: flash
     fixed_overrides:
-      featurization.epochs: 10
-      training.node_out_dim: 3
-      training.weight_decay: 0.0005
-      training.num_epochs: 12
+      featurization.epochs: 10  # PIDSMaker default: 10
+      training.node_out_dim: 3  # PIDSMaker default: 3
+      training.weight_decay: 0.0005  # PIDSMaker default: 0.0005
+      training.num_epochs: 12  # PIDSMaker default: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: emb30-hid30
-            overrides: {featurization.emb_dim: 30, training.node_hid_dim: 30}
-          - id: emb32-hid32
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32}
-          - id: emb32-hid64
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64}
-          - id: emb128-hid128
-            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128}
-          - id: emb256-hid256
-            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256}
+          - {featurization.emb_dim: 30, training.node_hid_dim: 30}  # PIDSMaker default
+          - {featurization.emb_dim: 32, training.node_hid_dim: 32}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 64}
+          - {featurization.emb_dim: 128, training.node_hid_dim: 128}
+          - {featurization.emb_dim: 256, training.node_hid_dim: 256}
     parameters:
       featurization.used_method:
-        values: [flash, fasttext, word2vec]
+        values: [flash, fasttext, word2vec]  # PIDSMaker default: flash
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.01
     aliases:
       flash_base: {model_capacity: emb30-hid30, featurization.used_method: flash, training.lr: 0.01}
       flash_wide: {model_capacity: emb128-hid128, featurization.used_method: flash, training.lr: 0.001}
@@ -89,105 +87,98 @@ pids_spaces:
     base_model: kairos
     scoring: max_incident_edge_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: max_val_loss}
-      options: [{method: max_val_loss}]
+    score_channel: objective_loss
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [kairos, generic_tuning]
     base_values:
       featurization.used_method: hierarchical_hashing
     fixed_overrides:
-      training.weight_decay: 0.01
-      training.num_epochs: 12
+      training.weight_decay: 0.01  # PIDSMaker default: 0.01
+      training.num_epochs: 12  # PIDSMaker default: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: emb16-hid100
-            overrides: {featurization.emb_dim: 16, training.node_hid_dim: 100, training.node_out_dim: 100}
-          - id: emb32-hid128
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - id: emb32-hid64
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - id: emb128-hid128
-            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - id: emb256-hid256
-            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+          - {featurization.emb_dim: 16, training.node_hid_dim: 100, training.node_out_dim: 100}  # PIDSMaker default
+          - {featurization.emb_dim: 32, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       featurization.used_method:
-        values: [hierarchical_hashing, fasttext, word2vec]
+        values: [hierarchical_hashing, fasttext, word2vec]  # PIDSMaker default: hierarchical_hashing
         conditional_overrides:
           fasttext: {featurization.epochs: 50}
           word2vec: {featurization.epochs: 50}
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00005, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00005, 0.00001]  # PIDSMaker default: 0.00005
     aliases:
       kairos_base: {model_capacity: emb16-hid100, featurization.used_method: hierarchical_hashing, training.lr: 0.00005}
       kairos_wide: {model_capacity: emb32-hid128, featurization.used_method: hierarchical_hashing, training.lr: 0.0001}
 
-  # MAGIC is retained as upstream-reference configuration but is intentionally
-  # excluded from the Agent-selectable PIDS space: its native threshold method
-  # calibrates from held-out test scores.
-  # magic:
-  #   base_model: magic
-  #   scoring: direct_node_loss
-  #   coverage: full_factorial
-  #   threshold_decision_unit:
-  #     fields: [method]
-  #     default: {method: magic}
-  #     options: [{method: magic}]
-  #   sources: [magic, generic_tuning]
-  #   fixed_overrides:
-  #     training.weight_decay: 0.0005
-  #     training.num_epochs: 12
-  #   coupled_parameters:
-  #     model_capacity:
-  #       values:
-  #         - id: hid32
-  #           overrides: {training.node_hid_dim: 32, training.node_out_dim: 32}
-  #         - id: hid64
-  #           overrides: {training.node_hid_dim: 64, training.node_out_dim: 64}
-  #         - id: hid128
-  #           overrides: {training.node_hid_dim: 128, training.node_out_dim: 128}
-  #         - id: hid256
-  #           overrides: {training.node_hid_dim: 256, training.node_out_dim: 256}
-  #   parameters:
-  #     training.lr:
-  #       values: [0.01, 0.001, 0.0001, 0.00001]
-  #   aliases:
-  #     magic_base: {model_capacity: hid64, training.lr: 0.001}
-  #     magic_wide: {model_capacity: hid128, training.lr: 0.0001}
+  magic:
+    base_model: magic
+    scoring: direct_node_loss
+    score_channel: objective_loss
+    coverage: full_factorial
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: magic/test-score mean (reference only)
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95; no deployable upstream default
+    sources: [magic, generic_tuning]
+    fixed_overrides:
+      training.weight_decay: 0.0005  # PIDSMaker default: 0.0005
+      training.num_epochs: 12  # PIDSMaker default: 12
+    coupled_parameters:
+      model_capacity:
+        values:
+          - {training.node_hid_dim: 32, training.node_out_dim: 32}
+          - {training.node_hid_dim: 64, training.node_out_dim: 64}  # PIDSMaker default
+          - {training.node_hid_dim: 128, training.node_out_dim: 128}
+          - {training.node_hid_dim: 256, training.node_out_dim: 256}
+    parameters:
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.001
+    aliases:
+      magic_base: {model_capacity: hid64, training.lr: 0.001}
+      magic_wide: {model_capacity: hid128, training.lr: 0.0001}
 
   nodlink:
     base_model: nodlink
     scoring: direct_node_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: nodlink}
-      options: [{method: nodlink}]
+    score_channel: objective_loss
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: validation_quantile
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # PIDSMaker default: 0.90
     sources: [nodlink, generic_tuning]
     base_values:
       featurization.used_method: fasttext
     fixed_overrides:
-      featurization.epochs: 100
-      training.weight_decay: 0.00001
-      training.num_epochs: 12
+      featurization.epochs: 100  # PIDSMaker default: 100
+      training.weight_decay: 0.00001  # PIDSMaker default: 0.00001
+      training.num_epochs: 12  # PIDSMaker default: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: emb32-hid32
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
-          - id: emb32-hid64
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - id: emb128-hid128
-            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - id: emb256-hid256
-            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}  # PIDSMaker default
     parameters:
       featurization.used_method:
-        values: [fasttext, word2vec]
+        values: [fasttext, word2vec]  # PIDSMaker default: fasttext
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.001
     aliases:
       nodlink_base: {model_capacity: emb256-hid256, featurization.used_method: fasttext, training.lr: 0.001}
       nodlink_compact: {model_capacity: emb128-hid128, featurization.used_method: fasttext, training.lr: 0.0001}
@@ -196,33 +187,32 @@ pids_spaces:
     base_model: orthrus_non_snooped
     scoring: max_incident_edge_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: max_val_loss}
-      options: [{method: max_val_loss}]
+    score_channel: objective_loss
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [orthrus_non_snooped, generic_tuning]
     base_values:
       featurization.used_method: word2vec
     fixed_overrides:
-      featurization.epochs: 50
-      training.weight_decay: 0.00001
-      training.num_epochs: 12
+      featurization.epochs: 50  # PIDSMaker default: 50
+      training.weight_decay: 0.00001  # PIDSMaker default: 0.00001
+      training.num_epochs: 12  # PIDSMaker default: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: emb32-hid64
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - id: emb32-hid32
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
-          - id: emb128-hid128
-            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - id: emb256-hid256
-            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
+          - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}  # PIDSMaker default
+          - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       featurization.used_method:
-        values: [word2vec, fasttext]
+        values: [word2vec, fasttext]  # PIDSMaker default: word2vec
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00001]  # orthrus_non_snooped default: 0.0001
     aliases:
       orthrus_base: {model_capacity: emb128-hid128, featurization.used_method: word2vec, training.lr: 0.0001}
       orthrus_compact: {model_capacity: emb32-hid64, featurization.used_method: word2vec, training.lr: 0.0001}
@@ -231,34 +221,33 @@ pids_spaces:
     base_model: rcaid
     scoring: direct_node_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: max_val_loss}
-      options: [{method: max_val_loss}]
+    score_channel: objective_loss
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [rcaid, generic_tuning]
     base_values:
       featurization.used_method: doc2vec
     fixed_overrides:
-      featurization.epochs: 5
-      training.node_out_dim: 3
-      training.weight_decay: 0.0001
-      training.num_epochs: 12
+      featurization.epochs: 5  # PIDSMaker default: 5
+      training.node_out_dim: 3  # PIDSMaker default: 3
+      training.weight_decay: 0.0001  # PIDSMaker default: 0.0001
+      training.num_epochs: 12  # PIDSMaker default: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: emb32-hid64
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64}
-          - id: emb32-hid32
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32}
-          - id: emb128-hid128
-            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128}
-          - id: emb256-hid256
-            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 64}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 32}
+          - {featurization.emb_dim: 128, training.node_hid_dim: 128}  # PIDSMaker default
+          - {featurization.emb_dim: 256, training.node_hid_dim: 256}
     parameters:
       featurization.used_method:
-        values: [doc2vec, fasttext, word2vec]
+        values: [doc2vec, fasttext, word2vec]  # PIDSMaker default: doc2vec
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.0001
     aliases:
       rcaid_base: {model_capacity: emb128-hid128, featurization.used_method: doc2vec, training.lr: 0.0001}
       rcaid_compact: {model_capacity: emb32-hid64, featurization.used_method: doc2vec, training.lr: 0.001}
@@ -267,29 +256,28 @@ pids_spaces:
     base_model: threatrace
     scoring: direct_node_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: threatrace}
-      options: [{method: threatrace}]
+    score_channel: threatrace_ratio
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: threatrace with fixed scalar 1.5 (reference only)
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95; no upstream quantile default
     sources: [threatrace, generic_tuning]
     fixed_overrides:
-      training.node_out_dim: 3
-      training.weight_decay: 0.0005
-      training.num_epochs: 12
+      training.node_out_dim: 3  # PIDSMaker default: 3
+      training.weight_decay: 0.0005  # PIDSMaker default: 0.0005
+      training.num_epochs: 12  # PIDSMaker default: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: hid32
-            overrides: {training.node_hid_dim: 32}
-          - id: hid64
-            overrides: {training.node_hid_dim: 64}
-          - id: hid128
-            overrides: {training.node_hid_dim: 128}
-          - id: hid256
-            overrides: {training.node_hid_dim: 256}
+          - {training.node_hid_dim: 32}  # PIDSMaker default
+          - {training.node_hid_dim: 64}
+          - {training.node_hid_dim: 128}
+          - {training.node_hid_dim: 256}
     parameters:
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.01
     aliases:
       threatrace_base: {model_capacity: hid32, training.lr: 0.01}
       threatrace_wide: {model_capacity: hid64, training.lr: 0.001}
@@ -298,33 +286,32 @@ pids_spaces:
     base_model: velox
     scoring: max_incident_edge_loss
     coverage: full_factorial
-    threshold_decision_unit:
-      fields: [method]
-      default: {method: max_val_loss}
-      options: [{method: max_val_loss}]
+    score_channel: objective_loss
+    threshold:
+      method:
+        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss inherited from Orthrus
+      value:
+        when: {method: validation_quantile}
+        values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [velox, generic_tuning]
     base_values:
       featurization.used_method: word2vec
     fixed_overrides:
-      featurization.epochs: 50
-      training.weight_decay: 0.00001
-      training.num_epochs: 12
+      featurization.epochs: 50  # PIDSMaker default inherited from Orthrus: 50
+      training.weight_decay: 0.00001  # PIDSMaker default inherited from Orthrus: 0.00001
+      training.num_epochs: 12  # PIDSMaker default inherited from Orthrus: 12
     coupled_parameters:
       model_capacity:
         values:
-          - id: emb32-hid64
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - id: emb32-hid32
-            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
-          - id: emb128-hid128
-            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - id: emb256-hid256
-            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
+          - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}  # PIDSMaker default inherited from orthrus_non_snooped
+          - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       featurization.used_method:
-        values: [word2vec, fasttext]
+        values: [word2vec, fasttext]  # PIDSMaker default: word2vec
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
+        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.0001
     aliases:
       velox_base: {model_capacity: emb128-hid128, featurization.used_method: word2vec, training.lr: 0.0001}
       velox_compact: {model_capacity: emb32-hid64, featurization.used_method: word2vec, training.lr: 0.001}

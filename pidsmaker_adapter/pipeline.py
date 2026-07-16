@@ -180,6 +180,7 @@ def _resolved_semantics(cfg: Any, legal: LegalConfiguration, space: Configuratio
         "training": plain(cfg.training),
         "scoring": {
             "node_aggregation": legal.scoring,
+            "score_channel": legal.score_channel,
             "scope": "per_15_minute_graph",
         },
         "temporal_state": {
@@ -188,8 +189,8 @@ def _resolved_semantics(cfg: Any, legal: LegalConfiguration, space: Configuratio
         },
         "threshold": {
             "space_version": space.threshold_space_version,
-            "decision_unit": "threshold_config",
-            "default": space.default_threshold(legal.pids),
+            "selection_stage": "initialization_or_pids_switch",
+            "online_threshold_only_action": False,
             "options": list(space.threshold_options(legal.pids)),
             "resolved_value_source": "thresholds.json",
         },
@@ -229,6 +230,9 @@ def _update_registry(dataset_root: Path, entry: dict[str, Any]) -> None:
                 "dataset": entry["dataset"],
                 "configurations": [],
             }
+        selection_tree = entry.pop("configuration_selection_tree", None)
+        if selection_tree is not None:
+            registry["configuration_selection_tree"] = selection_tree
         registry["configurations"] = [
             item
             for item in registry["configurations"]
@@ -357,7 +361,7 @@ def _ensure_historical_resource_artifact(
 
 
 def _published_scores(
-    checkpoint_dir: Path, split: str, *, threshold_method: str
+    checkpoint_dir: Path, split: str, *, score_channel: str
 ) -> list[float] | None:
     path = checkpoint_dir / "inference" / split / "node_scores.jsonl"
     if not path.is_file():
@@ -367,11 +371,13 @@ def _published_scores(
         with path.open(encoding="utf-8") as handle:
             for line in handle:
                 record = json.loads(line)
-                # FLASH and ThreaTrace use score channels derived from classifier
-                # outputs, not the generic objective loss stored by older runs.
-                if threshold_method in {"flash", "threatrace"} and record.get(
-                    "score_method"
-                ) != threshold_method:
+                recorded_channel = record.get("score_channel")
+                if recorded_channel is None:
+                    recorded_channel = {
+                        "flash": "flash_confidence",
+                        "threatrace": "threatrace_ratio",
+                    }.get(record.get("score_method"), "objective_loss")
+                if recorded_channel != score_channel:
                     return None
                 scores.append(float(record["node_score"]))
     except (OSError, ValueError, KeyError, json.JSONDecodeError):
@@ -385,7 +391,6 @@ def _refresh_published_threshold_artifacts(
     legal: LegalConfiguration,
     space: ConfigurationSpace,
 ) -> bool:
-    threshold_method = space.default_threshold(legal.pids)["method"]
     thresholds_path = checkpoint_dir / "thresholds.json"
     try:
         current = json.loads(thresholds_path.read_text(encoding="utf-8"))
@@ -394,14 +399,15 @@ def _refresh_published_threshold_artifacts(
     if (
         current.get("threshold_space_version") == space.threshold_space_version
         and current.get("pids") == legal.pids
-        and [item.get("method") for item in current.get("options", [])]
-        == [item["method"] for item in space.threshold_options(legal.pids)]
+        and current.get("score_channel") == legal.score_channel
+        and [(item.get("method"), item.get("value")) for item in current.get("options", [])]
+        == [(item["method"], item.get("value")) for item in space.threshold_options(legal.pids)]
     ):
         return True
 
     scores_by_split = {
         split: _published_scores(
-            checkpoint_dir, split, threshold_method=threshold_method
+            checkpoint_dir, split, score_channel=legal.score_channel
         )
         for split in ("train", "val", "test")
     }
@@ -413,6 +419,7 @@ def _refresh_published_threshold_artifacts(
         thresholds_path,
         pids=legal.pids,
         scoring=legal.scoring,
+        score_channel=legal.score_channel,
         threshold_space_version=space.threshold_space_version,
     )
     for split, scores in scores_by_split.items():
@@ -430,8 +437,8 @@ def _refresh_published_threshold_artifacts(
     resolved = yaml.safe_load(resolved_path.read_text(encoding="utf-8"))
     resolved["threshold"] = {
         "space_version": space.threshold_space_version,
-        "decision_unit": "threshold_config",
-        "default": space.default_threshold(legal.pids),
+        "selection_stage": "initialization_or_pids_switch",
+        "online_threshold_only_action": False,
         "options": list(space.threshold_options(legal.pids)),
         "resolved_value_source": "thresholds.json",
     }
@@ -496,15 +503,16 @@ def prepare_checkpoint(
                 "path": str(checkpoint_dir),
                 "checkpoint_hash": existing_manifest["checkpoint_hash"],
                 "scoring": resolved["scoring"],
-                "threshold_decision_unit": {
-                    "fields": ["method"],
-                    "default": space.default_threshold(legal.pids),
+                "threshold_space": {
+                    "online_threshold_only_action": False,
+                    "selection_tree": space.decision_spaces[legal.pids]["threshold"],
                     "options": list(space.threshold_options(legal.pids)),
                 },
                 "threshold_options": thresholds["options"],
                 "agent_initialization_artifacts": existing_manifest[
                     "agent_initialization_artifacts"
                 ],
+                "configuration_selection_tree": space.selection_tree(),
             },
         )
         return checkpoint_dir
@@ -634,14 +642,13 @@ def prepare_checkpoint(
                 raise
 
     inference_root = checkpoint_dir / "inference"
-    threshold_method = space.default_threshold(legal.pids)["method"]
     val_metrics = run_split_inference(
         cfg=cfg,
         model=model,
         data_groups=val_data,
         split="val",
         scoring=legal.scoring,
-        threshold_method=threshold_method,
+        score_channel=legal.score_channel,
         output_dir=inference_root / "val",
     )
     thresholds_path = checkpoint_dir / "thresholds.json"
@@ -651,6 +658,7 @@ def prepare_checkpoint(
         thresholds_path,
         pids=legal.pids,
         scoring=legal.scoring,
+        score_channel=legal.score_channel,
         threshold_space_version=space.threshold_space_version,
     )
     val_metrics["alerts_by_threshold"] = _threshold_summary(val_metrics["_scores"], thresholds)
@@ -660,7 +668,7 @@ def prepare_checkpoint(
         data_groups=train_data,
         split="train",
         scoring=legal.scoring,
-        threshold_method=threshold_method,
+        score_channel=legal.score_channel,
         output_dir=inference_root / "train",
         threshold_values=thresholds,
     )
@@ -682,7 +690,7 @@ def prepare_checkpoint(
         data_groups=test_data,
         split="test",
         scoring=legal.scoring,
-        threshold_method=threshold_method,
+        score_channel=legal.score_channel,
         output_dir=inference_root / "test",
         threshold_values=thresholds,
     )
@@ -765,15 +773,16 @@ def prepare_checkpoint(
             "path": str(checkpoint_dir),
             "checkpoint_hash": manifest["checkpoint_hash"],
             "scoring": resolved["scoring"],
-            "threshold_decision_unit": {
-                "fields": ["method"],
-                "default": space.default_threshold(legal.pids),
+            "threshold_space": {
+                "online_threshold_only_action": False,
+                "selection_tree": space.decision_spaces[legal.pids]["threshold"],
                 "options": list(space.threshold_options(legal.pids)),
             },
             "threshold_options": json.loads(thresholds_path.read_text(encoding="utf-8"))[
                 "options"
             ],
             "agent_initialization_artifacts": manifest["agent_initialization_artifacts"],
+            "configuration_selection_tree": space.selection_tree(),
         },
     )
     # The published checkpoint is hash-validated and self-contained. Retaining
