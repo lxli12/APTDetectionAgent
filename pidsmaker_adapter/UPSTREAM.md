@@ -37,6 +37,8 @@ Material changes:
   do not depend on a trailing separator.
 - preserved R-CAID pruning semantics while skipping pseudo-root edge sets that
   the configured pruning pass would inevitably delete.
+- stream R-CAID training graphs while constructing the neighbor-aware Doc2Vec
+  corpus instead of retaining every transformed graph alongside the corpus.
 
 Production adapter code does not import the installed `pidsmaker` package or invoke
 its CLI. The submodule remains an unchanged reference oracle.

@@ -162,3 +162,14 @@ def test_rcaid_early_pruning_matches_legacy_post_pruning():
 
     assert set(optimized.nodes()) == set(legacy.nodes())
     assert set(optimized.edges()) == set(legacy.edges())
+
+
+def test_rcaid_doc2vec_corpus_streams_transformed_graphs():
+    source = (
+        ADAPTER / "upstream" / "featurization" / "featurization_utils.py"
+    ).read_text(encoding="utf-8")
+    function = source[source.index("def get_corpus_using_neighbors_features(") :]
+    assert "graph_list = [torch.load" not in function
+    assert "for path in log_tqdm(sorted_paths" in function
+    assert "G = torch.load(path)" in function
+    assert "del G" in function
