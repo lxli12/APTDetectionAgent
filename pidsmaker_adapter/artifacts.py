@@ -31,6 +31,30 @@ STAGE_CODE_VERSIONS = {
 }
 
 
+def artifact_fingerprint(path: Path) -> dict[str, Any] | None:
+    """Return a cheap immutable-output fingerprint without hashing large tensors."""
+    if not path.exists():
+        return None
+    if path.is_file():
+        return {"kind": "file", "size_bytes": path.stat().st_size}
+
+    entries = []
+    total_bytes = 0
+    for child in sorted(item for item in path.rglob("*") if item.is_file()):
+        relative = child.relative_to(path).as_posix()
+        if relative == "stage_manifest.json" or relative.startswith("stage_manifest.json.tmp-"):
+            continue
+        size = child.stat().st_size
+        entries.append((relative, size))
+        total_bytes += size
+    return {
+        "kind": "directory",
+        "file_count": len(entries),
+        "size_bytes": total_bytes,
+        "inventory_digest": digest(entries),
+    }
+
+
 def plain(value: Any) -> Any:
     if isinstance(value, dict):
         return {
@@ -115,7 +139,12 @@ def stage_signatures(cfg: Any, scoring: str) -> dict[str, dict[str, Any]]:
         },
         "batching": {
             "batching": plain(cfg.batching),
-            "training_semantics": plain(cfg.training),
+            "training_preprocessing": {
+                "encoder_methods": cfg.training.encoder.used_methods,
+                "encoder_x_is_tuple": cfg.training.encoder.x_is_tuple,
+                "tgn_use_memory": cfg.training.encoder.tgn.use_memory,
+                "decoder_methods": cfg.training.decoder.used_methods,
+            },
         },
         "training": {
             "training": plain(cfg.training),
@@ -198,11 +227,17 @@ def stage_complete(stage_path: Path, signature: dict[str, Any]) -> bool:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return False
-    paths_exist = all(Path(path).exists() for path in manifest.get("artifact_paths", ()))
+    artifact_paths = manifest.get("artifact_paths", ())
+    paths_exist = all(Path(path).exists() for path in artifact_paths)
+    recorded_fingerprints = manifest.get("artifact_fingerprints")
+    fingerprints_match = recorded_fingerprints is None or recorded_fingerprints == {
+        path: artifact_fingerprint(Path(path)) for path in artifact_paths
+    }
     return (
         manifest.get("status") == "complete"
         and manifest.get("signature", {}).get("digest") == signature["digest"]
         and paths_exist
+        and fingerprints_match
     )
 
 
@@ -216,6 +251,7 @@ def write_stage_manifest(
     error: str | None = None,
     artifact_paths: list[str] | None = None,
 ) -> None:
+    paths = artifact_paths or []
     atomic_json(
         stage_path / "stage_manifest.json",
         {
@@ -226,6 +262,9 @@ def write_stage_manifest(
             "finished_at": datetime.now(timezone.utc).isoformat(),
             "runtime_seconds": round(runtime_seconds, 6),
             "error": error,
-            "artifact_paths": artifact_paths or [],
+            "artifact_paths": paths,
+            "artifact_fingerprints": {
+                path: artifact_fingerprint(Path(path)) for path in paths
+            },
         },
     )

@@ -217,3 +217,141 @@ def test_full_dataset_collation_is_reserved_for_tgn_neighbors():
         encoding="utf-8"
     )
     assert 'full_data = get_full_data(datasets) if use_tgn_neighbors else None' in source
+
+
+def test_stage_cache_detects_partial_directory_artifacts(tmp_path):
+    from pidsmaker_adapter.artifacts import (
+        stage_complete,
+        write_stage_manifest,
+    )
+
+    stage = tmp_path / "stage"
+    artifact = stage / "graphs"
+    artifact.mkdir(parents=True)
+    (artifact / "one.pt").write_bytes(b"one")
+    (artifact / "two.pt").write_bytes(b"two")
+    signature = {"digest": "example"}
+    write_stage_manifest(
+        stage,
+        signature,
+        status="complete",
+        started_at="2026-07-16T00:00:00+00:00",
+        runtime_seconds=1.0,
+        artifact_paths=[str(artifact)],
+    )
+
+    assert stage_complete(stage, signature)
+    (artifact / "two.pt").unlink()
+    assert not stage_complete(stage, signature)
+
+
+def test_deep_stage_hit_covers_missing_earlier_cache(tmp_path):
+    from types import SimpleNamespace
+
+    from pidsmaker_adapter.artifacts import STAGES, write_stage_manifest
+    from pidsmaker_adapter.pipeline import _cache_reuse_frontier
+
+    cfg = SimpleNamespace(
+        **{
+            stage: SimpleNamespace(_task_path=str(tmp_path / stage))
+            for stage in STAGES
+        }
+    )
+    signatures = {stage: {"digest": stage} for stage in STAGES}
+    feature_output = tmp_path / "feat_inference" / "edge_embeds"
+    feature_output.mkdir(parents=True)
+    (feature_output / "graph.pt").write_bytes(b"features")
+    write_stage_manifest(
+        tmp_path / "feat_inference",
+        signatures["feat_inference"],
+        status="complete",
+        started_at="2026-07-16T00:00:00+00:00",
+        runtime_seconds=1.0,
+        artifact_paths=[str(feature_output)],
+    )
+
+    assert _cache_reuse_frontier(cfg, signatures) == "feat_inference"
+
+
+def test_batch_cache_ignores_optimizer_only_changes(tmp_path):
+    from pidsmaker_adapter.artifacts import stage_signatures
+    from pidsmaker_adapter.configuration import resolve_runtime_config
+
+    configuration = load_configuration_space()
+    database = {
+        "host": "localhost",
+        "port": "5432",
+        "user": "postgres",
+        "password": "",
+        "name": "clearscope_e3",
+    }
+    cfg = resolve_runtime_config(
+        configuration.get("flash_base"), configuration, tmp_path, database
+    )
+    before = stage_signatures(cfg, "node_classification")
+    cfg.training.lr *= 0.5
+    cfg.training.num_epochs += 1
+    after = stage_signatures(cfg, "node_classification")
+
+    assert before["batching"]["digest"] == after["batching"]["digest"]
+    assert before["training"]["digest"] != after["training"]["digest"]
+
+
+def test_complete_published_checkpoint_can_bypass_stage_caches(tmp_path):
+    from pidsmaker_adapter.artifacts import file_sha256
+    from pidsmaker_adapter.pipeline import _published_checkpoint_manifest
+
+    configuration = load_configuration_space()
+    legal = configuration.get("flash_base")
+    checkpoint_id = f"{legal.pids}_{checkpoint_slug(legal).removeprefix('checkpoint_')}"
+    checkpoint = tmp_path / checkpoint_slug(legal)
+    (checkpoint / "model").mkdir(parents=True)
+    state = checkpoint / "model" / "state_dict.pkl"
+    state.write_bytes(b"frozen-model")
+    (checkpoint / "resolved_config.yaml").write_text(
+        "scoring: node_classification\n", encoding="utf-8"
+    )
+    (checkpoint / "thresholds.json").write_text(
+        json.dumps({"options": []}), encoding="utf-8"
+    )
+    for split in ("train", "val", "test"):
+        (checkpoint / f"{split}_result.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "checkpoint_split_result_v1",
+                    "checkpoint_id": checkpoint_id,
+                    "split": split,
+                    "privileged_metrics": None,
+                    "visibility": {"labels_used": False},
+                }
+            ),
+            encoding="utf-8",
+        )
+    manifest = {
+        "schema_version": "checkpoint_manifest_v1",
+        "checkpoint_id": checkpoint_id,
+        "configuration_id": legal.config_id,
+        "pids": legal.pids,
+        "dataset": configuration.dataset,
+        "configuration_space_version": configuration.schema_version,
+        "checkpoint_hash": file_sha256(state),
+        "agent_initialization_artifacts": [],
+    }
+    (checkpoint / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert _published_checkpoint_manifest(
+        checkpoint,
+        checkpoint_id=checkpoint_id,
+        legal=legal,
+        space=configuration,
+    ) == manifest
+    state.write_bytes(b"tampered")
+    assert (
+        _published_checkpoint_manifest(
+            checkpoint,
+            checkpoint_id=checkpoint_id,
+            legal=legal,
+            space=configuration,
+        )
+        is None
+    )
