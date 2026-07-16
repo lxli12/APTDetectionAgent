@@ -404,3 +404,4 @@ def test_non_tgn_batching_avoids_full_edge_message_copies():
     assert "x_src = x_src[0] if len(x_src) == 1" in source
     assert 'needs_msg = "msg" in edge_features or use_tgn_memory' in source
     assert "if needs_msg:" in source
+    assert "os.POSIX_FADV_DONTNEED" in source

@@ -162,6 +162,9 @@ def load_data_list(path, split, cfg):
     for f in sorted(os.listdir(os.path.join(path, split))):
         filepath = os.path.join(path, split, f)
         data = torch.load(filepath).to("cpu")
+        if hasattr(os, "posix_fadvise"):
+            with open(filepath, "rb") as handle:
+                os.posix_fadvise(handle.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
         data_list.append(data)
 
     data_list = extract_msg_from_data(data_list, cfg)
