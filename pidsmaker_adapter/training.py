@@ -45,8 +45,8 @@ def validation_loss(cfg: Any, model: Any, val_data: Any) -> float:
         result = model(batch, inference=True, validation=True)
         losses.extend(result["loss"].detach().reshape(-1).float().cpu().tolist())
         batch.to("cpu")
-        if device.type == "cuda":
-            torch.cuda.empty_cache()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
     if not losses:
         raise ValueError("Validation split produced no detector losses")
     return float(np.mean(losses))
@@ -99,13 +99,13 @@ def train_and_select(cfg: Any) -> tuple[Any, dict[str, Any], Any, Any, Any, int]
                 accumulated = None
                 accumulated_count = 0
             batch.to("cpu")
-            if device.type == "cuda":
-                torch.cuda.empty_cache()
 
         if accumulated is not None:
             accumulated.backward()
             optimizer.step()
             optimizer.zero_grad()
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
         if not batch_losses:
             raise ValueError("Training split produced no batches")
 
