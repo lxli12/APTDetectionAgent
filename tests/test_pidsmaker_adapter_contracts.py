@@ -82,6 +82,15 @@ def test_production_source_never_imports_installed_pidsmaker():
     assert violations == []
 
 
+def test_adapter_has_no_import_time_nltk_download():
+    violations = []
+    for path in ADAPTER.rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        if "nltk.download(" in source:
+            violations.append(path)
+    assert violations == []
+
+
 def test_result_schema_forbids_privileged_metrics():
     schema = json.loads(
         (ADAPTER / "schemas" / "checkpoint_split_result_v1.schema.json").read_text(

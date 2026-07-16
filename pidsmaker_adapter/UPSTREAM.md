@@ -41,6 +41,8 @@ Material changes:
   corpus instead of retaining every transformed graph alongside the corpus.
 - bind every finite hyperparameter tuple to explicit pinned PIDSMaker baseline
   and tuning YAML paths; alternate values are restricted to those declared grids.
+- removed PIDSMaker's import-time NLTK download; runtime imports are offline and
+  the environment must provide the pinned tokenizer data before experiments start.
 
 Production adapter code does not import the installed `pidsmaker` package or invoke
 its CLI. The submodule remains an unchanged reference oracle.

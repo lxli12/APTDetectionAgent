@@ -29,6 +29,8 @@ find_conda
 conda activate "${CONDA_ENV}"
 cd "${REPO_ROOT}"
 
+python -c 'import nltk; nltk.data.find("tokenizers/punkt")'
+
 if [[ -f "${RUNTIME_ENV}" ]]; then
   # shellcheck disable=SC1090
   source "${RUNTIME_ENV}"

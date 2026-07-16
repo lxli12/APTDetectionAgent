@@ -22,15 +22,12 @@ from datetime import datetime
 from time import mktime
 
 import networkx as nx
-import nltk
 import numpy as np
 import psycopg2
 import pytz
 import torch
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm
-
-nltk.download("punkt", quiet=True)
 
 from pidsmaker_adapter.upstream.config import update_cfg_for_multi_dataset
 
