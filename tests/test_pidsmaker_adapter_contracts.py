@@ -448,3 +448,29 @@ def test_model_accepts_pruned_rcaid_edge_inputs():
     source = (ADAPTER / "upstream" / "model.py").read_text(encoding="utf-8")
     for field in ("x_src", "x_dst", "msg", "node_type_src", "node_type_dst"):
         assert f'getattr(batch, "{field}", None)' in source
+
+
+def test_chunked_rcaid_gat_matches_native_forward_and_gradient():
+    import torch
+    from torch_geometric.nn import GATConv
+
+    from pidsmaker_adapter.upstream.encoders.rcaid_encoder import (
+        _memory_efficient_gat,
+    )
+
+    torch.manual_seed(42)
+    conv = GATConv(5, 4, heads=3, concat=True, dropout=0.0)
+    edge_index = torch.tensor(
+        [[0, 1, 2, 2, 3, 4, 4], [1, 2, 0, 3, 1, 2, 4]], dtype=torch.long
+    )
+    native_x = torch.randn(5, 5, requires_grad=True)
+    chunked_x = native_x.detach().clone().requires_grad_(True)
+    native = conv(native_x, edge_index)
+    chunked = _memory_efficient_gat(conv, chunked_x, edge_index, chunk_size=2)
+
+    assert torch.allclose(native, chunked, atol=1e-6, rtol=1e-6)
+    native.square().sum().backward()
+    native_gradient = native_x.grad.detach().clone()
+    conv.zero_grad(set_to_none=True)
+    chunked.square().sum().backward()
+    assert torch.allclose(native_gradient, chunked_x.grad, atol=1e-6, rtol=1e-6)

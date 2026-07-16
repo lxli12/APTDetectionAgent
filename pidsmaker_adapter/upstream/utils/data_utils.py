@@ -944,6 +944,9 @@ def reindex_graphs(
                 graph_reindexer.reindex_graph(batch, use_tgn=use_tgn, x_is_tuple=x_is_tuple)
                 batch.to("cpu")
                 if prune_edge_inputs:
+                    # edge_type is a narrow view into the full msg storage. Clone
+                    # it before dropping msg so the large backing tensor is freed.
+                    batch.edge_type = batch.edge_type.clone()
                     for key in (
                         "msg",
                         "x_src",
