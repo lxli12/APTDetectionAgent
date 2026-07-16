@@ -20,14 +20,14 @@
         "required": ["id", "method", "resolution", "resolved_value", "expected_benign_exceedance_rate"],
         "properties": {
           "id": {"type": "string"},
-          "method": {"enum": ["validation_quantile", "max_val_loss", "mean_val_loss"]},
-          "value": {"enum": [0.9, 0.95, 0.99]},
+          "method": {"enum": ["validation_quantile", "max_val_loss", "mean_val_loss", "flash", "threatrace"]},
+          "value": {"type": "number"},
           "resolution": {"type": "string"},
           "resolved_value": {"type": "number"},
           "expected_benign_exceedance_rate": {"type": "number", "minimum": 0, "maximum": 1}
         },
         "allOf": [{
-          "if": {"properties": {"method": {"const": "validation_quantile"}}},
+          "if": {"properties": {"method": {"enum": ["validation_quantile", "flash", "threatrace"]}}},
           "then": {"required": ["value"]},
           "else": {"not": {"required": ["value"]}}
         }]

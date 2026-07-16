@@ -256,6 +256,14 @@ def calibrate_thresholds(
                 "expected_benign_exceedance_rate": 1.0 - quantile,
             }
             resolution = "quantile of benign validation node scores"
+        elif method in {"flash", "threatrace"}:
+            value = float(option["value"])
+            option_id = f"{method}_v{value:g}"
+            option_fields = {
+                "value": value,
+                "expected_benign_exceedance_rate": float(np.mean(array >= value)),
+            }
+            resolution = f"{method} scalar applied to benign validation node scores"
         elif method == "max_val_loss":
             value = float(array.max())
             option_id = method

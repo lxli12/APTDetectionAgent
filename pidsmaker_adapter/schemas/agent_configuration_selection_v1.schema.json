@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent_configuration_selection_v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pids"],
+  "properties": {
+    "schema_version": {"const": "agent_configuration_selection_v1"},
+    "pids": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["values", "branches"],
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {"enum": ["flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"]},
+          "uniqueItems": true
+        },
+        "branches": {
+          "type": "object",
+          "minProperties": 8,
+          "maxProperties": 8,
+          "propertyNames": {"enum": ["flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"]},
+          "additionalProperties": {"$ref": "#/$defs/pidsBranch"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "valueList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["values"],
+      "properties": {"values": {"type": "array", "minItems": 1, "uniqueItems": true}}
+    },
+    "pidsBranch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["train", "threshold", "constraints"],
+      "properties": {
+        "train": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["coupled_parameters", "parameters"],
+          "properties": {
+            "coupled_parameters": {"type": "object", "additionalProperties": {"$ref": "#/$defs/valueList"}},
+            "parameters": {"type": "object", "additionalProperties": {"$ref": "#/$defs/valueList"}}
+          }
+        },
+        "threshold": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "value"],
+          "properties": {
+            "method": {"$ref": "#/$defs/valueList"},
+            "value": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["by_method"],
+              "properties": {
+                "by_method": {"type": "object", "additionalProperties": {"$ref": "#/$defs/valueList"}}
+              }
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["membership"],
+          "properties": {"membership": {"const": "reachable_prebuilt_leaf_only"}}
+        }
+      }
+    }
+  }
+}

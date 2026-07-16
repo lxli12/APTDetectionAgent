@@ -21,7 +21,7 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert space["frozen"]["reproducibility"]["seed"] == 42
     ids = [item.config_id for item in load_configuration_space().configurations]
     assert len(ids) == len(set(ids))
-    assert len(ids) == space["expected_configuration_count"] == 311
+    assert len(ids) == space["expected_configuration_count"] == 153
     assert {item.pids for item in load_configuration_space().configurations} == {
         "flash",
         "kairos",
@@ -35,11 +35,12 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert all("seed" not in item.overrides for item in load_configuration_space().configurations)
 
 
-def test_every_numeric_decision_field_has_three_to_five_values():
+def test_numeric_decision_types_use_consistent_three_or_five_value_counts():
     raw = yaml.safe_load(
         (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(encoding="utf-8")
     )
     generated_count = 0
+    counts_by_type = {}
     for pids, spec in raw["pids_spaces"].items():
         assert spec["coverage"] == "full_factorial"
         cardinality = 1
@@ -47,26 +48,26 @@ def test_every_numeric_decision_field_has_three_to_five_values():
             values = parameter["values"]
             cardinality *= len(values)
             if all(isinstance(value, (int, float)) for value in values):
-                assert 3 <= len(set(values)) <= 5, (pids, field, values)
+                assert len(set(values)) in {3, 5}, (pids, field, values)
+                counts_by_type.setdefault(("parameter", field), set()).add(len(values))
         for unit, parameter in spec.get("coupled_parameters", {}).items():
             options = parameter["values"]
             cardinality *= len(options)
-            by_field = {}
-            for option in options:
-                for field, value in option.items():
-                    if isinstance(value, (int, float)):
-                        by_field.setdefault(field, set()).add(value)
-            assert all(3 <= len(values) <= 5 for values in by_field.values()), (
-                pids,
-                unit,
-                by_field,
-            )
+            assert len(options) in {3, 5}
+            counts_by_type.setdefault(("coupled", unit), set()).add(len(options))
+        for method, branch in spec["threshold"]["value"]["by_method"].items():
+            values = branch["values"]
+            assert len(set(values)) in {3, 5}
+            kind = "native_scalar" if method in {"flash", "threatrace"} else method
+            counts_by_type.setdefault(("threshold", kind), set()).add(len(values))
         generated_count += cardinality
     assert generated_count == raw["expected_configuration_count"]
+    assert all(len(counts) == 1 for counts in counts_by_type.values())
 
 
 def test_agent_selection_tree_uses_real_fields_not_coupled_option_ids():
     tree = load_configuration_space().selection_tree()
+    assert tree["schema_version"] == "agent_configuration_selection_v1"
     assert tree["pids"]["values"] == [
         "flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"
     ]
@@ -75,9 +76,51 @@ def test_agent_selection_tree_uses_real_fields_not_coupled_option_ids():
             assert "id" not in option
             assert "overrides" not in option
             assert all("." in field for field in option)
+        assert all(
+            set(parameter) == {"values"}
+            for parameter in branch["train"]["parameters"].values()
+        )
+    serialized = json.dumps(tree)
+    assert "conditional_overrides" not in serialized
+    assert "legacy_configuration_aliases" not in serialized
+    assert "checkpoint" not in serialized
+    assert "hash" not in serialized
+
+
+def test_agent_space_and_harness_registry_are_separate_files(tmp_path):
+    from pidsmaker_adapter.pipeline import _update_registry
+
+    space = load_configuration_space()
+    entry = {
+        "dataset": "CLEARSCOPE_E3",
+        "checkpoint_id": "rcaid_example",
+        "configuration_id": "rcaid_base",
+        "path": "/data/checkpoint",
+        "checkpoint_hash": "abc",
+        "threshold_options": [],
+    }
+    _update_registry(tmp_path, entry, space.selection_tree())
+    agent_space = json.loads((tmp_path / "agent_configuration_space.json").read_text())
+    registry = json.loads((tmp_path / "configuration_registry.json").read_text())
+    assert agent_space == space.selection_tree()
+    assert registry["agent_configuration_space_ref"].endswith(
+        "/agent_configuration_space.json"
+    )
+    assert "configuration_selection_tree" not in registry
+    assert registry["configurations"] == [entry]
 
 
 def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
+    upstream_defaults = {
+        "flash": {"featurization.emb_dim": 30, "training.node_hid_dim": 30, "training.lr": 0.01},
+        "kairos": {"featurization.emb_dim": 16, "training.node_hid_dim": 100, "training.node_out_dim": 100, "training.lr": 0.00005},
+        "magic": {"training.node_hid_dim": 64, "training.node_out_dim": 64, "training.lr": 0.001},
+        "nodlink": {"featurization.emb_dim": 256, "training.node_hid_dim": 256, "training.node_out_dim": 256, "training.lr": 0.001},
+        "orthrus": {"featurization.emb_dim": 128, "training.node_hid_dim": 128, "training.node_out_dim": 128, "training.lr": 0.0001},
+        "rcaid": {"featurization.emb_dim": 128, "training.node_hid_dim": 128, "training.lr": 0.0001},
+        "threatrace": {"training.node_hid_dim": 32, "training.lr": 0.01},
+        "velox": {"featurization.emb_dim": 128, "training.node_hid_dim": 128, "training.node_out_dim": 128, "training.lr": 0.0001},
+    }
     @lru_cache(maxsize=None)
     def source_values(relative_path, dotted):
         source = (ROOT / relative_path).read_text(encoding="utf-8")
@@ -101,6 +144,7 @@ def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
             values.update(parameter.get("values", []))
         return values
 
+    seen_numeric_values = {}
     for item in load_configuration_space().configurations:
         declared_paths = list(item.source_files)
         assert declared_paths
@@ -108,12 +152,23 @@ def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
             assert (ROOT / path).is_file()
         values_to_check = {**item.overrides, **item.decision_values}
         for dotted, value in values_to_check.items():
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                seen_numeric_values.setdefault((item.pids, dotted), set()).add(value)
             allowed = set().union(
                 *(source_values(path, dotted) for path in declared_paths)
             )
             if dotted == "training.node_out_dim" and -1 in allowed:
                 allowed.add(values_to_check["training.node_hid_dim"])
-            assert value in allowed, (item.config_id, dotted, value, allowed)
+            if value not in allowed:
+                default = upstream_defaults.get(item.pids, {}).get(dotted)
+                assert default is not None and isinstance(value, (int, float))
+                assert default in allowed
+                assert value != default
+    for pids, defaults in upstream_defaults.items():
+        for dotted, default in defaults.items():
+            values = seen_numeric_values[(pids, dotted)]
+            assert default in values
+            assert min(values) < default < max(values), (pids, dotted, values, default)
 
 
 def test_checkpoint_slug_is_readable_and_excludes_seed():
@@ -178,25 +233,37 @@ def test_result_schema_forbids_privileged_metrics():
     assert schema["properties"]["visibility"]["properties"]["labels_used"]["const"] is False
 
 
-def test_threshold_tree_is_validation_derived_and_magic_is_selectable():
+def test_threshold_tree_is_pids_specific_and_default_centered():
     configuration = load_configuration_space()
     assert set(configuration.threshold_spaces) == {
         "flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"
     }
-    assert all(
-        {option["method"] for option in threshold_space["options"]}
-        == {"validation_quantile", "max_val_loss", "mean_val_loss"}
-        and {
+    base_methods = {"validation_quantile", "max_val_loss", "mean_val_loss"}
+    for pids, threshold_space in configuration.threshold_spaces.items():
+        methods = {option["method"] for option in threshold_space["options"]}
+        expected = base_methods | ({pids} if pids in {"flash", "threatrace"} else set())
+        assert methods == expected
+        quantiles = {
             option["value"]
             for option in threshold_space["options"]
             if option["method"] == "validation_quantile"
-        } == {0.90, 0.95, 0.99}
-        for threshold_space in configuration.threshold_spaces.values()
-    )
+        }
+        assert quantiles == ({0.85, 0.90, 0.95} if pids == "nodlink" else {0.90, 0.95, 0.99})
+    assert {
+        option["value"]
+        for option in configuration.threshold_options("flash")
+        if option["method"] == "flash"
+    } == {0.30, 0.53, 0.70}
+    assert {
+        option["value"]
+        for option in configuration.threshold_options("threatrace")
+        if option["method"] == "threatrace"
+    } == {1.0, 1.5, 2.0}
     source = (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(
         encoding="utf-8"
     )
-    assert "values: [0.90, 0.95, 0.99]  # PIDSMaker default: 0.90" in source
+    assert "values: [0.85, 0.90, 0.95]  # PIDSMaker default: 0.90" in source
+    assert "values: [1.0, 1.5, 2.0]  # PIDSMaker default: 1.5" in source
     assert "values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss" in source
     assert "\n        default:" not in source
 
@@ -248,6 +315,21 @@ def test_threshold_resolution_produces_validation_quantile_artifact(tmp_path):
     assert artifact["options"][0]["value"] == 0.9
     assert artifact["score_channel"] == "objective_loss"
     assert artifact["options"][0]["resolved_value"] == resolved["validation_quantile_q0.9"]
+
+
+def test_native_scalar_threshold_variant_is_resolved_without_labels(tmp_path):
+    from pidsmaker_adapter.inference import calibrate_thresholds
+
+    resolved = calibrate_thresholds(
+        [0.5, 1.0, 2.0],
+        ({"method": "threatrace", "value": 1.5},),
+        tmp_path / "thresholds.json",
+        pids="threatrace",
+        scoring="direct_node_loss",
+        score_channel="threatrace_ratio",
+        threshold_space_version="pids_tree_validation_v1",
+    )
+    assert resolved == {"threatrace_v1.5": 1.5}
 
 
 def test_excluded_upstream_subsets_are_not_vendored():

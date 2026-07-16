@@ -218,8 +218,13 @@ def _load_cached_model(cfg: Any):
     return model, summary, train_data, val_data, test_data
 
 
-def _update_registry(dataset_root: Path, entry: dict[str, Any]) -> None:
+def _update_registry(
+    dataset_root: Path,
+    entry: dict[str, Any],
+    agent_selection_space: dict[str, Any],
+) -> None:
     registry_path = dataset_root / "configuration_registry.json"
+    agent_space_path = dataset_root / "agent_configuration_space.json"
     lock_path = dataset_root / ".configuration_registry"
     with stage_lock(lock_path):
         if registry_path.exists():
@@ -228,11 +233,10 @@ def _update_registry(dataset_root: Path, entry: dict[str, Any]) -> None:
             registry = {
                 "schema_version": "detector_configuration_registry_v1",
                 "dataset": entry["dataset"],
+                "agent_configuration_space_ref": str(agent_space_path),
                 "configurations": [],
             }
-        selection_tree = entry.pop("configuration_selection_tree", None)
-        if selection_tree is not None:
-            registry["configuration_selection_tree"] = selection_tree
+        atomic_json(agent_space_path, agent_selection_space)
         registry["configurations"] = [
             item
             for item in registry["configurations"]
@@ -503,17 +507,12 @@ def prepare_checkpoint(
                 "path": str(checkpoint_dir),
                 "checkpoint_hash": existing_manifest["checkpoint_hash"],
                 "scoring": resolved["scoring"],
-                "threshold_space": {
-                    "online_threshold_only_action": False,
-                    "selection_tree": space.decision_spaces[legal.pids]["threshold"],
-                    "options": list(space.threshold_options(legal.pids)),
-                },
                 "threshold_options": thresholds["options"],
                 "agent_initialization_artifacts": existing_manifest[
                     "agent_initialization_artifacts"
                 ],
-                "configuration_selection_tree": space.selection_tree(),
             },
+            space.selection_tree(),
         )
         return checkpoint_dir
     cache_root = output_root / "stage-cache"
@@ -773,17 +772,12 @@ def prepare_checkpoint(
             "path": str(checkpoint_dir),
             "checkpoint_hash": manifest["checkpoint_hash"],
             "scoring": resolved["scoring"],
-            "threshold_space": {
-                "online_threshold_only_action": False,
-                "selection_tree": space.decision_spaces[legal.pids]["threshold"],
-                "options": list(space.threshold_options(legal.pids)),
-            },
             "threshold_options": json.loads(thresholds_path.read_text(encoding="utf-8"))[
                 "options"
             ],
             "agent_initialization_artifacts": manifest["agent_initialization_artifacts"],
-            "configuration_selection_tree": space.selection_tree(),
         },
+        space.selection_tree(),
     )
     # The published checkpoint is hash-validated and self-contained. Retaining
     # epoch/final copies in the internal training cache would multiply model

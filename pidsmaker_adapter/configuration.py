@@ -21,6 +21,10 @@ ALLOWED_THRESHOLD_METHODS = {
     "max_val_loss",
     "mean_val_loss",
 }
+PIDS_NATIVE_THRESHOLD_METHODS = {
+    "flash": "flash",
+    "threatrace": "threatrace",
+}
 ALLOWED_SCORE_CHANNELS = {
     "objective_loss",
     "flash_confidence",
@@ -69,13 +73,20 @@ class ConfigurationSpace:
         for pids, spec in self.decision_spaces.items():
             branches[pids] = {
                 "train": {
-                    "coupled_parameters": spec.get("coupled_parameters", {}),
-                    "parameters": spec.get("parameters", {}),
+                    "coupled_parameters": {
+                        name: {"values": unit["values"]}
+                        for name, unit in spec.get("coupled_parameters", {}).items()
+                    },
+                    "parameters": {
+                        field: {"values": parameter["values"]}
+                        for field, parameter in spec.get("parameters", {}).items()
+                    },
                 },
                 "threshold": spec["threshold"],
                 "constraints": {"membership": "reachable_prebuilt_leaf_only"},
             }
         return {
+            "schema_version": "agent_configuration_selection_v1",
             "pids": {
                 "values": list(branches),
                 "branches": branches,
@@ -110,8 +121,8 @@ def _validate_numeric_domain(name: str, values: list[Any]) -> None:
         for value in values
         if isinstance(value, (int, float)) and not isinstance(value, bool)
     ]
-    if numeric and len(numeric) == len(values) and not 3 <= len(set(numeric)) <= 5:
-        raise ValueError(f"Numeric decision field {name} must expose 3-5 distinct values")
+    if numeric and len(numeric) == len(values) and len(set(numeric)) not in {3, 5}:
+        raise ValueError(f"Numeric decision field {name} must expose 3 or 5 distinct values")
 
 
 def _coupled_marker(overrides: dict[str, Any]) -> str:
@@ -142,22 +153,32 @@ def _parse_threshold_spaces(raw_spaces: dict[str, Any]) -> dict[str, dict[str, A
         if not isinstance(method_spec, dict) or not isinstance(value_spec, dict):
             raise ValueError(f"Invalid threshold branch for {pids}")
         methods = method_spec.get("values")
-        if (
-            not isinstance(methods, list)
-            or set(methods) != ALLOWED_THRESHOLD_METHODS
-        ):
+        allowed_methods = set(ALLOWED_THRESHOLD_METHODS)
+        native_method = PIDS_NATIVE_THRESHOLD_METHODS.get(pids)
+        if native_method:
+            allowed_methods.add(native_method)
+        if not isinstance(methods, list) or set(methods) != allowed_methods:
             raise ValueError(f"Invalid threshold methods for {pids}")
-        if value_spec.get("when") != {"method": "validation_quantile"}:
-            raise ValueError(f"{pids}.threshold.value must be conditional on validation_quantile")
-        values = value_spec.get("values")
-        if not isinstance(values, list) or not values:
-            raise ValueError(f"{pids} must declare threshold.value.values")
-        _validate_numeric_domain(f"{pids}.threshold.value", values)
-        normalized = [
-            {"method": "validation_quantile", "value": float(value)}
-            for value in values
-        ]
-        normalized.extend({"method": method} for method in methods if method != "validation_quantile")
+        by_method = value_spec.get("by_method")
+        expected_value_methods = {"validation_quantile"}
+        if native_method:
+            expected_value_methods.add(native_method)
+        if not isinstance(by_method, dict) or set(by_method) != expected_value_methods:
+            raise ValueError(f"Invalid threshold value branches for {pids}")
+        normalized: list[dict[str, Any]] = []
+        for method, branch in by_method.items():
+            values = branch.get("values") if isinstance(branch, dict) else None
+            if not isinstance(values, list) or not values:
+                raise ValueError(f"{pids}.threshold.value.{method} must declare values")
+            _validate_numeric_domain(f"{pids}.threshold.value.{method}", values)
+            normalized.extend(
+                {"method": method, "value": float(value)} for value in values
+            )
+        normalized.extend(
+            {"method": method}
+            for method in methods
+            if method not in expected_value_methods
+        )
         if len({tuple(option.items()) for option in normalized}) != len(normalized):
             raise ValueError(f"Duplicate threshold options for {pids}")
         result[pids] = {"options": tuple(normalized)}
@@ -186,14 +207,13 @@ def _expand_pids_spaces(
             options = unit.get("values")
             if not isinstance(options, list) or not options:
                 raise ValueError(f"{pids}.{unit_name} must declare values")
+            if len(options) not in {3, 5}:
+                raise ValueError(f"{pids}.{unit_name} must expose 3 or 5 legal tuples")
             normalized: list[dict[str, Any]] = []
-            field_values: dict[str, list[Any]] = {}
             for option in options:
                 if not isinstance(option, dict) or not option:
                     raise ValueError(f"Invalid coupled option in {pids}.{unit_name}")
                 overrides = dict(option)
-                for field, value in overrides.items():
-                    field_values.setdefault(field, []).append(value)
                 normalized.append(
                     {
                         "marker": _coupled_marker(overrides),
@@ -201,8 +221,6 @@ def _expand_pids_spaces(
                         "decision_values": dict(overrides),
                     }
                 )
-            for field, values in field_values.items():
-                _validate_numeric_domain(f"{pids}.{unit_name}.{field}", values)
             dimensions.append((unit_name, normalized))
 
         for field, parameter in spec.get("parameters", {}).items():

@@ -14,7 +14,7 @@ explicit `values`. Numeric decision fields expose three to five upstream-anchore
 values. Embedding and hidden dimensions are represented as validated
 `model_capacity` tuples rather than an unsafe Cartesian product. The declared
 capacity, representation, and learning-rate dimensions are expanded with
-`coverage: full_factorial`, producing 311 concrete train configurations across
+`coverage: full_factorial`, producing 153 concrete train configurations across
 eight selectable PIDS. MAGIC remains selectable, but its native held-out-test
 threshold is reference-only. The 14 active, previously published
 `base`/`compact`/`wide` identifiers are aliases for matching tuples and retain
@@ -44,6 +44,11 @@ The publication layout is:
     └── test_result.json
 ```
 
+At the dataset root, `agent_configuration_space.json` is the compact LLM-facing
+conditional action schema. `configuration_registry.json` is Harness-only and
+maps legal leaves to checkpoints/artifacts; audit defaults, sources, aliases,
+paths, hashes, and cache metadata are never copied into the Agent schema.
+
 Internal hashes are used only for cache identity. Once a compact persistent
 batching artifact is complete, its much wider feat-inference input is reclaimed.
 Configurations that differ only in learning rate therefore reuse construction,
@@ -51,9 +56,9 @@ transformation, featurization, feature inference, and batching without retaining
 duplicate edge-embedding corpora.
 
 `train_result.json` and `val_result.json` are eligible initialization references.
-Each PIDS has a fixed score channel. Agent-selectable threshold methods are
-`validation_quantile`, `max_val_loss`, and `mean_val_loss`; the quantile branch
-then selects `0.90`, `0.95`, or `0.99`. The scalar is
+Each PIDS has a fixed score channel. Every PIDS exposes validation quantile/max/mean;
+FLASH and ThreaTrace additionally expose their native scalar methods with three
+default-centered values. The scalar is
 resolved from benign validation scores into `thresholds.json`; threshold choice
 does not change model weights or the checkpoint hash. PIDSMaker-native methods
 and fixed values remain annotated as provenance references in the YAML.

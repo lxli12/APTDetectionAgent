@@ -1,6 +1,6 @@
 schema_version: configuration_space_v1
 dataset: CLEARSCOPE_E3
-expected_configuration_count: 311
+expected_configuration_count: 153
 
 frozen:
   construction:
@@ -54,10 +54,13 @@ pids_spaces:
     score_channel: flash_confidence
     threshold:
       method:
-        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: flash with fixed scalar 0.53 (reference only)
+        values: [flash, validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: flash
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95; no upstream quantile default
+        by_method:
+          flash:
+            values: [0.30, 0.53, 0.70]  # PIDSMaker default: 0.53
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [flash, generic_tuning]
     base_values:
       featurization.used_method: flash
@@ -69,16 +72,14 @@ pids_spaces:
     coupled_parameters:
       model_capacity:
         values:
+          - {featurization.emb_dim: 16, training.node_hid_dim: 16}
           - {featurization.emb_dim: 30, training.node_hid_dim: 30}  # PIDSMaker default
-          - {featurization.emb_dim: 32, training.node_hid_dim: 32}
-          - {featurization.emb_dim: 32, training.node_hid_dim: 64}
           - {featurization.emb_dim: 128, training.node_hid_dim: 128}
-          - {featurization.emb_dim: 256, training.node_hid_dim: 256}
     parameters:
       featurization.used_method:
         values: [flash, fasttext, word2vec]  # PIDSMaker default: flash
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.01
+        values: [0.001, 0.01, 0.1]  # PIDSMaker default: 0.01
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       flash_base: {featurization.emb_dim: 30, training.node_hid_dim: 30, featurization.used_method: flash, training.lr: 0.01}
       flash_wide: {featurization.emb_dim: 128, training.node_hid_dim: 128, featurization.used_method: flash, training.lr: 0.001}
@@ -92,8 +93,9 @@ pids_spaces:
       method:
         values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95
+        by_method:
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [kairos, generic_tuning]
     base_values:
       featurization.used_method: hierarchical_hashing
@@ -103,11 +105,9 @@ pids_spaces:
     coupled_parameters:
       model_capacity:
         values:
+          - {featurization.emb_dim: 8, training.node_hid_dim: 64, training.node_out_dim: 64}
           - {featurization.emb_dim: 16, training.node_hid_dim: 100, training.node_out_dim: 100}  # PIDSMaker default
           - {featurization.emb_dim: 32, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
-          - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       featurization.used_method:
         values: [hierarchical_hashing, fasttext, word2vec]  # PIDSMaker default: hierarchical_hashing
@@ -115,7 +115,7 @@ pids_spaces:
           fasttext: {featurization.epochs: 50}
           word2vec: {featurization.epochs: 50}
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00005, 0.00001]  # PIDSMaker default: 0.00005
+        values: [0.00001, 0.00005, 0.0001]  # PIDSMaker default: 0.00005
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       kairos_base: {featurization.emb_dim: 16, training.node_hid_dim: 100, training.node_out_dim: 100, featurization.used_method: hierarchical_hashing, training.lr: 0.00005}
       kairos_wide: {featurization.emb_dim: 32, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: hierarchical_hashing, training.lr: 0.0001}
@@ -129,8 +129,9 @@ pids_spaces:
       method:
         values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: magic/test-score mean (reference only)
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95; no deployable upstream default
+        by_method:
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95; no deployable upstream default
     sources: [magic, generic_tuning]
     fixed_overrides:
       training.weight_decay: 0.0005  # PIDSMaker default: 0.0005
@@ -141,10 +142,9 @@ pids_spaces:
           - {training.node_hid_dim: 32, training.node_out_dim: 32}
           - {training.node_hid_dim: 64, training.node_out_dim: 64}  # PIDSMaker default
           - {training.node_hid_dim: 128, training.node_out_dim: 128}
-          - {training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.001
+        values: [0.0001, 0.001, 0.01]  # PIDSMaker default: 0.001
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       magic_base: {training.node_hid_dim: 64, training.node_out_dim: 64, training.lr: 0.001}
       magic_wide: {training.node_hid_dim: 128, training.node_out_dim: 128, training.lr: 0.0001}
@@ -158,8 +158,9 @@ pids_spaces:
       method:
         values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: validation_quantile
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # PIDSMaker default: 0.90
+        by_method:
+          validation_quantile:
+            values: [0.85, 0.90, 0.95]  # PIDSMaker default: 0.90
     sources: [nodlink, generic_tuning]
     base_values:
       featurization.used_method: fasttext
@@ -170,15 +171,14 @@ pids_spaces:
     coupled_parameters:
       model_capacity:
         values:
-          - {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
-          - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
           - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
           - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}  # PIDSMaker default
+          - {featurization.emb_dim: 320, training.node_hid_dim: 320, training.node_out_dim: 320}
     parameters:
       featurization.used_method:
         values: [fasttext, word2vec]  # PIDSMaker default: fasttext
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.001
+        values: [0.0001, 0.001, 0.01]  # PIDSMaker default: 0.001
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       nodlink_base: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256, featurization.used_method: fasttext, training.lr: 0.001}
       nodlink_compact: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: fasttext, training.lr: 0.0001}
@@ -192,8 +192,9 @@ pids_spaces:
       method:
         values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95
+        by_method:
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [orthrus_non_snooped, generic_tuning]
     base_values:
       featurization.used_method: word2vec
@@ -205,14 +206,13 @@ pids_spaces:
       model_capacity:
         values:
           - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
           - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}  # PIDSMaker default
           - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       featurization.used_method:
         values: [word2vec, fasttext]  # PIDSMaker default: word2vec
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # orthrus_non_snooped default: 0.0001
+        values: [0.00001, 0.0001, 0.001]  # PIDSMaker default: 0.0001
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       orthrus_base: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: word2vec, training.lr: 0.0001}
       orthrus_compact: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64, featurization.used_method: word2vec, training.lr: 0.0001}
@@ -226,8 +226,9 @@ pids_spaces:
       method:
         values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95
+        by_method:
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [rcaid, generic_tuning]
     base_values:
       featurization.used_method: doc2vec
@@ -240,14 +241,13 @@ pids_spaces:
       model_capacity:
         values:
           - {featurization.emb_dim: 32, training.node_hid_dim: 64}
-          - {featurization.emb_dim: 32, training.node_hid_dim: 32}
           - {featurization.emb_dim: 128, training.node_hid_dim: 128}  # PIDSMaker default
           - {featurization.emb_dim: 256, training.node_hid_dim: 256}
     parameters:
       featurization.used_method:
         values: [doc2vec, fasttext, word2vec]  # PIDSMaker default: doc2vec
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.0001
+        values: [0.00001, 0.0001, 0.001]  # PIDSMaker default: 0.0001
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       rcaid_base: {featurization.emb_dim: 128, training.node_hid_dim: 128, featurization.used_method: doc2vec, training.lr: 0.0001}
       rcaid_compact: {featurization.emb_dim: 32, training.node_hid_dim: 64, featurization.used_method: doc2vec, training.lr: 0.001}
@@ -259,10 +259,13 @@ pids_spaces:
     score_channel: threatrace_ratio
     threshold:
       method:
-        values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: threatrace with fixed scalar 1.5 (reference only)
+        values: [threatrace, validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: threatrace
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95; no upstream quantile default
+        by_method:
+          threatrace:
+            values: [1.0, 1.5, 2.0]  # PIDSMaker default: 1.5
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [threatrace, generic_tuning]
     fixed_overrides:
       training.node_out_dim: 3  # PIDSMaker default: 3
@@ -271,13 +274,12 @@ pids_spaces:
     coupled_parameters:
       model_capacity:
         values:
+          - {training.node_hid_dim: 16}
           - {training.node_hid_dim: 32}  # PIDSMaker default
           - {training.node_hid_dim: 64}
-          - {training.node_hid_dim: 128}
-          - {training.node_hid_dim: 256}
     parameters:
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.01
+        values: [0.001, 0.01, 0.1]  # PIDSMaker default: 0.01
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       threatrace_base: {training.node_hid_dim: 32, training.lr: 0.01}
       threatrace_wide: {training.node_hid_dim: 64, training.lr: 0.001}
@@ -291,8 +293,9 @@ pids_spaces:
       method:
         values: [validation_quantile, max_val_loss, mean_val_loss]  # PIDSMaker default: max_val_loss inherited from Orthrus
       value:
-        when: {method: validation_quantile}
-        values: [0.90, 0.95, 0.99]  # project default: 0.95
+        by_method:
+          validation_quantile:
+            values: [0.90, 0.95, 0.99]  # project default: 0.95
     sources: [velox, generic_tuning]
     base_values:
       featurization.used_method: word2vec
@@ -304,14 +307,13 @@ pids_spaces:
       model_capacity:
         values:
           - {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
-          - {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
           - {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}  # PIDSMaker default inherited from orthrus_non_snooped
           - {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
     parameters:
       featurization.used_method:
         values: [word2vec, fasttext]  # PIDSMaker default: word2vec
       training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.0001
+        values: [0.00001, 0.0001, 0.001]  # PIDSMaker default: 0.0001
     legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
       velox_base: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: word2vec, training.lr: 0.0001}
       velox_compact: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64, featurization.used_method: word2vec, training.lr: 0.001}
