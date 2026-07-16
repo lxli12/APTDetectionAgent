@@ -166,6 +166,7 @@ def _resolved_semantics(cfg: Any, legal: LegalConfiguration, space: Configuratio
         "dataset": cfg.dataset.name,
         "pids": legal.pids,
         "configuration_id": legal.config_id,
+        "hyperparameter_source_files": list(legal.source_files),
         "construction": {
             "method": cfg.construction.used_method,
             "time_window_size_minutes": cfg.construction.time_window_size,

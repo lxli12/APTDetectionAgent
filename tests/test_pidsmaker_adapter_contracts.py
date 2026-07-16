@@ -23,6 +23,40 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert all("seed" not in item["overrides"] for item in space["configurations"])
 
 
+def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
+    space = yaml.safe_load(
+        (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(encoding="utf-8")
+    )
+    source_sets = space["hyperparameter_sources"]
+
+    def source_values(relative_path, dotted):
+        document = yaml.safe_load((ROOT / relative_path).read_text(encoding="utf-8"))
+        values = set()
+        current = document
+        for part in dotted.split("."):
+            current = current.get(part) if isinstance(current, dict) else None
+        if current is not None and not isinstance(current, (dict, list)):
+            values.add(current)
+        parameter = document.get("parameters", {}).get(dotted, {})
+        values.update(parameter.get("values", []))
+        return values
+
+    for item in space["configurations"]:
+        declared_paths = [
+            path for key in item["sources"] for path in source_sets[key]
+        ]
+        assert declared_paths
+        for path in declared_paths:
+            assert (ROOT / path).is_file()
+        for dotted, value in item["overrides"].items():
+            allowed = set().union(
+                *(source_values(path, dotted) for path in declared_paths)
+            )
+            if dotted == "training.node_out_dim" and -1 in allowed:
+                allowed.add(item["overrides"]["training.node_hid_dim"])
+            assert value in allowed, (item["id"], dotted, value, allowed)
+
+
 def test_checkpoint_slug_is_readable_and_excludes_seed():
     space = load_configuration_space()
     slug = checkpoint_slug(space.get("kairos_base"))

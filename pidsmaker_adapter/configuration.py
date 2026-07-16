@@ -24,6 +24,7 @@ class LegalConfiguration:
     base_model: str
     scoring: str
     overrides: dict[str, Any]
+    source_files: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,9 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
         raise ValueError("Threshold quantiles must be a non-empty finite set in (0, 1)")
 
     items: list[LegalConfiguration] = []
+    source_sets = raw.get("hyperparameter_sources", {})
+    if not isinstance(source_sets, dict) or not source_sets:
+        raise ValueError("Configuration space must declare hyperparameter_sources")
     seen: set[str] = set()
     for item in raw.get("configurations", ()):
         config_id = item.get("id")
@@ -70,6 +74,23 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
         overrides = item.get("overrides")
         if not isinstance(overrides, dict) or not overrides:
             raise ValueError(f"{config_id} must declare a finite override tuple")
+        source_keys = item.get("sources")
+        if not isinstance(source_keys, list) or not source_keys:
+            raise ValueError(f"{config_id} must declare hyperparameter source keys")
+        source_files: list[str] = []
+        for source_key in source_keys:
+            paths = source_sets.get(source_key)
+            if not isinstance(paths, list) or not paths:
+                raise ValueError(f"Unknown hyperparameter source {source_key!r}")
+            for source_path in paths:
+                if not (
+                    isinstance(source_path, str)
+                    and source_path.startswith("PIDSMaker/config/")
+                    and source_path.endswith(".yml")
+                ):
+                    raise ValueError(f"Invalid hyperparameter source path {source_path!r}")
+                if source_path not in source_files:
+                    source_files.append(source_path)
         items.append(
             LegalConfiguration(
                 config_id=config_id,
@@ -77,6 +98,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
                 base_model=str(item["base_model"]),
                 scoring=scoring,
                 overrides=overrides,
+                source_files=tuple(source_files),
             )
         )
     if not items:

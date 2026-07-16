@@ -11,11 +11,30 @@ frozen:
   scoring:
     edge_objective: max_incident_edge_loss
     node_objective: direct_node_loss
+hyperparameter_sources:
+  flash: [PIDSMaker/config/flash.yml]
+  kairos: [PIDSMaker/config/kairos.yml]
+  magic: [PIDSMaker/config/magic.yml]
+  nodlink: [PIDSMaker/config/nodlink.yml]
+  orthrus_non_snooped:
+    - PIDSMaker/config/orthrus.yml
+    - PIDSMaker/config/orthrus_non_snooped.yml
+  rcaid: [PIDSMaker/config/rcaid.yml]
+  threatrace: [PIDSMaker/config/threatrace.yml]
+  velox:
+    - PIDSMaker/config/orthrus.yml
+    - PIDSMaker/config/orthrus_non_snooped.yml
+    - PIDSMaker/config/velox.yml
+  default_grid:
+    - PIDSMaker/config/experiments/tuning/systems/default/tuning_default_baselines.yml
+  featurization_grid:
+    - PIDSMaker/config/experiments/tuning/components/tuning_featurization_methods.yml
 configurations:
   - id: flash_base
     pids: flash
     base_model: flash
     scoring: direct_node_loss
+    sources: [flash]
     overrides:
       featurization.emb_dim: 30
       featurization.epochs: 10
@@ -28,10 +47,11 @@ configurations:
     pids: flash
     base_model: flash
     scoring: direct_node_loss
+    sources: [flash, default_grid, featurization_grid]
     overrides:
-      featurization.emb_dim: 64
+      featurization.emb_dim: 128
       featurization.epochs: 10
-      training.node_hid_dim: 64
+      training.node_hid_dim: 128
       training.node_out_dim: 3
       training.lr: 0.001
       training.weight_decay: 0.0005
@@ -40,6 +60,7 @@ configurations:
     pids: kairos
     base_model: kairos
     scoring: max_incident_edge_loss
+    sources: [kairos]
     overrides:
       featurization.emb_dim: 16
       training.node_hid_dim: 100
@@ -51,6 +72,7 @@ configurations:
     pids: kairos
     base_model: kairos
     scoring: max_incident_edge_loss
+    sources: [kairos, default_grid, featurization_grid]
     overrides:
       featurization.emb_dim: 32
       training.node_hid_dim: 128
@@ -62,6 +84,7 @@ configurations:
     pids: magic
     base_model: magic
     scoring: direct_node_loss
+    sources: [magic]
     overrides:
       training.node_hid_dim: 64
       training.node_out_dim: 64
@@ -72,16 +95,18 @@ configurations:
     pids: magic
     base_model: magic
     scoring: direct_node_loss
+    sources: [magic, default_grid]
     overrides:
       training.node_hid_dim: 128
       training.node_out_dim: 128
-      training.lr: 0.0005
+      training.lr: 0.0001
       training.weight_decay: 0.0005
       training.num_epochs: 12
   - id: nodlink_base
     pids: nodlink
     base_model: nodlink
     scoring: direct_node_loss
+    sources: [nodlink]
     overrides:
       featurization.emb_dim: 256
       featurization.epochs: 100
@@ -94,6 +119,7 @@ configurations:
     pids: nodlink
     base_model: nodlink
     scoring: direct_node_loss
+    sources: [nodlink, default_grid, featurization_grid]
     overrides:
       featurization.emb_dim: 128
       featurization.epochs: 100
@@ -106,6 +132,7 @@ configurations:
     pids: orthrus
     base_model: orthrus_non_snooped
     scoring: max_incident_edge_loss
+    sources: [orthrus_non_snooped]
     overrides:
       featurization.emb_dim: 128
       featurization.epochs: 50
@@ -118,8 +145,9 @@ configurations:
     pids: orthrus
     base_model: orthrus_non_snooped
     scoring: max_incident_edge_loss
+    sources: [orthrus_non_snooped, default_grid, featurization_grid]
     overrides:
-      featurization.emb_dim: 64
+      featurization.emb_dim: 32
       featurization.epochs: 50
       training.node_hid_dim: 64
       training.node_out_dim: 64
@@ -130,6 +158,7 @@ configurations:
     pids: rcaid
     base_model: rcaid
     scoring: direct_node_loss
+    sources: [rcaid]
     overrides:
       featurization.emb_dim: 128
       featurization.epochs: 5
@@ -142,18 +171,20 @@ configurations:
     pids: rcaid
     base_model: rcaid
     scoring: direct_node_loss
+    sources: [rcaid, default_grid, featurization_grid]
     overrides:
-      featurization.emb_dim: 64
+      featurization.emb_dim: 32
       featurization.epochs: 5
       training.node_hid_dim: 64
       training.node_out_dim: 3
-      training.lr: 0.0005
+      training.lr: 0.001
       training.weight_decay: 0.0001
       training.num_epochs: 12
   - id: threatrace_base
     pids: threatrace
     base_model: threatrace
     scoring: direct_node_loss
+    sources: [threatrace]
     overrides:
       training.node_hid_dim: 32
       training.node_out_dim: 3
@@ -164,6 +195,7 @@ configurations:
     pids: threatrace
     base_model: threatrace
     scoring: direct_node_loss
+    sources: [threatrace, default_grid]
     overrides:
       training.node_hid_dim: 64
       training.node_out_dim: 3
@@ -174,6 +206,7 @@ configurations:
     pids: velox
     base_model: velox
     scoring: max_incident_edge_loss
+    sources: [velox]
     overrides:
       featurization.emb_dim: 128
       featurization.epochs: 50
@@ -186,8 +219,9 @@ configurations:
     pids: velox
     base_model: velox
     scoring: max_incident_edge_loss
+    sources: [velox, default_grid, featurization_grid]
     overrides:
-      featurization.emb_dim: 64
+      featurization.emb_dim: 32
       featurization.epochs: 50
       training.node_hid_dim: 64
       training.node_out_dim: 64

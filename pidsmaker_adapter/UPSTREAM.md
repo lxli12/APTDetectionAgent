@@ -39,6 +39,8 @@ Material changes:
   the configured pruning pass would inevitably delete.
 - stream R-CAID training graphs while constructing the neighbor-aware Doc2Vec
   corpus instead of retaining every transformed graph alongside the corpus.
+- bind every finite hyperparameter tuple to explicit pinned PIDSMaker baseline
+  and tuning YAML paths; alternate values are restricted to those declared grids.
 
 Production adapter code does not import the installed `pidsmaker` package or invoke
 its CLI. The submodule remains an unchanged reference oracle.
