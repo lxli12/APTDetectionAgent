@@ -7,6 +7,7 @@ RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 LOG_ROOT="${LOG_ROOT:-/root/autodl-tmp/apt-detection-agent/experiments-result/CLEARSCOPE_E3/checkpoint-preparation/${RUN_ID}}"
 CONDA_ENV="${CONDA_ENV:-pids}"
 RUNTIME_ENV="${RUNTIME_ENV:-/root/autodl-tmp/apt-detection-agent/.runtime/db.env}"
+PIDS_PRIORITY="${PIDS_PRIORITY:-}"
 
 find_conda() {
   local candidate
@@ -58,6 +59,26 @@ mapfile -t CONFIGS < "${LOG_ROOT}/configurations.txt"
 if [[ "${#CONFIGS[@]}" -eq 0 ]]; then
   echo "No legal configurations found" >&2
   exit 2
+fi
+
+if [[ -n "${PIDS_PRIORITY}" ]]; then
+  PRIORITIZED_CONFIGS=()
+  REMAINING_CONFIGS=()
+  for config in "${CONFIGS[@]}"; do
+    if [[ "${config}" == "${PIDS_PRIORITY}"_* ]]; then
+      PRIORITIZED_CONFIGS+=("${config}")
+    else
+      REMAINING_CONFIGS+=("${config}")
+    fi
+  done
+  if [[ "${#PRIORITIZED_CONFIGS[@]}" -eq 0 ]]; then
+    echo "PIDS_PRIORITY=${PIDS_PRIORITY} did not match any legal configuration" >&2
+    exit 2
+  fi
+  CONFIGS=("${PRIORITIZED_CONFIGS[@]}" "${REMAINING_CONFIGS[@]}")
+  printf '%s\n' "${CONFIGS[@]}" > "${LOG_ROOT}/execution_order.txt"
+else
+  cp "${LOG_ROOT}/configurations.txt" "${LOG_ROOT}/execution_order.txt"
 fi
 
 run_worker() {

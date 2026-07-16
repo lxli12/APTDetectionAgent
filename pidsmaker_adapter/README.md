@@ -63,3 +63,7 @@ Run all frozen CLEARSCOPE_E3 configurations across both GPUs with:
 ```bash
 bash pidsmaker_adapter/experiments/run_clearscope_e3.sh
 ```
+
+To finish one detector family first without changing the legal configuration
+set, set `PIDS_PRIORITY` (for example, `PIDS_PRIORITY=rcaid`). The run snapshots
+both the complete configuration set and the resulting `execution_order.txt`.
