@@ -21,8 +21,16 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert space["frozen"]["reproducibility"]["seed"] == 42
     ids = [item.config_id for item in load_configuration_space().configurations]
     assert len(ids) == len(set(ids))
-    assert len(ids) == space["expected_configuration_count"] == 311
-    assert len({item.pids for item in load_configuration_space().configurations}) >= 8
+    assert len(ids) == space["expected_configuration_count"] == 295
+    assert {item.pids for item in load_configuration_space().configurations} == {
+        "flash",
+        "kairos",
+        "nodlink",
+        "orthrus",
+        "rcaid",
+        "threatrace",
+        "velox",
+    }
     assert all("seed" not in item.overrides for item in load_configuration_space().configurations)
 
 
@@ -155,6 +163,80 @@ def test_result_schema_forbids_privileged_metrics():
     )
     assert schema["properties"]["privileged_metrics"]["type"] == "null"
     assert schema["properties"]["visibility"]["properties"]["labels_used"]["const"] is False
+
+
+def test_threshold_methods_are_pids_specific_and_magic_is_not_selectable():
+    configuration = load_configuration_space()
+    expected = {
+        "flash": "flash",
+        "kairos": "max_val_loss",
+        "nodlink": "nodlink",
+        "orthrus": "max_val_loss",
+        "rcaid": "max_val_loss",
+        "threatrace": "threatrace",
+        "velox": "max_val_loss",
+    }
+    assert {
+        pids: configuration.default_threshold(pids)["method"] for pids in expected
+    } == expected
+    assert "magic" not in configuration.threshold_spaces
+    assert all(
+        option["method"] != "magic"
+        for space in configuration.threshold_spaces.values()
+        for option in space["options"]
+    )
+    source = (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "# magic:" in source
+    assert "#     options: [{method: magic}]" in source
+
+
+def test_special_threshold_score_channels_gate_incorrect_predictions():
+    from types import SimpleNamespace
+
+    import torch
+
+    from pidsmaker_adapter.inference import _pids_node_scores
+
+    batch = SimpleNamespace(node_type=torch.eye(3))
+    result = {
+        "out": torch.tensor(
+            [[4.0, 1.0, 0.0], [4.0, 3.0, 1.0], [1.0, 2.0, 4.0]]
+        )
+    }
+    objective = torch.ones(3)
+    for method in ("flash", "threatrace"):
+        scores = _pids_node_scores(
+            result=result,
+            batch=batch,
+            objective_loss=objective,
+            threshold_method=method,
+        )
+        assert scores.shape == objective.shape
+        assert scores[0] > 0
+        assert scores[1] == 0
+        assert scores[2] > 0
+
+
+def test_threshold_resolution_produces_pids_specific_scalar_artifact(tmp_path):
+    from pidsmaker_adapter.inference import calibrate_thresholds
+
+    output = tmp_path / "thresholds.json"
+    resolved = calibrate_thresholds(
+        [1.0, 2.0, 3.0, 100.0],
+        ({"method": "nodlink"},),
+        output,
+        pids="nodlink",
+        scoring="direct_node_loss",
+        threshold_space_version="pids_specific_v1",
+    )
+    artifact = json.loads(output.read_text(encoding="utf-8"))
+    assert set(resolved) == {"nodlink"}
+    assert abs(resolved["nodlink"] - 70.9) < 1e-9
+    assert artifact["options"][0]["method"] == "nodlink"
+    assert artifact["options"][0]["parameter"] == {"quantile": 0.9}
+    assert artifact["options"][0]["resolved_value"] == resolved["nodlink"]
 
 
 def test_excluded_upstream_subsets_are_not_vendored():

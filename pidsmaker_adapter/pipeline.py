@@ -187,8 +187,11 @@ def _resolved_semantics(cfg: Any, legal: LegalConfiguration, space: Configuratio
             "stream_order": "timestamp_ascending",
         },
         "threshold": {
-            "method": "validation_quantile",
-            "allowed_quantiles": list(space.threshold_quantiles),
+            "space_version": space.threshold_space_version,
+            "decision_unit": "threshold_config",
+            "default": space.default_threshold(legal.pids),
+            "options": list(space.threshold_options(legal.pids)),
+            "resolved_value_source": "thresholds.json",
         },
         "reproducibility": {"seed": space.seed},
     }
@@ -353,6 +356,91 @@ def _ensure_historical_resource_artifact(
     return manifest
 
 
+def _published_scores(
+    checkpoint_dir: Path, split: str, *, threshold_method: str
+) -> list[float] | None:
+    path = checkpoint_dir / "inference" / split / "node_scores.jsonl"
+    if not path.is_file():
+        return None
+    scores: list[float] = []
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                record = json.loads(line)
+                # FLASH and ThreaTrace use score channels derived from classifier
+                # outputs, not the generic objective loss stored by older runs.
+                if threshold_method in {"flash", "threatrace"} and record.get(
+                    "score_method"
+                ) != threshold_method:
+                    return None
+                scores.append(float(record["node_score"]))
+    except (OSError, ValueError, KeyError, json.JSONDecodeError):
+        return None
+    return scores or None
+
+
+def _refresh_published_threshold_artifacts(
+    checkpoint_dir: Path,
+    *,
+    legal: LegalConfiguration,
+    space: ConfigurationSpace,
+) -> bool:
+    threshold_method = space.default_threshold(legal.pids)["method"]
+    thresholds_path = checkpoint_dir / "thresholds.json"
+    try:
+        current = json.loads(thresholds_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        current = {}
+    if (
+        current.get("threshold_space_version") == space.threshold_space_version
+        and current.get("pids") == legal.pids
+        and [item.get("method") for item in current.get("options", [])]
+        == [item["method"] for item in space.threshold_options(legal.pids)]
+    ):
+        return True
+
+    scores_by_split = {
+        split: _published_scores(
+            checkpoint_dir, split, threshold_method=threshold_method
+        )
+        for split in ("train", "val", "test")
+    }
+    if any(scores is None for scores in scores_by_split.values()):
+        return False
+    thresholds = calibrate_thresholds(
+        scores_by_split["val"] or [],
+        space.threshold_options(legal.pids),
+        thresholds_path,
+        pids=legal.pids,
+        scoring=legal.scoring,
+        threshold_space_version=space.threshold_space_version,
+    )
+    for split, scores in scores_by_split.items():
+        result_path = checkpoint_dir / f"{split}_result.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result["metrics"]["alerts_by_threshold"] = _threshold_summary(
+            scores or [], thresholds
+        )
+        result["metric_definitions"]["alerts_by_threshold"] = (
+            "PIDS-specific threshold method applied without attack labels"
+        )
+        atomic_json(result_path, result)
+
+    resolved_path = checkpoint_dir / "resolved_config.yaml"
+    resolved = yaml.safe_load(resolved_path.read_text(encoding="utf-8"))
+    resolved["threshold"] = {
+        "space_version": space.threshold_space_version,
+        "decision_unit": "threshold_config",
+        "default": space.default_threshold(legal.pids),
+        "options": list(space.threshold_options(legal.pids)),
+        "resolved_value_source": "thresholds.json",
+    }
+    resolved_path.write_text(
+        yaml.safe_dump(resolved, sort_keys=True, allow_unicode=True), encoding="utf-8"
+    )
+    return True
+
+
 def prepare_checkpoint(
     *,
     legal: LegalConfiguration,
@@ -378,6 +466,10 @@ def prepare_checkpoint(
         legal=legal,
         space=space,
     )
+    if existing_manifest is not None and not _refresh_published_threshold_artifacts(
+        checkpoint_dir, legal=legal, space=space
+    ):
+        existing_manifest = None
     if existing_manifest is not None:
         existing_manifest["decision_configuration"] = dict(legal.decision_values)
         existing_manifest = _ensure_historical_resource_artifact(
@@ -404,6 +496,11 @@ def prepare_checkpoint(
                 "path": str(checkpoint_dir),
                 "checkpoint_hash": existing_manifest["checkpoint_hash"],
                 "scoring": resolved["scoring"],
+                "threshold_decision_unit": {
+                    "fields": ["method"],
+                    "default": space.default_threshold(legal.pids),
+                    "options": list(space.threshold_options(legal.pids)),
+                },
                 "threshold_options": thresholds["options"],
                 "agent_initialization_artifacts": existing_manifest[
                     "agent_initialization_artifacts"
@@ -537,20 +634,24 @@ def prepare_checkpoint(
                 raise
 
     inference_root = checkpoint_dir / "inference"
+    threshold_method = space.default_threshold(legal.pids)["method"]
     val_metrics = run_split_inference(
         cfg=cfg,
         model=model,
         data_groups=val_data,
         split="val",
         scoring=legal.scoring,
+        threshold_method=threshold_method,
         output_dir=inference_root / "val",
     )
     thresholds_path = checkpoint_dir / "thresholds.json"
     thresholds = calibrate_thresholds(
         val_metrics["_scores"],
-        space.threshold_quantiles,
+        space.threshold_options(legal.pids),
         thresholds_path,
+        pids=legal.pids,
         scoring=legal.scoring,
+        threshold_space_version=space.threshold_space_version,
     )
     val_metrics["alerts_by_threshold"] = _threshold_summary(val_metrics["_scores"], thresholds)
     train_metrics = run_split_inference(
@@ -559,6 +660,7 @@ def prepare_checkpoint(
         data_groups=train_data,
         split="train",
         scoring=legal.scoring,
+        threshold_method=threshold_method,
         output_dir=inference_root / "train",
         threshold_values=thresholds,
     )
@@ -580,6 +682,7 @@ def prepare_checkpoint(
         data_groups=test_data,
         split="test",
         scoring=legal.scoring,
+        threshold_method=threshold_method,
         output_dir=inference_root / "test",
         threshold_values=thresholds,
     )
@@ -662,6 +765,11 @@ def prepare_checkpoint(
             "path": str(checkpoint_dir),
             "checkpoint_hash": manifest["checkpoint_hash"],
             "scoring": resolved["scoring"],
+            "threshold_decision_unit": {
+                "fields": ["method"],
+                "default": space.default_threshold(legal.pids),
+                "options": list(space.threshold_options(legal.pids)),
+            },
             "threshold_options": json.loads(thresholds_path.read_text(encoding="utf-8"))[
                 "options"
             ],

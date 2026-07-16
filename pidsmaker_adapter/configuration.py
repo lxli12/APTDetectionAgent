@@ -16,6 +16,13 @@ CONFIG_ROOT = ADAPTER_ROOT / "config"
 DEFAULT_SPACE = CONFIG_ROOT / "configuration_space_v1.yaml"
 ALLOWED_DATASET = "CLEARSCOPE_E3"
 ALLOWED_SCORING = {"direct_node_loss", "max_incident_edge_loss"}
+ALLOWED_THRESHOLD_METHODS = {
+    "max_val_loss",
+    "mean_val_loss",
+    "threatrace",
+    "flash",
+    "nodlink",
+}
 
 
 @dataclass(frozen=True)
@@ -35,7 +42,8 @@ class ConfigurationSpace:
     dataset: str
     seed: int
     time_window_minutes: int
-    threshold_quantiles: tuple[float, ...]
+    threshold_space_version: str
+    threshold_spaces: dict[str, dict[str, Any]]
     configurations: tuple[LegalConfiguration, ...]
     decision_spaces: dict[str, Any]
 
@@ -44,6 +52,18 @@ class ConfigurationSpace:
         if len(matches) != 1:
             raise ValueError(f"Unknown configuration {config_id!r}")
         return matches[0]
+
+    def threshold_options(self, pids: str) -> tuple[dict[str, Any], ...]:
+        try:
+            return tuple(self.threshold_spaces[pids]["options"])
+        except KeyError as exc:
+            raise ValueError(f"No threshold space declared for PIDS {pids!r}") from exc
+
+    def default_threshold(self, pids: str) -> dict[str, Any]:
+        try:
+            return dict(self.threshold_spaces[pids]["default"])
+        except KeyError as exc:
+            raise ValueError(f"No default threshold declared for PIDS {pids!r}") from exc
 
 
 def _source_files(
@@ -76,6 +96,34 @@ def _validate_numeric_domain(name: str, values: list[Any]) -> None:
     ]
     if numeric and len(numeric) == len(values) and not 3 <= len(set(numeric)) <= 5:
         raise ValueError(f"Numeric decision field {name} must expose 3-5 distinct values")
+
+
+def _parse_threshold_spaces(raw_spaces: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for pids, spec in raw_spaces.items():
+        unit = spec.get("threshold_decision_unit")
+        if not isinstance(unit, dict) or unit.get("fields") != ["method"]:
+            raise ValueError(f"{pids} must declare a method-only threshold decision unit")
+        default = unit.get("default")
+        options = unit.get("options")
+        if not isinstance(default, dict) or not isinstance(options, list) or not options:
+            raise ValueError(f"{pids} must declare default and legal threshold options")
+        normalized: list[dict[str, Any]] = []
+        for option in options:
+            if not isinstance(option, dict) or set(option) != {"method"}:
+                raise ValueError(f"Invalid threshold option for {pids}: {option!r}")
+            method = option["method"]
+            if method == "magic":
+                raise ValueError("MAGIC thresholding is disabled because it uses test scores")
+            if method not in ALLOWED_THRESHOLD_METHODS:
+                raise ValueError(f"Illegal threshold method for {pids}: {method!r}")
+            normalized.append({"method": method})
+        if default not in normalized:
+            raise ValueError(f"Default threshold for {pids} must be a legal option")
+        if len({option["method"] for option in normalized}) != len(normalized):
+            raise ValueError(f"Duplicate threshold options for {pids}")
+        result[pids] = {"default": dict(default), "options": tuple(normalized)}
+    return result
 
 
 def _expand_pids_spaces(
@@ -198,11 +246,11 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
     frozen = raw.get("frozen", {})
     seed = frozen.get("reproducibility", {}).get("seed")
     window = frozen.get("construction", {}).get("time_window_size_minutes")
-    quantiles = tuple(frozen.get("threshold", {}).get("quantiles", ()))
+    threshold_space_version = frozen.get("threshold", {}).get("space_version")
     if seed != 42 or window != 15:
         raise ValueError("Detector seed=42 and construction window=15 minutes are mandatory")
-    if not quantiles or any(not 0.0 < float(q) < 1.0 for q in quantiles):
-        raise ValueError("Threshold quantiles must be a non-empty finite set in (0, 1)")
+    if threshold_space_version != "pids_specific_v1":
+        raise ValueError("Unsupported threshold-space version")
 
     items: list[LegalConfiguration] = []
     source_sets = raw.get("hyperparameter_sources", {})
@@ -213,6 +261,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
         if not isinstance(pids_spaces, dict) or not pids_spaces:
             raise ValueError("pids_spaces must be a non-empty mapping")
         items = _expand_pids_spaces(pids_spaces, source_sets)
+    threshold_spaces = _parse_threshold_spaces(pids_spaces or {})
     seen: set[str] = {item.config_id for item in items}
     for item in raw.get("configurations", ()):
         config_id = item.get("id")
@@ -249,7 +298,8 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
         dataset=raw["dataset"],
         seed=seed,
         time_window_minutes=window,
-        threshold_quantiles=tuple(float(q) for q in quantiles),
+        threshold_space_version=threshold_space_version,
+        threshold_spaces=threshold_spaces,
         configurations=tuple(items),
         decision_spaces=dict(pids_spaces or {}),
     )
@@ -341,6 +391,9 @@ def resolve_runtime_config(
     cfg.batching.save_on_disk = True
     cfg.evaluation.used_method = "node_evaluation"
     cfg.evaluation.node_evaluation.use_kmeans = False
+    cfg.evaluation.node_evaluation.threshold_method = space.default_threshold(legal.pids)[
+        "method"
+    ]
     cfg.training.decoder.use_few_shot = False
     cfg._is_running_mc_dropout = False
     set_shortcut_variables(cfg)

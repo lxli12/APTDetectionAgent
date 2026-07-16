@@ -69,6 +69,40 @@ def _resource_snapshot(device: torch.device) -> dict[str, Any]:
     }
 
 
+def _pids_node_scores(
+    *,
+    result: dict[str, Any],
+    batch: Any,
+    objective_loss: torch.Tensor,
+    threshold_method: str,
+) -> torch.Tensor:
+    """Return the score channel required by the selected PIDS threshold method."""
+    if threshold_method not in {"flash", "threatrace"}:
+        return objective_loss
+
+    out = result.get("out")
+    if out is None or out.ndim != 2:
+        raise ValueError(f"{threshold_method} thresholding requires node classifier outputs")
+    detached = out.detach()
+    probabilities = torch.softmax(detached, dim=1)
+    predicted = probabilities.argmax(dim=1)
+    expected = batch.node_type.argmax(dim=1)
+    correct = predicted.eq(expected)
+
+    if threshold_method == "threatrace":
+        top_two = probabilities.topk(k=2, dim=1).values
+        score = torch.log(top_two[:, 0] / top_two[:, 1].clamp_min(1e-5) + 1e-12)
+    else:
+        # PIDSMaker's FLASH branch applies the confidence formula directly to
+        # log-softmax outputs, which makes the intended positive confidence
+        # negative. Use probabilities while retaining its normalization rule.
+        top_two = probabilities.topk(k=2, dim=1).values
+        confidence = (top_two[:, 0] - top_two[:, 1]) / (top_two[:, 0] + 1e-6)
+        maximum = confidence.max()
+        score = (confidence - confidence.min()) / maximum if maximum > 0 else confidence
+    return torch.where(correct, score.clamp_min(0), torch.zeros_like(score))
+
+
 @torch.no_grad()
 def run_split_inference(
     *,
@@ -77,6 +111,7 @@ def run_split_inference(
     data_groups: Iterable[Iterable[Any]],
     split: str,
     scoring: str,
+    threshold_method: str,
     output_dir: Path,
     threshold_values: dict[str, float] | None = None,
 ) -> dict[str, Any]:
@@ -99,8 +134,14 @@ def run_split_inference(
         batch.to(device=device)
         result = model(batch, inference=True, validation=(split == "val"))
         loss = result["loss"].detach().reshape(-1).float().cpu()
-        batch_losses = loss.tolist()
-        losses.extend(float(value) for value in batch_losses)
+        score_tensor = _pids_node_scores(
+            result=result,
+            batch=batch,
+            objective_loss=loss,
+            threshold_method=threshold_method,
+        ).detach().reshape(-1).float().cpu()
+        batch_losses = score_tensor.tolist()
+        losses.extend(float(value) for value in loss.tolist())
         graph_id = _graph_id(batch, int(cfg.construction.time_window_size))
 
         if scoring == "max_incident_edge_loss":
@@ -145,6 +186,7 @@ def run_split_inference(
                     "graph_id": graph_id,
                     "node_id": node_id,
                     "node_score": float(score),
+                    "score_method": threshold_method,
                 }
                 handle.write(json.dumps(record, sort_keys=True) + "\n")
                 all_scores.append(float(score))
@@ -188,30 +230,62 @@ def run_split_inference(
 
 def calibrate_thresholds(
     validation_scores: list[float],
-    quantiles: tuple[float, ...],
+    threshold_options: tuple[dict[str, Any], ...],
     output_path: Path,
     *,
+    pids: str,
     scoring: str,
+    threshold_space_version: str,
 ) -> dict[str, float]:
     if not validation_scores:
         raise ValueError("Cannot calibrate thresholds without validation scores")
     array = np.asarray(validation_scores, dtype=np.float64)
-    resolved = {f"validation_quantile_q{q:g}": float(np.quantile(array, q)) for q in quantiles}
+    resolved: dict[str, float] = {}
+    artifact_options: list[dict[str, Any]] = []
+    for option in threshold_options:
+        method = option["method"]
+        if method == "max_val_loss":
+            value = float(array.max())
+            parameter: dict[str, Any] = {}
+            resolution = "maximum validation node score"
+        elif method == "mean_val_loss":
+            value = float(array.mean())
+            parameter = {}
+            resolution = "mean validation node score"
+        elif method == "nodlink":
+            value = float(np.quantile(array, 0.9))
+            parameter = {"quantile": 0.9}
+            resolution = "90th percentile of validation node scores"
+        elif method == "threatrace":
+            value = 1.5
+            parameter = {"constant": value}
+            resolution = "upstream fixed ThreaTrace threshold"
+        elif method == "flash":
+            value = 0.53
+            parameter = {"constant": value}
+            resolution = "upstream fixed FLASH threshold"
+        else:
+            raise ValueError(f"Unsupported threshold method {method!r}")
+        resolved[method] = value
+        artifact_options.append(
+            {
+                "id": method,
+                "method": method,
+                "parameter": parameter,
+                "resolution": resolution,
+                "resolved_value": value,
+            }
+        )
     atomic_json(
         output_path,
         {
             "schema_version": "threshold_artifact_v1",
+            "threshold_space_version": threshold_space_version,
+            "pids": pids,
             "labels_used": False,
             "source_split": "val",
             "scoring": scoring,
-            "options": [
-                {
-                    "method": "validation_quantile",
-                    "parameter": {"quantile": q},
-                    "resolved_value": resolved[f"validation_quantile_q{q:g}"],
-                }
-                for q in quantiles
-            ],
+            "options": artifact_options,
         },
     )
     return resolved
@@ -242,7 +316,7 @@ def result_envelope(
         "metric_definitions": {
             "loss": "PIDS-specific objective; compare only within the same PIDS/scoring semantics",
             "score_distribution": "graph-local node scores without labels",
-            "alerts_by_threshold": "validation-derived threshold options applied without labels",
+            "alerts_by_threshold": "PIDS-specific threshold method applied without attack labels",
             "workload": "observed graph/node/edge counts",
         },
         "metrics": {

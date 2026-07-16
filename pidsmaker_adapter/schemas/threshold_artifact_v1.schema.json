@@ -2,9 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "threshold_artifact_v1",
   "type": "object",
-  "required": ["schema_version", "labels_used", "source_split", "scoring", "options"],
+  "required": ["schema_version", "threshold_space_version", "pids", "labels_used", "source_split", "scoring", "options"],
   "properties": {
     "schema_version": {"const": "threshold_artifact_v1"},
+    "threshold_space_version": {"const": "pids_specific_v1"},
+    "pids": {"enum": ["flash", "kairos", "nodlink", "orthrus", "rcaid", "threatrace", "velox"]},
     "labels_used": {"const": false},
     "source_split": {"const": "val"},
     "scoring": {"enum": ["direct_node_loss", "max_incident_edge_loss"]},
@@ -13,14 +15,13 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["method", "parameter", "resolved_value"],
+        "additionalProperties": false,
+        "required": ["id", "method", "parameter", "resolution", "resolved_value"],
         "properties": {
-          "method": {"const": "validation_quantile"},
-          "parameter": {
-            "type": "object",
-            "required": ["quantile"],
-            "properties": {"quantile": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}}
-          },
+          "id": {"type": "string"},
+          "method": {"enum": ["max_val_loss", "mean_val_loss", "threatrace", "flash", "nodlink"]},
+          "parameter": {"type": "object"},
+          "resolution": {"type": "string"},
           "resolved_value": {"type": "number"}
         }
       }

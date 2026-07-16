@@ -33,6 +33,9 @@ Material changes:
   batching artifacts.
 - replaced MAGIC's placeholder zero-vector inference output with per-node
   reconstruction loss for validation selection and deployment thresholds.
+- compute FLASH confidence from classifier probabilities rather than its
+  non-positive log-softmax outputs, preserving the upstream normalization and
+  fixed threshold while avoiding an all-zero deployable score channel.
 - normalized Word2Vec and TRW model lookup with path joins so stage directories
   do not depend on a trailing separator.
 - preserved R-CAID pruning semantics while skipping pseudo-root edge sets that

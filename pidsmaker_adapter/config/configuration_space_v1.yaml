@@ -1,6 +1,6 @@
 schema_version: configuration_space_v1
 dataset: CLEARSCOPE_E3
-expected_configuration_count: 311
+expected_configuration_count: 295
 
 frozen:
   construction:
@@ -8,8 +8,7 @@ frozen:
   reproducibility:
     seed: 42
   threshold:
-    method: validation_quantile
-    quantiles: [0.95, 0.99, 0.995, 0.999]
+    space_version: pids_specific_v1
   scoring:
     edge_objective: max_incident_edge_loss
     node_objective: direct_node_loss
@@ -52,6 +51,10 @@ pids_spaces:
     base_model: flash
     scoring: direct_node_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: flash}
+      options: [{method: flash}]
     sources: [flash, generic_tuning]
     base_values:
       featurization.used_method: flash
@@ -86,6 +89,10 @@ pids_spaces:
     base_model: kairos
     scoring: max_incident_edge_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: max_val_loss}
+      options: [{method: max_val_loss}]
     sources: [kairos, generic_tuning]
     base_values:
       featurization.used_method: hierarchical_hashing
@@ -117,36 +124,47 @@ pids_spaces:
       kairos_base: {model_capacity: emb16-hid100, featurization.used_method: hierarchical_hashing, training.lr: 0.00005}
       kairos_wide: {model_capacity: emb32-hid128, featurization.used_method: hierarchical_hashing, training.lr: 0.0001}
 
-  magic:
-    base_model: magic
-    scoring: direct_node_loss
-    coverage: full_factorial
-    sources: [magic, generic_tuning]
-    fixed_overrides:
-      training.weight_decay: 0.0005
-      training.num_epochs: 12
-    coupled_parameters:
-      model_capacity:
-        values:
-          - id: hid32
-            overrides: {training.node_hid_dim: 32, training.node_out_dim: 32}
-          - id: hid64
-            overrides: {training.node_hid_dim: 64, training.node_out_dim: 64}
-          - id: hid128
-            overrides: {training.node_hid_dim: 128, training.node_out_dim: 128}
-          - id: hid256
-            overrides: {training.node_hid_dim: 256, training.node_out_dim: 256}
-    parameters:
-      training.lr:
-        values: [0.01, 0.001, 0.0001, 0.00001]
-    aliases:
-      magic_base: {model_capacity: hid64, training.lr: 0.001}
-      magic_wide: {model_capacity: hid128, training.lr: 0.0001}
+  # MAGIC is retained as upstream-reference configuration but is intentionally
+  # excluded from the Agent-selectable PIDS space: its native threshold method
+  # calibrates from held-out test scores.
+  # magic:
+  #   base_model: magic
+  #   scoring: direct_node_loss
+  #   coverage: full_factorial
+  #   threshold_decision_unit:
+  #     fields: [method]
+  #     default: {method: magic}
+  #     options: [{method: magic}]
+  #   sources: [magic, generic_tuning]
+  #   fixed_overrides:
+  #     training.weight_decay: 0.0005
+  #     training.num_epochs: 12
+  #   coupled_parameters:
+  #     model_capacity:
+  #       values:
+  #         - id: hid32
+  #           overrides: {training.node_hid_dim: 32, training.node_out_dim: 32}
+  #         - id: hid64
+  #           overrides: {training.node_hid_dim: 64, training.node_out_dim: 64}
+  #         - id: hid128
+  #           overrides: {training.node_hid_dim: 128, training.node_out_dim: 128}
+  #         - id: hid256
+  #           overrides: {training.node_hid_dim: 256, training.node_out_dim: 256}
+  #   parameters:
+  #     training.lr:
+  #       values: [0.01, 0.001, 0.0001, 0.00001]
+  #   aliases:
+  #     magic_base: {model_capacity: hid64, training.lr: 0.001}
+  #     magic_wide: {model_capacity: hid128, training.lr: 0.0001}
 
   nodlink:
     base_model: nodlink
     scoring: direct_node_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: nodlink}
+      options: [{method: nodlink}]
     sources: [nodlink, generic_tuning]
     base_values:
       featurization.used_method: fasttext
@@ -178,6 +196,10 @@ pids_spaces:
     base_model: orthrus_non_snooped
     scoring: max_incident_edge_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: max_val_loss}
+      options: [{method: max_val_loss}]
     sources: [orthrus_non_snooped, generic_tuning]
     base_values:
       featurization.used_method: word2vec
@@ -209,6 +231,10 @@ pids_spaces:
     base_model: rcaid
     scoring: direct_node_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: max_val_loss}
+      options: [{method: max_val_loss}]
     sources: [rcaid, generic_tuning]
     base_values:
       featurization.used_method: doc2vec
@@ -241,6 +267,10 @@ pids_spaces:
     base_model: threatrace
     scoring: direct_node_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: threatrace}
+      options: [{method: threatrace}]
     sources: [threatrace, generic_tuning]
     fixed_overrides:
       training.node_out_dim: 3
@@ -268,6 +298,10 @@ pids_spaces:
     base_model: velox
     scoring: max_incident_edge_loss
     coverage: full_factorial
+    threshold_decision_unit:
+      fields: [method]
+      default: {method: max_val_loss}
+      options: [{method: max_val_loss}]
     sources: [velox, generic_tuning]
     base_values:
       featurization.used_method: word2vec
