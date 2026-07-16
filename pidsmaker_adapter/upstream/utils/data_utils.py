@@ -545,12 +545,16 @@ def run_reindexing_preprocessing(datasets, graph_reindexer, device, cfg):
         log_dataset_stats(datasets)
         # By default we only have x_src and x_dst of shape (E, d), here we create x of shape (N, d)
         use_tgn = "tgn" in cfg.training.encoder.used_methods
+        prune_edge_inputs = "rcaid_gat" in cfg.training.encoder.used_methods
+        reindex_device = torch.device("cpu") if prune_edge_inputs else device
+        graph_reindexer.to(reindex_device)
         reindex_graphs(
             datasets,
             graph_reindexer,
-            device,
+            reindex_device,
             use_tgn,
             x_is_tuple=cfg.training.encoder.x_is_tuple,
+            prune_edge_inputs=prune_edge_inputs,
         )
 
     return datasets
@@ -925,10 +929,27 @@ def load_model(model, path: str, cfg, map_location=None):
     return model
 
 
-def reindex_graphs(datasets, graph_reindexer, device, use_tgn, x_is_tuple=False):
+def reindex_graphs(
+    datasets,
+    graph_reindexer,
+    device,
+    use_tgn,
+    x_is_tuple=False,
+    prune_edge_inputs=False,
+):
     for dataset in datasets:
         for data_list in dataset:
             for batch in log_tqdm(data_list, desc="Reindexing graphs"):
                 batch.to(device)
                 graph_reindexer.reindex_graph(batch, use_tgn=use_tgn, x_is_tuple=x_is_tuple)
                 batch.to("cpu")
+                if prune_edge_inputs:
+                    for key in (
+                        "msg",
+                        "x_src",
+                        "x_dst",
+                        "node_type_src",
+                        "node_type_dst",
+                    ):
+                        if key in batch:
+                            del batch[key]

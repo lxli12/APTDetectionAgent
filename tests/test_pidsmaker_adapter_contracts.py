@@ -405,3 +405,12 @@ def test_non_tgn_batching_avoids_full_edge_message_copies():
     assert 'needs_msg = "msg" in edge_features or use_tgn_memory' in source
     assert "if needs_msg:" in source
     assert "os.POSIX_FADV_DONTNEED" in source
+    assert 'prune_edge_inputs = "rcaid_gat" in cfg.training.encoder.used_methods' in source
+    assert 'reindex_device = torch.device("cpu") if prune_edge_inputs else device' in source
+    assert 'if key in batch:' in source
+
+
+def test_model_accepts_pruned_rcaid_edge_inputs():
+    source = (ADAPTER / "upstream" / "model.py").read_text(encoding="utf-8")
+    for field in ("x_src", "x_dst", "msg", "node_type_src", "node_type_dst"):
+        assert f'getattr(batch, "{field}", None)' in source
