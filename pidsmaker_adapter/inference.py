@@ -86,8 +86,6 @@ def run_split_inference(
         raise ValueError(f"Invalid scoring rule {scoring!r}")
 
     device = get_device(cfg)
-    if device.type == "cuda":
-        torch.cuda.reset_peak_memory_stats(device=device)
     model.to_device(device)
     model.reset_state()
     model.eval()

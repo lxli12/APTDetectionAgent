@@ -40,6 +40,7 @@ from pidsmaker_adapter.inference import (
     result_envelope,
     run_split_inference,
 )
+from pidsmaker_adapter.resources import ResourceMonitor, historical_partial_resource_usage
 from pidsmaker_adapter.training import train_and_select
 from pidsmaker_adapter.upstream.factory import build_model
 from pidsmaker_adapter.upstream.tasks import (
@@ -296,6 +297,60 @@ def _published_checkpoint_manifest(
     return manifest
 
 
+def _resource_usage_document(
+    *,
+    usage: dict[str, Any],
+    checkpoint_id: str,
+    legal: LegalConfiguration,
+    space: ConfigurationSpace,
+    cache_status: dict[str, str],
+) -> dict[str, Any]:
+    return {
+        "schema_version": "checkpoint_resource_usage_v1",
+        "dataset": space.dataset,
+        "pids": legal.pids,
+        "configuration_id": legal.config_id,
+        "checkpoint_id": checkpoint_id,
+        "stage_cache_status": cache_status,
+        **usage,
+    }
+
+
+def _ensure_historical_resource_artifact(
+    checkpoint_dir: Path,
+    manifest: dict[str, Any],
+    *,
+    checkpoint_id: str,
+    legal: LegalConfiguration,
+    space: ConfigurationSpace,
+) -> dict[str, Any]:
+    resource_path = checkpoint_dir / "train_val_resource_usage.json"
+    if not resource_path.is_file():
+        results = {
+            split: json.loads(
+                (checkpoint_dir / f"{split}_result.json").read_text(encoding="utf-8")
+            )
+            for split in ("train", "val")
+        }
+        atomic_json(
+            resource_path,
+            _resource_usage_document(
+                usage=historical_partial_resource_usage(results),
+                checkpoint_id=checkpoint_id,
+                legal=legal,
+                space=space,
+                cache_status=manifest.get("cache_status", {}),
+            ),
+        )
+    resource_ref = str(resource_path)
+    manifest["resource_usage_artifact"] = resource_ref
+    initialization_artifacts = manifest.setdefault("agent_initialization_artifacts", [])
+    if resource_ref not in initialization_artifacts:
+        initialization_artifacts.append(resource_ref)
+    atomic_json(checkpoint_dir / "manifest.json", manifest)
+    return manifest
+
+
 def prepare_checkpoint(
     *,
     legal: LegalConfiguration,
@@ -322,6 +377,13 @@ def prepare_checkpoint(
         space=space,
     )
     if existing_manifest is not None:
+        existing_manifest = _ensure_historical_resource_artifact(
+            checkpoint_dir,
+            existing_manifest,
+            checkpoint_id=checkpoint_id,
+            legal=legal,
+            space=space,
+        )
         resolved = yaml.safe_load(
             (checkpoint_dir / "resolved_config.yaml").read_text(encoding="utf-8")
         )
@@ -363,6 +425,7 @@ def prepare_checkpoint(
             f"Refusing checkpoint preparation with less than {minimum_free_gib} GiB free "
             f"on {output_root}"
         )
+    resource_monitor = ResourceMonitor()
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     cache_status: dict[str, str] = {}
     frontier_index = -1 if frontier is None else STAGES.index(frontier)
@@ -491,6 +554,17 @@ def prepare_checkpoint(
         threshold_values=thresholds,
     )
     train_metrics["loss"]["training_history"] = training_summary["history"]
+    resource_path = checkpoint_dir / "train_val_resource_usage.json"
+    atomic_json(
+        resource_path,
+        _resource_usage_document(
+            usage=resource_monitor.finish(),
+            checkpoint_id=checkpoint_id,
+            legal=legal,
+            space=space,
+            cache_status=cache_status,
+        ),
+    )
     test_metrics = run_split_inference(
         cfg=cfg,
         model=model,
@@ -551,6 +625,7 @@ def prepare_checkpoint(
         "stage_digests": {stage: signatures[stage]["digest"] for stage in STAGES},
         "cache_status": cache_status,
         "threshold_artifact": str(thresholds_path),
+        "resource_usage_artifact": str(resource_path),
         "resolved_config": str(resolved_path),
         "command": command or sys.argv,
         "environment": _environment_snapshot(output_root),
@@ -559,6 +634,7 @@ def prepare_checkpoint(
             str(checkpoint_dir / "train_result.json"),
             str(checkpoint_dir / "val_result.json"),
             str(thresholds_path),
+            str(resource_path),
         ],
         "excluded_from_agent_initialization": [
             str(checkpoint_dir / "test_result.json"),

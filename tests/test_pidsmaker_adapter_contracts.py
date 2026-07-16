@@ -361,3 +361,37 @@ def test_low_disk_guard_is_stage_reuse_aware():
     source = (ADAPTER / "pipeline.py").read_text(encoding="utf-8")
     assert 'frontier == "feat_inference" and not cfg.batching.save_on_disk' in source
     assert "minimum_free_gib = min(minimum_free_gib, 10)" in source
+
+
+def test_resource_usage_has_stable_scope_and_honest_historical_nulls():
+    from pidsmaker_adapter.resources import historical_partial_resource_usage
+
+    usage = historical_partial_resource_usage(
+        {
+            "train": {
+                "resource": {
+                    "peak_process_rss_gib": 4.0,
+                    "peak_cuda_allocated_gib": 2.0,
+                }
+            },
+            "val": {
+                "resource": {
+                    "peak_process_rss_gib": 5.0,
+                    "peak_cuda_allocated_gib": 1.0,
+                }
+            },
+        }
+    )
+
+    assert usage["collection_status"] == "historical_partial"
+    assert usage["scope"] == "construction_through_train_and_validation"
+    assert usage["cpu"]["peak_process_percent"] is None
+    assert usage["memory"]["peak_process_rss_gib"] == 5.0
+    assert usage["gpu"]["observed_split_peak_allocated_gib"] == 2.0
+
+
+def test_resource_artifact_uses_fixed_checkpoint_filename():
+    pipeline = (ADAPTER / "pipeline.py").read_text(encoding="utf-8")
+    readme = (ADAPTER / "README.md").read_text(encoding="utf-8")
+    assert 'checkpoint_dir / "train_val_resource_usage.json"' in pipeline
+    assert "train_val_resource_usage.json" in readme

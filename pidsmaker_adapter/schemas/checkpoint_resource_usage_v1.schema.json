@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checkpoint_resource_usage_v1.schema.json",
+  "title": "Checkpoint train/validation resource usage",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "dataset",
+    "pids",
+    "configuration_id",
+    "checkpoint_id",
+    "collection_status",
+    "scope",
+    "wall_time_seconds",
+    "cpu",
+    "memory",
+    "gpu",
+    "stage_cache_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "checkpoint_resource_usage_v1"},
+    "dataset": {"type": "string"},
+    "pids": {"type": "string"},
+    "configuration_id": {"type": "string"},
+    "checkpoint_id": {"type": "string"},
+    "collection_status": {"enum": ["complete", "historical_partial"]},
+    "scope": {"const": "construction_through_train_and_validation"},
+    "started_at": {"type": ["string", "null"]},
+    "finished_at": {"type": ["string", "null"]},
+    "wall_time_seconds": {"type": ["number", "null"], "minimum": 0},
+    "cpu": {"type": "object"},
+    "memory": {"type": "object"},
+    "gpu": {"type": "object"},
+    "stage_cache_status": {"type": "object"},
+    "missing_metrics": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}
