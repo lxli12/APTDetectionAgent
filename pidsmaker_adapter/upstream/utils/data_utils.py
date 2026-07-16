@@ -274,14 +274,21 @@ def extract_msg_from_data(
             else:
                 raise ValueError(f"Node feature {feat} is invalid.")
 
-        x_src = torch.cat(x_src, dim=-1)
-        x_dst = torch.cat(x_dst, dim=-1)
+        x_src = x_src[0] if len(x_src) == 1 else torch.cat(x_src, dim=-1)
+        x_dst = x_dst[0] if len(x_dst) == 1 else torch.cat(x_dst, dim=-1)
 
-        # If we want to predict the edge type, we remove the edge type from the message
-        if "predict_edge_type" in cfg.training.decoder.used_methods:
-            msg = torch.cat([x_src, x_dst], dim=-1)
-        else:
-            msg = torch.cat([x_src, x_dst, fields["edge_type"]], dim=-1)
+        use_tgn_memory = (
+            "tgn" in cfg.training.encoder.used_methods
+            and cfg.training.encoder.tgn.use_memory
+        )
+        needs_msg = "msg" in edge_features or use_tgn_memory
+        msg = None
+        if needs_msg:
+            # If we predict the edge type, exclude it from the TGN/raw message.
+            if "predict_edge_type" in cfg.training.decoder.used_methods:
+                msg = torch.cat([x_src, x_dst], dim=-1)
+            else:
+                msg = torch.cat([x_src, x_dst, fields["edge_type"]], dim=-1)
 
         num_edge_types = get_num_edge_type(cfg)
         edge_feats = build_edge_feats(fields, msg, edge_features, possible_triplets, num_edge_types)
@@ -305,7 +312,7 @@ def extract_msg_from_data(
         g.node_type_src = fields["src_type"]
         g.node_type_dst = fields["dst_type"]
 
-        if "tgn" in cfg.training.encoder.used_methods and cfg.training.encoder.tgn.use_memory:
+        if use_tgn_memory:
             g.msg = msg
 
         # NOTE: do not add edge_index as it is already within `CollatableTemporalData`

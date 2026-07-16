@@ -395,3 +395,12 @@ def test_resource_artifact_uses_fixed_checkpoint_filename():
     readme = (ADAPTER / "README.md").read_text(encoding="utf-8")
     assert 'checkpoint_dir / "train_val_resource_usage.json"' in pipeline
     assert "train_val_resource_usage.json" in readme
+
+
+def test_non_tgn_batching_avoids_full_edge_message_copies():
+    source = (ADAPTER / "upstream" / "utils" / "data_utils.py").read_text(
+        encoding="utf-8"
+    )
+    assert "x_src = x_src[0] if len(x_src) == 1" in source
+    assert 'needs_msg = "msg" in edge_features or use_tgn_memory' in source
+    assert "if needs_msg:" in source
