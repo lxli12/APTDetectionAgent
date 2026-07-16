@@ -345,21 +345,26 @@ def prepare_checkpoint(
             },
         )
         return checkpoint_dir
+    cache_root = output_root / "stage-cache"
+    cfg = resolve_runtime_config(legal, space, cache_root, database)
+    signatures = stage_signatures(cfg, legal.scoring)
+    configure_stage_paths(cfg, cache_root, signatures)
+    frontier = _cache_reuse_frontier(cfg, signatures)
+
     minimum_free_gib = int(os.environ.get("PIDS_MIN_FREE_GIB", "50"))
+    low_write_reuse = frontier == "batching" or (
+        frontier == "feat_inference" and not cfg.batching.save_on_disk
+    )
+    if low_write_reuse:
+        minimum_free_gib = min(minimum_free_gib, 10)
     free_bytes = shutil.disk_usage(output_root).free
     if free_bytes < minimum_free_gib * 1024**3:
         raise RuntimeError(
             f"Refusing checkpoint preparation with less than {minimum_free_gib} GiB free "
             f"on {output_root}"
         )
-    cache_root = output_root / "stage-cache"
-    cfg = resolve_runtime_config(legal, space, cache_root, database)
-    signatures = stage_signatures(cfg, legal.scoring)
-    configure_stage_paths(cfg, cache_root, signatures)
-
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     cache_status: dict[str, str] = {}
-    frontier = _cache_reuse_frontier(cfg, signatures)
     frontier_index = -1 if frontier is None else STAGES.index(frontier)
 
     def execute_stage(

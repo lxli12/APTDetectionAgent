@@ -355,3 +355,9 @@ def test_complete_published_checkpoint_can_bypass_stage_caches(tmp_path):
         )
         is None
     )
+
+
+def test_low_disk_guard_is_stage_reuse_aware():
+    source = (ADAPTER / "pipeline.py").read_text(encoding="utf-8")
+    assert 'frontier == "feat_inference" and not cfg.batching.save_on_disk' in source
+    assert "minimum_free_gib = min(minimum_free_gib, 10)" in source
