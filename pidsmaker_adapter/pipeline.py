@@ -247,6 +247,37 @@ def _update_registry(
         atomic_json(registry_path, registry)
 
 
+def reconcile_publication_catalog(
+    dataset_root: Path, space: ConfigurationSpace
+) -> dict[str, int]:
+    """Publish the Agent schema and remove stale leaves from Harness registry."""
+    dataset_root.mkdir(parents=True, exist_ok=True)
+    registry_path = dataset_root / "configuration_registry.json"
+    agent_space_path = dataset_root / "agent_configuration_space.json"
+    lock_path = dataset_root / ".configuration_registry"
+    legal_ids = {item.config_id for item in space.configurations}
+    with stage_lock(lock_path):
+        atomic_json(agent_space_path, space.selection_tree())
+        if registry_path.is_file():
+            registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        else:
+            registry = {
+                "schema_version": "detector_configuration_registry_v1",
+                "dataset": space.dataset,
+                "configurations": [],
+            }
+        before = len(registry.get("configurations", []))
+        registry["agent_configuration_space_ref"] = str(agent_space_path)
+        registry["configurations"] = [
+            entry
+            for entry in registry.get("configurations", [])
+            if entry.get("configuration_id") in legal_ids
+        ]
+        registry["configurations"].sort(key=lambda item: item["checkpoint_id"])
+        atomic_json(registry_path, registry)
+    return {"retained": len(registry["configurations"]), "removed": before - len(registry["configurations"])}
+
+
 def _published_checkpoint_manifest(
     checkpoint_dir: Path,
     *,

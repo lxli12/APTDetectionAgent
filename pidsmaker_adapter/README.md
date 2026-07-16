@@ -48,6 +48,8 @@ At the dataset root, `agent_configuration_space.json` is the compact LLM-facing
 conditional action schema. `configuration_registry.json` is Harness-only and
 maps legal leaves to checkpoints/artifacts; audit defaults, sources, aliases,
 paths, hashes, and cache metadata are never copied into the Agent schema.
+At runner startup the catalog is reconciled against the current legal IDs, so
+obsolete Harness leaves cannot remain selectable after a space revision.
 
 Internal hashes are used only for cache identity. Once a compact persistent
 batching artifact is complete, its much wider feat-inference input is reclaimed.

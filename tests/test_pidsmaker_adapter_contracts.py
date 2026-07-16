@@ -97,7 +97,7 @@ def test_agent_selection_tree_uses_real_fields_not_coupled_option_ids():
 
 
 def test_agent_space_and_harness_registry_are_separate_files(tmp_path):
-    from pidsmaker_adapter.pipeline import _update_registry
+    from pidsmaker_adapter.pipeline import _update_registry, reconcile_publication_catalog
 
     space = load_configuration_space()
     entry = {
@@ -117,6 +117,12 @@ def test_agent_space_and_harness_registry_are_separate_files(tmp_path):
     )
     assert "configuration_selection_tree" not in registry
     assert registry["configurations"] == [entry]
+    registry["configurations"].append(
+        {"configuration_id": "removed_config", "checkpoint_id": "removed"}
+    )
+    (tmp_path / "configuration_registry.json").write_text(json.dumps(registry))
+    result = reconcile_publication_catalog(tmp_path, space)
+    assert result == {"retained": 1, "removed": 1}
 
 
 def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():

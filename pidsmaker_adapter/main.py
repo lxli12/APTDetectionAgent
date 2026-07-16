@@ -61,7 +61,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.all
         else [space.get(config_id) for config_id in args.config_ids]
     )
-    from pidsmaker_adapter.pipeline import prepare_checkpoint
+    from pidsmaker_adapter.pipeline import prepare_checkpoint, reconcile_publication_catalog
+
+    reconcile_publication_catalog(args.output_root / space.dataset, space)
 
     for legal in selected:
         path = prepare_checkpoint(
