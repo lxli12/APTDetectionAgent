@@ -351,6 +351,21 @@ def _set_path(cfg: Any, dotted: str, value: Any) -> None:
     setattr(current, leaf, value)
 
 
+def _hydrate_selected_featurization_defaults(cfg: Any) -> None:
+    """Fill only the selected method's unset fields from PIDSMaker defaults."""
+    selected = str(cfg.featurization.used_method)
+    defaults = yaml.safe_load((CONFIG_ROOT / "default.yml").read_text(encoding="utf-8"))
+    method_defaults = defaults.get("featurization", {}).get(selected, {})
+    if not isinstance(method_defaults, dict):
+        return
+    method_cfg = getattr(cfg.featurization, selected, None)
+    if method_cfg is None:
+        raise ValueError(f"No runtime configuration section for featurizer {selected!r}")
+    for field, value in method_defaults.items():
+        if getattr(method_cfg, field, None) is None:
+            setattr(method_cfg, field, value)
+
+
 def resolve_runtime_config(
     legal: LegalConfiguration,
     space: ConfigurationSpace,
@@ -375,6 +390,7 @@ def resolve_runtime_config(
     )
     for dotted, value in legal.overrides.items():
         _set_path(cfg, dotted, value)
+    _hydrate_selected_featurization_defaults(cfg)
 
     cfg.training.seed = space.seed
     cfg.training.deterministic = False

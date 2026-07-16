@@ -378,6 +378,25 @@ def test_all_systems_persist_reusable_batching(tmp_path):
 
     assert cfg.batching.save_on_disk is True
 
+
+def test_alternate_featurizers_receive_upstream_method_defaults(tmp_path):
+    from pidsmaker_adapter.configuration import (
+        load_configuration_space,
+        resolve_runtime_config,
+    )
+
+    configuration = load_configuration_space()
+    database = {"host": "localhost", "user": "pids", "password": "unused", "port": "5432"}
+    for method, required_field in (("fasttext", "num_workers"), ("word2vec", "num_workers")):
+        legal = next(
+            item
+            for item in configuration.configurations
+            if item.pids == "rcaid"
+            and item.overrides.get("featurization.used_method") == method
+        )
+        cfg = resolve_runtime_config(legal, configuration, tmp_path, database)
+        assert getattr(getattr(cfg.featurization, method), required_field) == 1
+
     flash = resolve_runtime_config(
         configuration.get("flash_base"),
         configuration,
