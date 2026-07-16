@@ -272,6 +272,8 @@ def reconcile_publication_catalog(
             entry
             for entry in registry.get("configurations", [])
             if entry.get("configuration_id") in legal_ids
+            and isinstance(entry.get("path"), str)
+            and (Path(entry["path"]) / "manifest.json").is_file()
         ]
         registry["configurations"].sort(key=lambda item: item["checkpoint_id"])
         atomic_json(registry_path, registry)
@@ -399,25 +401,65 @@ def _published_scores(
     checkpoint_dir: Path, split: str, *, score_channel: str
 ) -> list[float] | None:
     path = checkpoint_dir / "inference" / split / "node_scores.jsonl"
-    if not path.is_file():
+    if not _ensure_published_score_channel(path, score_channel):
         return None
     scores: list[float] = []
     try:
         with path.open(encoding="utf-8") as handle:
             for line in handle:
                 record = json.loads(line)
-                recorded_channel = record.get("score_channel")
-                if recorded_channel is None:
-                    recorded_channel = {
-                        "flash": "flash_confidence",
-                        "threatrace": "threatrace_ratio",
-                    }.get(record.get("score_method"), "objective_loss")
-                if recorded_channel != score_channel:
+                if record.get("score_channel") != score_channel:
                     return None
                 scores.append(float(record["node_score"]))
     except (OSError, ValueError, KeyError, json.JSONDecodeError):
         return None
     return scores or None
+
+
+def _recorded_score_channel(record: dict[str, Any]) -> str:
+    channel = record.get("score_channel")
+    if channel is not None:
+        return str(channel)
+    return {
+        "flash": "flash_confidence",
+        "threatrace": "threatrace_ratio",
+    }.get(record.get("score_method"), "objective_loss")
+
+
+def _ensure_published_score_channel(path: Path, score_channel: str) -> bool:
+    """Normalize a semantically identical legacy score field without relabeling scores."""
+    if not path.is_file():
+        return False
+    try:
+        with path.open(encoding="utf-8") as handle:
+            first_line = handle.readline()
+        if not first_line:
+            return False
+        first = json.loads(first_line)
+        if _recorded_score_channel(first) != score_channel:
+            return False
+        if first.get("score_channel") == score_channel:
+            return True
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    try:
+        with path.open(encoding="utf-8") as source, temporary.open(
+            "w", encoding="utf-8"
+        ) as destination:
+            for line in source:
+                record = json.loads(line)
+                if _recorded_score_channel(record) != score_channel:
+                    raise ValueError("Mixed or incompatible score channels")
+                record["score_channel"] = score_channel
+                record.pop("score_method", None)
+                destination.write(json.dumps(record, sort_keys=True) + "\n")
+        os.replace(temporary, path)
+        return True
+    except (OSError, ValueError, json.JSONDecodeError):
+        temporary.unlink(missing_ok=True)
+        return False
 
 
 def _refresh_published_threshold_artifacts(
@@ -431,14 +473,21 @@ def _refresh_published_threshold_artifacts(
         current = json.loads(thresholds_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         current = {}
-    if (
+    current_is_valid = (
         current.get("threshold_space_version") == space.threshold_space_version
         and current.get("pids") == legal.pids
         and current.get("score_channel") == legal.score_channel
         and [(item.get("method"), item.get("value")) for item in current.get("options", [])]
         == [(item["method"], item.get("value")) for item in space.threshold_options(legal.pids)]
-    ):
-        return True
+    )
+    if current_is_valid:
+        return all(
+            _ensure_published_score_channel(
+                checkpoint_dir / "inference" / split / "node_scores.jsonl",
+                legal.score_channel,
+            )
+            for split in ("train", "val", "test")
+        )
 
     scores_by_split = {
         split: _published_scores(

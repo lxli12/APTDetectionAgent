@@ -100,11 +100,14 @@ def test_agent_space_and_harness_registry_are_separate_files(tmp_path):
     from pidsmaker_adapter.pipeline import _update_registry, reconcile_publication_catalog
 
     space = load_configuration_space()
+    checkpoint = tmp_path / "checkpoint"
+    checkpoint.mkdir()
+    (checkpoint / "manifest.json").write_text("{}")
     entry = {
         "dataset": "CLEARSCOPE_E3",
         "checkpoint_id": "rcaid_example",
         "configuration_id": "rcaid_base",
-        "path": "/data/checkpoint",
+        "path": str(checkpoint),
         "checkpoint_hash": "abc",
         "threshold_options": [],
     }
@@ -123,6 +126,28 @@ def test_agent_space_and_harness_registry_are_separate_files(tmp_path):
     (tmp_path / "configuration_registry.json").write_text(json.dumps(registry))
     result = reconcile_publication_catalog(tmp_path, space)
     assert result == {"retained": 1, "removed": 1}
+
+
+def test_legacy_score_channel_is_only_normalized_when_semantics_match(tmp_path):
+    from pidsmaker_adapter.pipeline import _ensure_published_score_channel
+
+    objective = tmp_path / "objective.jsonl"
+    objective.write_text('{"node_score": 1.0}\n{"node_score": 2.0}\n')
+    assert _ensure_published_score_channel(objective, "objective_loss")
+    records = [json.loads(line) for line in objective.read_text().splitlines()]
+    assert {record["score_channel"] for record in records} == {"objective_loss"}
+
+    incompatible = tmp_path / "incompatible.jsonl"
+    incompatible.write_text('{"node_score": 1.0}\n')
+    assert not _ensure_published_score_channel(incompatible, "flash_confidence")
+    assert "score_channel" not in json.loads(incompatible.read_text())
+
+    named_legacy = tmp_path / "named.jsonl"
+    named_legacy.write_text('{"node_score": 1.0, "score_method": "flash"}\n')
+    assert _ensure_published_score_channel(named_legacy, "flash_confidence")
+    normalized = json.loads(named_legacy.read_text())
+    assert normalized["score_channel"] == "flash_confidence"
+    assert "score_method" not in normalized
 
 
 def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
