@@ -5,7 +5,7 @@
   "required": ["schema_version", "threshold_space_version", "pids", "labels_used", "source_split", "scoring", "score_channel", "options"],
   "properties": {
     "schema_version": {"const": "threshold_artifact_v1"},
-    "threshold_space_version": {"const": "pids_tree_quantile_v1"},
+    "threshold_space_version": {"const": "pids_tree_validation_v1"},
     "pids": {"enum": ["flash", "kairos", "magic", "nodlink", "orthrus", "rcaid", "threatrace", "velox"]},
     "labels_used": {"const": false},
     "source_split": {"const": "val"},

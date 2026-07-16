@@ -239,7 +239,7 @@ def test_threshold_resolution_produces_validation_quantile_artifact(tmp_path):
         pids="nodlink",
         scoring="direct_node_loss",
         score_channel="objective_loss",
-        threshold_space_version="pids_tree_quantile_v1",
+        threshold_space_version="pids_tree_validation_v1",
     )
     artifact = json.loads(output.read_text(encoding="utf-8"))
     assert set(resolved) == {"validation_quantile_q0.9"}

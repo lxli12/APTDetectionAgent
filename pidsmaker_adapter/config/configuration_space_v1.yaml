@@ -8,7 +8,7 @@ frozen:
   reproducibility:
     seed: 42
   threshold:
-    space_version: pids_tree_quantile_v1
+    space_version: pids_tree_validation_v1
   scoring:
     edge_objective: max_incident_edge_loss
     node_objective: direct_node_loss

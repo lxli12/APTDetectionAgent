@@ -290,7 +290,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
     threshold_space_version = frozen.get("threshold", {}).get("space_version")
     if seed != 42 or window != 15:
         raise ValueError("Detector seed=42 and construction window=15 minutes are mandatory")
-    if threshold_space_version != "pids_tree_quantile_v1":
+    if threshold_space_version != "pids_tree_validation_v1":
         raise ValueError("Unsupported threshold-space version")
 
     items: list[LegalConfiguration] = []
