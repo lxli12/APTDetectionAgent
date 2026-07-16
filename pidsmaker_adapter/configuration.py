@@ -226,8 +226,12 @@ def _expand_pids_spaces(
             dimensions.append((field, normalized))
 
         aliases: dict[tuple[tuple[str, Any], ...], str] = {}
-        for alias, markers in spec.get("aliases", {}).items():
-            signature = tuple(sorted(markers.items()))
+        for alias, decision_configuration in spec.get(
+            "legacy_configuration_aliases", {}
+        ).items():
+            if not isinstance(decision_configuration, dict):
+                raise ValueError(f"Invalid legacy alias {alias!r} for {pids}")
+            signature = tuple(sorted(decision_configuration.items()))
             if signature in aliases:
                 raise ValueError(f"Duplicate alias signature for {pids}")
             aliases[signature] = alias
@@ -243,7 +247,7 @@ def _expand_pids_spaces(
             for option in selected:
                 overrides.update(option["overrides"])
                 decision_values.update(option["decision_values"])
-            signature = tuple(sorted(markers.items()))
+            signature = tuple(sorted(decision_values.items()))
             config_id = aliases.get(signature)
             if config_id is None:
                 tokens = []

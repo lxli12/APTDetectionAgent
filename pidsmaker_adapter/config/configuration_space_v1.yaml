@@ -79,9 +79,9 @@ pids_spaces:
         values: [flash, fasttext, word2vec]  # PIDSMaker default: flash
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.01
-    aliases:
-      flash_base: {model_capacity: emb30-hid30, featurization.used_method: flash, training.lr: 0.01}
-      flash_wide: {model_capacity: emb128-hid128, featurization.used_method: flash, training.lr: 0.001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      flash_base: {featurization.emb_dim: 30, training.node_hid_dim: 30, featurization.used_method: flash, training.lr: 0.01}
+      flash_wide: {featurization.emb_dim: 128, training.node_hid_dim: 128, featurization.used_method: flash, training.lr: 0.001}
 
   kairos:
     base_model: kairos
@@ -116,9 +116,9 @@ pids_spaces:
           word2vec: {featurization.epochs: 50}
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00005, 0.00001]  # PIDSMaker default: 0.00005
-    aliases:
-      kairos_base: {model_capacity: emb16-hid100, featurization.used_method: hierarchical_hashing, training.lr: 0.00005}
-      kairos_wide: {model_capacity: emb32-hid128, featurization.used_method: hierarchical_hashing, training.lr: 0.0001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      kairos_base: {featurization.emb_dim: 16, training.node_hid_dim: 100, training.node_out_dim: 100, featurization.used_method: hierarchical_hashing, training.lr: 0.00005}
+      kairos_wide: {featurization.emb_dim: 32, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: hierarchical_hashing, training.lr: 0.0001}
 
   magic:
     base_model: magic
@@ -145,9 +145,9 @@ pids_spaces:
     parameters:
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.001
-    aliases:
-      magic_base: {model_capacity: hid64, training.lr: 0.001}
-      magic_wide: {model_capacity: hid128, training.lr: 0.0001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      magic_base: {training.node_hid_dim: 64, training.node_out_dim: 64, training.lr: 0.001}
+      magic_wide: {training.node_hid_dim: 128, training.node_out_dim: 128, training.lr: 0.0001}
 
   nodlink:
     base_model: nodlink
@@ -179,9 +179,9 @@ pids_spaces:
         values: [fasttext, word2vec]  # PIDSMaker default: fasttext
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.001
-    aliases:
-      nodlink_base: {model_capacity: emb256-hid256, featurization.used_method: fasttext, training.lr: 0.001}
-      nodlink_compact: {model_capacity: emb128-hid128, featurization.used_method: fasttext, training.lr: 0.0001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      nodlink_base: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256, featurization.used_method: fasttext, training.lr: 0.001}
+      nodlink_compact: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: fasttext, training.lr: 0.0001}
 
   orthrus:
     base_model: orthrus_non_snooped
@@ -213,9 +213,9 @@ pids_spaces:
         values: [word2vec, fasttext]  # PIDSMaker default: word2vec
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # orthrus_non_snooped default: 0.0001
-    aliases:
-      orthrus_base: {model_capacity: emb128-hid128, featurization.used_method: word2vec, training.lr: 0.0001}
-      orthrus_compact: {model_capacity: emb32-hid64, featurization.used_method: word2vec, training.lr: 0.0001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      orthrus_base: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: word2vec, training.lr: 0.0001}
+      orthrus_compact: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64, featurization.used_method: word2vec, training.lr: 0.0001}
 
   rcaid:
     base_model: rcaid
@@ -248,9 +248,9 @@ pids_spaces:
         values: [doc2vec, fasttext, word2vec]  # PIDSMaker default: doc2vec
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.0001
-    aliases:
-      rcaid_base: {model_capacity: emb128-hid128, featurization.used_method: doc2vec, training.lr: 0.0001}
-      rcaid_compact: {model_capacity: emb32-hid64, featurization.used_method: doc2vec, training.lr: 0.001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      rcaid_base: {featurization.emb_dim: 128, training.node_hid_dim: 128, featurization.used_method: doc2vec, training.lr: 0.0001}
+      rcaid_compact: {featurization.emb_dim: 32, training.node_hid_dim: 64, featurization.used_method: doc2vec, training.lr: 0.001}
 
   threatrace:
     base_model: threatrace
@@ -278,9 +278,9 @@ pids_spaces:
     parameters:
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.01
-    aliases:
-      threatrace_base: {model_capacity: hid32, training.lr: 0.01}
-      threatrace_wide: {model_capacity: hid64, training.lr: 0.001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      threatrace_base: {training.node_hid_dim: 32, training.lr: 0.01}
+      threatrace_wide: {training.node_hid_dim: 64, training.lr: 0.001}
 
   velox:
     base_model: velox
@@ -312,6 +312,6 @@ pids_spaces:
         values: [word2vec, fasttext]  # PIDSMaker default: word2vec
       training.lr:
         values: [0.01, 0.001, 0.0001, 0.00001]  # PIDSMaker default: 0.0001
-    aliases:
-      velox_base: {model_capacity: emb128-hid128, featurization.used_method: word2vec, training.lr: 0.0001}
-      velox_compact: {model_capacity: emb32-hid64, featurization.used_method: word2vec, training.lr: 0.001}
+    legacy_configuration_aliases:  # internal compatibility; not Agent-selectable values
+      velox_base: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128, featurization.used_method: word2vec, training.lr: 0.0001}
+      velox_compact: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64, featurization.used_method: word2vec, training.lr: 0.001}
