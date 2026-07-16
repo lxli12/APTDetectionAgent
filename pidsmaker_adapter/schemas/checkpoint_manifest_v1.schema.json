@@ -8,6 +8,7 @@
     "pids",
     "dataset",
     "configuration_id",
+    "decision_configuration",
     "configuration_space_version",
     "checkpoint_path",
     "checkpoint_hash",
@@ -26,6 +27,7 @@
     "trained_on": {"const": "train"},
     "selected_on": {"const": "val"},
     "seed": {"const": 42},
+    "decision_configuration": {"type": "object", "minProperties": 1},
     "checkpoint_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }

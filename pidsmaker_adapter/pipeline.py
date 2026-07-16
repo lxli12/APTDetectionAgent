@@ -166,6 +166,7 @@ def _resolved_semantics(cfg: Any, legal: LegalConfiguration, space: Configuratio
         "dataset": cfg.dataset.name,
         "pids": legal.pids,
         "configuration_id": legal.config_id,
+        "decision_configuration": dict(legal.decision_values),
         "hyperparameter_source_files": list(legal.source_files),
         "construction": {
             "method": cfg.construction.used_method,
@@ -378,6 +379,7 @@ def prepare_checkpoint(
         space=space,
     )
     if existing_manifest is not None:
+        existing_manifest["decision_configuration"] = dict(legal.decision_values)
         existing_manifest = _ensure_historical_resource_artifact(
             checkpoint_dir,
             existing_manifest,
@@ -398,6 +400,7 @@ def prepare_checkpoint(
                 "dataset": space.dataset,
                 "pids": legal.pids,
                 "configuration_id": legal.config_id,
+                "decision_configuration": dict(legal.decision_values),
                 "path": str(checkpoint_dir),
                 "checkpoint_hash": existing_manifest["checkpoint_hash"],
                 "scoring": resolved["scoring"],
@@ -415,9 +418,7 @@ def prepare_checkpoint(
     frontier = _cache_reuse_frontier(cfg, signatures)
 
     minimum_free_gib = int(os.environ.get("PIDS_MIN_FREE_GIB", "50"))
-    low_write_reuse = frontier == "batching" or (
-        frontier == "feat_inference" and not cfg.batching.save_on_disk
-    )
+    low_write_reuse = frontier == "batching"
     if low_write_reuse:
         minimum_free_gib = min(minimum_free_gib, 10)
     free_bytes = shutil.disk_usage(output_root).free
@@ -485,6 +486,13 @@ def prepare_checkpoint(
             else [cfg.batching._task_path]
         ),
     )
+    if cfg.batching.save_on_disk and stage_complete(
+        Path(cfg.batching._task_path), signatures["batching"]
+    ):
+        # The persisted batching artifact is the deepest reusable preprocessing
+        # frontier. Its dependency digest preserves provenance, while removing
+        # the much wider edge-embedding files avoids duplicate data-disk copies.
+        shutil.rmtree(Path(cfg.feat_inference._task_path), ignore_errors=True)
 
     training_path = Path(cfg.training._task_path)
     with stage_lock(training_path):
@@ -612,6 +620,7 @@ def prepare_checkpoint(
         "pids": legal.pids,
         "dataset": cfg.dataset.name,
         "configuration_id": legal.config_id,
+        "decision_configuration": dict(legal.decision_values),
         "configuration_space_version": space.schema_version,
         "checkpoint_path": str(checkpoint_dir),
         "checkpoint_hash": file_sha256(state_dict_path),
@@ -649,6 +658,7 @@ def prepare_checkpoint(
             "dataset": cfg.dataset.name,
             "pids": legal.pids,
             "configuration_id": legal.config_id,
+            "decision_configuration": dict(legal.decision_values),
             "path": str(checkpoint_dir),
             "checkpoint_hash": manifest["checkpoint_hash"],
             "scoring": resolved["scoring"],
@@ -658,4 +668,9 @@ def prepare_checkpoint(
             "agent_initialization_artifacts": manifest["agent_initialization_artifacts"],
         },
     )
+    # The published checkpoint is hash-validated and self-contained. Retaining
+    # epoch/final copies in the internal training cache would multiply model
+    # storage across the exhaustive configuration matrix without enabling any
+    # additional reuse.
+    shutil.rmtree(training_path, ignore_errors=True)
     return checkpoint_dir

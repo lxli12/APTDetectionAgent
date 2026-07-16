@@ -1,5 +1,7 @@
 schema_version: configuration_space_v1
 dataset: CLEARSCOPE_E3
+expected_configuration_count: 311
+
 frozen:
   construction:
     time_window_size_minutes: 15
@@ -11,6 +13,7 @@ frozen:
   scoring:
     edge_objective: max_incident_edge_loss
     node_objective: direct_node_loss
+
 hyperparameter_sources:
   flash: [PIDSMaker/config/flash.yml]
   kairos: [PIDSMaker/config/kairos.yml]
@@ -25,206 +28,269 @@ hyperparameter_sources:
     - PIDSMaker/config/orthrus.yml
     - PIDSMaker/config/orthrus_non_snooped.yml
     - PIDSMaker/config/velox.yml
-  default_grid:
-    - PIDSMaker/config/experiments/tuning/systems/default/tuning_default_baselines.yml
-  featurization_grid:
+  generic_tuning:
+    - PIDSMaker/docs/docs/features/tuning.md
+    - PIDSMaker/config/flash.yml
+    - PIDSMaker/config/kairos.yml
+    - PIDSMaker/config/magic.yml
+    - PIDSMaker/config/nodlink.yml
+    - PIDSMaker/config/orthrus.yml
+    - PIDSMaker/config/orthrus_non_snooped.yml
+    - PIDSMaker/config/rcaid.yml
+    - PIDSMaker/config/threatrace.yml
+    - PIDSMaker/config/velox.yml
     - PIDSMaker/config/experiments/tuning/components/tuning_featurization_methods.yml
-configurations:
-  - id: flash_base
-    pids: flash
+    - PIDSMaker/config/experiments/tuning/systems/default/tuning_default_baselines.yml
+    - PIDSMaker/config/experiments/tuning/systems/default/tuning_orthrus_fixed.yml
+    - PIDSMaker/config/experiments/tuning/systems/clearscope_e5/tuning_orthrus.yml
+
+# Every listed space is exhaustively expanded. Coupled model-capacity values avoid
+# invalid emb_dim/hidden_dim combinations while exposing 3-5 values per numeric
+# decision field. Fixed numeric settings are execution constants, not choices.
+pids_spaces:
+  flash:
     base_model: flash
     scoring: direct_node_loss
-    sources: [flash]
-    overrides:
-      featurization.emb_dim: 30
+    coverage: full_factorial
+    sources: [flash, generic_tuning]
+    base_values:
+      featurization.used_method: flash
+    fixed_overrides:
       featurization.epochs: 10
-      training.node_hid_dim: 30
       training.node_out_dim: 3
-      training.lr: 0.01
       training.weight_decay: 0.0005
       training.num_epochs: 12
-  - id: flash_wide
-    pids: flash
-    base_model: flash
-    scoring: direct_node_loss
-    sources: [flash, default_grid, featurization_grid]
-    overrides:
-      featurization.emb_dim: 128
-      featurization.epochs: 10
-      training.node_hid_dim: 128
-      training.node_out_dim: 3
-      training.lr: 0.001
-      training.weight_decay: 0.0005
-      training.num_epochs: 12
-  - id: kairos_base
-    pids: kairos
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: emb30-hid30
+            overrides: {featurization.emb_dim: 30, training.node_hid_dim: 30}
+          - id: emb32-hid32
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32}
+          - id: emb32-hid64
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64}
+          - id: emb128-hid128
+            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128}
+          - id: emb256-hid256
+            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256}
+    parameters:
+      featurization.used_method:
+        values: [flash, fasttext, word2vec]
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      flash_base: {model_capacity: emb30-hid30, featurization.used_method: flash, training.lr: 0.01}
+      flash_wide: {model_capacity: emb128-hid128, featurization.used_method: flash, training.lr: 0.001}
+
+  kairos:
     base_model: kairos
     scoring: max_incident_edge_loss
-    sources: [kairos]
-    overrides:
-      featurization.emb_dim: 16
-      training.node_hid_dim: 100
-      training.node_out_dim: 100
-      training.lr: 0.00005
+    coverage: full_factorial
+    sources: [kairos, generic_tuning]
+    base_values:
+      featurization.used_method: hierarchical_hashing
+    fixed_overrides:
       training.weight_decay: 0.01
       training.num_epochs: 12
-  - id: kairos_wide
-    pids: kairos
-    base_model: kairos
-    scoring: max_incident_edge_loss
-    sources: [kairos, default_grid, featurization_grid]
-    overrides:
-      featurization.emb_dim: 32
-      training.node_hid_dim: 128
-      training.node_out_dim: 128
-      training.lr: 0.0001
-      training.weight_decay: 0.01
-      training.num_epochs: 12
-  - id: magic_base
-    pids: magic
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: emb16-hid100
+            overrides: {featurization.emb_dim: 16, training.node_hid_dim: 100, training.node_out_dim: 100}
+          - id: emb32-hid128
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - id: emb32-hid64
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - id: emb128-hid128
+            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - id: emb256-hid256
+            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+    parameters:
+      featurization.used_method:
+        values: [hierarchical_hashing, fasttext, word2vec]
+        conditional_overrides:
+          fasttext: {featurization.epochs: 50}
+          word2vec: {featurization.epochs: 50}
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00005, 0.00001]
+    aliases:
+      kairos_base: {model_capacity: emb16-hid100, featurization.used_method: hierarchical_hashing, training.lr: 0.00005}
+      kairos_wide: {model_capacity: emb32-hid128, featurization.used_method: hierarchical_hashing, training.lr: 0.0001}
+
+  magic:
     base_model: magic
     scoring: direct_node_loss
-    sources: [magic]
-    overrides:
-      training.node_hid_dim: 64
-      training.node_out_dim: 64
-      training.lr: 0.001
+    coverage: full_factorial
+    sources: [magic, generic_tuning]
+    fixed_overrides:
       training.weight_decay: 0.0005
       training.num_epochs: 12
-  - id: magic_wide
-    pids: magic
-    base_model: magic
-    scoring: direct_node_loss
-    sources: [magic, default_grid]
-    overrides:
-      training.node_hid_dim: 128
-      training.node_out_dim: 128
-      training.lr: 0.0001
-      training.weight_decay: 0.0005
-      training.num_epochs: 12
-  - id: nodlink_base
-    pids: nodlink
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: hid32
+            overrides: {training.node_hid_dim: 32, training.node_out_dim: 32}
+          - id: hid64
+            overrides: {training.node_hid_dim: 64, training.node_out_dim: 64}
+          - id: hid128
+            overrides: {training.node_hid_dim: 128, training.node_out_dim: 128}
+          - id: hid256
+            overrides: {training.node_hid_dim: 256, training.node_out_dim: 256}
+    parameters:
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      magic_base: {model_capacity: hid64, training.lr: 0.001}
+      magic_wide: {model_capacity: hid128, training.lr: 0.0001}
+
+  nodlink:
     base_model: nodlink
     scoring: direct_node_loss
-    sources: [nodlink]
-    overrides:
-      featurization.emb_dim: 256
+    coverage: full_factorial
+    sources: [nodlink, generic_tuning]
+    base_values:
+      featurization.used_method: fasttext
+    fixed_overrides:
       featurization.epochs: 100
-      training.node_hid_dim: 256
-      training.node_out_dim: 256
-      training.lr: 0.001
       training.weight_decay: 0.00001
       training.num_epochs: 12
-  - id: nodlink_compact
-    pids: nodlink
-    base_model: nodlink
-    scoring: direct_node_loss
-    sources: [nodlink, default_grid, featurization_grid]
-    overrides:
-      featurization.emb_dim: 128
-      featurization.epochs: 100
-      training.node_hid_dim: 128
-      training.node_out_dim: 128
-      training.lr: 0.0001
-      training.weight_decay: 0.00001
-      training.num_epochs: 12
-  - id: orthrus_base
-    pids: orthrus
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: emb32-hid32
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
+          - id: emb32-hid64
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - id: emb128-hid128
+            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - id: emb256-hid256
+            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+    parameters:
+      featurization.used_method:
+        values: [fasttext, word2vec]
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      nodlink_base: {model_capacity: emb256-hid256, featurization.used_method: fasttext, training.lr: 0.001}
+      nodlink_compact: {model_capacity: emb128-hid128, featurization.used_method: fasttext, training.lr: 0.0001}
+
+  orthrus:
     base_model: orthrus_non_snooped
     scoring: max_incident_edge_loss
-    sources: [orthrus_non_snooped]
-    overrides:
-      featurization.emb_dim: 128
+    coverage: full_factorial
+    sources: [orthrus_non_snooped, generic_tuning]
+    base_values:
+      featurization.used_method: word2vec
+    fixed_overrides:
       featurization.epochs: 50
-      training.node_hid_dim: 128
-      training.node_out_dim: 128
-      training.lr: 0.0001
       training.weight_decay: 0.00001
       training.num_epochs: 12
-  - id: orthrus_compact
-    pids: orthrus
-    base_model: orthrus_non_snooped
-    scoring: max_incident_edge_loss
-    sources: [orthrus_non_snooped, default_grid, featurization_grid]
-    overrides:
-      featurization.emb_dim: 32
-      featurization.epochs: 50
-      training.node_hid_dim: 64
-      training.node_out_dim: 64
-      training.lr: 0.0001
-      training.weight_decay: 0.00001
-      training.num_epochs: 12
-  - id: rcaid_base
-    pids: rcaid
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: emb32-hid64
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - id: emb32-hid32
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
+          - id: emb128-hid128
+            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - id: emb256-hid256
+            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+    parameters:
+      featurization.used_method:
+        values: [word2vec, fasttext]
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      orthrus_base: {model_capacity: emb128-hid128, featurization.used_method: word2vec, training.lr: 0.0001}
+      orthrus_compact: {model_capacity: emb32-hid64, featurization.used_method: word2vec, training.lr: 0.0001}
+
+  rcaid:
     base_model: rcaid
     scoring: direct_node_loss
-    sources: [rcaid]
-    overrides:
-      featurization.emb_dim: 128
+    coverage: full_factorial
+    sources: [rcaid, generic_tuning]
+    base_values:
+      featurization.used_method: doc2vec
+    fixed_overrides:
       featurization.epochs: 5
-      training.node_hid_dim: 128
       training.node_out_dim: 3
-      training.lr: 0.0001
       training.weight_decay: 0.0001
       training.num_epochs: 12
-  - id: rcaid_compact
-    pids: rcaid
-    base_model: rcaid
-    scoring: direct_node_loss
-    sources: [rcaid, default_grid, featurization_grid]
-    overrides:
-      featurization.emb_dim: 32
-      featurization.epochs: 5
-      training.node_hid_dim: 64
-      training.node_out_dim: 3
-      training.lr: 0.001
-      training.weight_decay: 0.0001
-      training.num_epochs: 12
-  - id: threatrace_base
-    pids: threatrace
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: emb32-hid64
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64}
+          - id: emb32-hid32
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32}
+          - id: emb128-hid128
+            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128}
+          - id: emb256-hid256
+            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256}
+    parameters:
+      featurization.used_method:
+        values: [doc2vec, fasttext, word2vec]
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      rcaid_base: {model_capacity: emb128-hid128, featurization.used_method: doc2vec, training.lr: 0.0001}
+      rcaid_compact: {model_capacity: emb32-hid64, featurization.used_method: doc2vec, training.lr: 0.001}
+
+  threatrace:
     base_model: threatrace
     scoring: direct_node_loss
-    sources: [threatrace]
-    overrides:
-      training.node_hid_dim: 32
+    coverage: full_factorial
+    sources: [threatrace, generic_tuning]
+    fixed_overrides:
       training.node_out_dim: 3
-      training.lr: 0.01
       training.weight_decay: 0.0005
       training.num_epochs: 12
-  - id: threatrace_wide
-    pids: threatrace
-    base_model: threatrace
-    scoring: direct_node_loss
-    sources: [threatrace, default_grid]
-    overrides:
-      training.node_hid_dim: 64
-      training.node_out_dim: 3
-      training.lr: 0.001
-      training.weight_decay: 0.0005
-      training.num_epochs: 12
-  - id: velox_base
-    pids: velox
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: hid32
+            overrides: {training.node_hid_dim: 32}
+          - id: hid64
+            overrides: {training.node_hid_dim: 64}
+          - id: hid128
+            overrides: {training.node_hid_dim: 128}
+          - id: hid256
+            overrides: {training.node_hid_dim: 256}
+    parameters:
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      threatrace_base: {model_capacity: hid32, training.lr: 0.01}
+      threatrace_wide: {model_capacity: hid64, training.lr: 0.001}
+
+  velox:
     base_model: velox
     scoring: max_incident_edge_loss
-    sources: [velox]
-    overrides:
-      featurization.emb_dim: 128
+    coverage: full_factorial
+    sources: [velox, generic_tuning]
+    base_values:
+      featurization.used_method: word2vec
+    fixed_overrides:
       featurization.epochs: 50
-      training.node_hid_dim: 128
-      training.node_out_dim: 128
-      training.lr: 0.0001
       training.weight_decay: 0.00001
       training.num_epochs: 12
-  - id: velox_compact
-    pids: velox
-    base_model: velox
-    scoring: max_incident_edge_loss
-    sources: [velox, default_grid, featurization_grid]
-    overrides:
-      featurization.emb_dim: 32
-      featurization.epochs: 50
-      training.node_hid_dim: 64
-      training.node_out_dim: 64
-      training.lr: 0.001
-      training.weight_decay: 0.00001
-      training.num_epochs: 12
+    coupled_parameters:
+      model_capacity:
+        values:
+          - id: emb32-hid64
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 64, training.node_out_dim: 64}
+          - id: emb32-hid32
+            overrides: {featurization.emb_dim: 32, training.node_hid_dim: 32, training.node_out_dim: 32}
+          - id: emb128-hid128
+            overrides: {featurization.emb_dim: 128, training.node_hid_dim: 128, training.node_out_dim: 128}
+          - id: emb256-hid256
+            overrides: {featurization.emb_dim: 256, training.node_hid_dim: 256, training.node_out_dim: 256}
+    parameters:
+      featurization.used_method:
+        values: [word2vec, fasttext]
+      training.lr:
+        values: [0.01, 0.001, 0.0001, 0.00001]
+    aliases:
+      velox_base: {model_capacity: emb128-hid128, featurization.used_method: word2vec, training.lr: 0.0001}
+      velox_compact: {model_capacity: emb32-hid64, featurization.used_method: word2vec, training.lr: 0.001}

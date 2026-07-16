@@ -9,6 +9,15 @@ List the frozen configuration space:
 python -m pidsmaker_adapter.main list-configs
 ```
 
+`config/configuration_space_v1.yaml` declares PIDS-specific decision domains with
+explicit `values`. Numeric decision fields expose three to five upstream-anchored
+values. Embedding and hidden dimensions are represented as validated
+`model_capacity` tuples rather than an unsafe Cartesian product. The declared
+capacity, representation, and learning-rate dimensions are expanded with
+`coverage: full_factorial`, producing 311 concrete train configurations. The 16
+previously published `base`/`compact`/`wide` identifiers are aliases for matching
+tuples and retain their existing checkpoint paths.
+
 Prepare one checkpoint on the AutoDL data disk:
 
 ```bash
@@ -32,6 +41,12 @@ The publication layout is:
     ├── val_result.json
     └── test_result.json
 ```
+
+Internal hashes are used only for cache identity. Once a compact persistent
+batching artifact is complete, its much wider feat-inference input is reclaimed.
+Configurations that differ only in learning rate therefore reuse construction,
+transformation, featurization, feature inference, and batching without retaining
+duplicate edge-embedding corpora.
 
 `train_result.json` and `val_result.json` are eligible initialization references.
 `train_val_resource_usage.json` records the consistently named resource scope from

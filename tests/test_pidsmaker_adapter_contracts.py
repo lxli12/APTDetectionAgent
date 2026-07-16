@@ -1,5 +1,7 @@
 import ast
 import json
+import re
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -17,44 +19,80 @@ def test_finite_space_has_fixed_no_snoop_contract():
     assert space["dataset"] == "CLEARSCOPE_E3"
     assert space["frozen"]["construction"]["time_window_size_minutes"] == 15
     assert space["frozen"]["reproducibility"]["seed"] == 42
-    ids = [item["id"] for item in space["configurations"]]
+    ids = [item.config_id for item in load_configuration_space().configurations]
     assert len(ids) == len(set(ids))
-    assert len({item["pids"] for item in space["configurations"]}) >= 8
-    assert all("seed" not in item["overrides"] for item in space["configurations"])
+    assert len(ids) == space["expected_configuration_count"] == 311
+    assert len({item.pids for item in load_configuration_space().configurations}) >= 8
+    assert all("seed" not in item.overrides for item in load_configuration_space().configurations)
+
+
+def test_every_numeric_decision_field_has_three_to_five_values():
+    raw = yaml.safe_load(
+        (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(encoding="utf-8")
+    )
+    generated_count = 0
+    for pids, spec in raw["pids_spaces"].items():
+        assert spec["coverage"] == "full_factorial"
+        cardinality = 1
+        for field, parameter in spec.get("parameters", {}).items():
+            values = parameter["values"]
+            cardinality *= len(values)
+            if all(isinstance(value, (int, float)) for value in values):
+                assert 3 <= len(set(values)) <= 5, (pids, field, values)
+        for unit, parameter in spec.get("coupled_parameters", {}).items():
+            options = parameter["values"]
+            cardinality *= len(options)
+            by_field = {}
+            for option in options:
+                for field, value in option["overrides"].items():
+                    if isinstance(value, (int, float)):
+                        by_field.setdefault(field, set()).add(value)
+            assert all(3 <= len(values) <= 5 for values in by_field.values()), (
+                pids,
+                unit,
+                by_field,
+            )
+        generated_count += cardinality
+    assert generated_count == raw["expected_configuration_count"]
 
 
 def test_every_hyperparameter_value_is_backed_by_declared_upstream_yaml():
-    space = yaml.safe_load(
-        (ADAPTER / "config" / "configuration_space_v1.yaml").read_text(encoding="utf-8")
-    )
-    source_sets = space["hyperparameter_sources"]
-
+    @lru_cache(maxsize=None)
     def source_values(relative_path, dotted):
-        document = yaml.safe_load((ROOT / relative_path).read_text(encoding="utf-8"))
+        source = (ROOT / relative_path).read_text(encoding="utf-8")
+        if relative_path.endswith(".md"):
+            documents = [
+                yaml.safe_load(block)
+                for block in re.findall(r"```\s*yaml[^\n]*\n(.*?)```", source, re.DOTALL)
+            ]
+        else:
+            documents = [yaml.safe_load(source)]
         values = set()
-        current = document
-        for part in dotted.split("."):
-            current = current.get(part) if isinstance(current, dict) else None
-        if current is not None and not isinstance(current, (dict, list)):
-            values.add(current)
-        parameter = document.get("parameters", {}).get(dotted, {})
-        values.update(parameter.get("values", []))
+        for document in documents:
+            if not isinstance(document, dict):
+                continue
+            current = document
+            for part in dotted.split("."):
+                current = current.get(part) if isinstance(current, dict) else None
+            if current is not None and not isinstance(current, (dict, list)):
+                values.add(current)
+            parameter = document.get("parameters", {}).get(dotted, {})
+            values.update(parameter.get("values", []))
         return values
 
-    for item in space["configurations"]:
-        declared_paths = [
-            path for key in item["sources"] for path in source_sets[key]
-        ]
+    for item in load_configuration_space().configurations:
+        declared_paths = list(item.source_files)
         assert declared_paths
         for path in declared_paths:
             assert (ROOT / path).is_file()
-        for dotted, value in item["overrides"].items():
+        values_to_check = {**item.overrides, **item.decision_values}
+        for dotted, value in values_to_check.items():
             allowed = set().union(
                 *(source_values(path, dotted) for path in declared_paths)
             )
             if dotted == "training.node_out_dim" and -1 in allowed:
-                allowed.add(item["overrides"]["training.node_hid_dim"])
-            assert value in allowed, (item["id"], dotted, value, allowed)
+                allowed.add(values_to_check["training.node_hid_dim"])
+            assert value in allowed, (item.config_id, dotted, value, allowed)
 
 
 def test_checkpoint_slug_is_readable_and_excludes_seed():
@@ -63,6 +101,24 @@ def test_checkpoint_slug_is_readable_and_excludes_seed():
     assert slug.startswith("checkpoint_embedding_dim-16_hidden_dim-100")
     assert "learning_rate-5e-5" in slug
     assert "seed" not in slug
+
+    non_default = next(
+        item
+        for item in space.configurations
+        if item.overrides.get("featurization.used_method") == "fasttext"
+    )
+    assert "featurization-fasttext" in checkpoint_slug(non_default)
+
+
+def test_existing_named_configurations_keep_their_checkpoint_paths():
+    space = load_configuration_space()
+    expected = {
+        "flash_base": "checkpoint_embedding_dim-30_featurization_epochs-10_hidden_dim-30_output_dim-3_learning_rate-0.01_weight_decay-5e-4_training_epochs-12",
+        "kairos_base": "checkpoint_embedding_dim-16_hidden_dim-100_output_dim-100_learning_rate-5e-5_weight_decay-0.01_training_epochs-12",
+        "rcaid_compact": "checkpoint_embedding_dim-32_featurization_epochs-5_hidden_dim-64_output_dim-3_learning_rate-0.001_weight_decay-1e-4_training_epochs-12",
+    }
+    for config_id, slug in expected.items():
+        assert checkpoint_slug(space.get(config_id)) == slug
 
 
 def test_production_source_never_imports_installed_pidsmaker():
@@ -218,7 +274,7 @@ def test_rcaid_doc2vec_corpus_streams_transformed_graphs():
     assert "del G" in function
 
 
-def test_rcaid_preserves_non_persistent_batching(tmp_path):
+def test_all_systems_persist_reusable_batching(tmp_path):
     from pidsmaker_adapter.configuration import (
         load_configuration_space,
         resolve_runtime_config,
@@ -238,7 +294,7 @@ def test_rcaid_preserves_non_persistent_batching(tmp_path):
         },
     )
 
-    assert cfg.batching.save_on_disk is False
+    assert cfg.batching.save_on_disk is True
 
     flash = resolve_runtime_config(
         configuration.get("flash_base"),
@@ -402,7 +458,7 @@ def test_complete_published_checkpoint_can_bypass_stage_caches(tmp_path):
 
 def test_low_disk_guard_is_stage_reuse_aware():
     source = (ADAPTER / "pipeline.py").read_text(encoding="utf-8")
-    assert 'frontier == "feat_inference" and not cfg.batching.save_on_disk' in source
+    assert 'low_write_reuse = frontier == "batching"' in source
     assert "minimum_free_gib = min(minimum_free_gib, 10)" in source
 
 
@@ -438,6 +494,14 @@ def test_resource_artifact_uses_fixed_checkpoint_filename():
     readme = (ADAPTER / "README.md").read_text(encoding="utf-8")
     assert 'checkpoint_dir / "train_val_resource_usage.json"' in pipeline
     assert "train_val_resource_usage.json" in readme
+
+
+def test_published_matrix_reclaims_only_consumed_duplicate_stages():
+    pipeline = (ADAPTER / "pipeline.py").read_text(encoding="utf-8")
+    assert "shutil.rmtree(Path(cfg.feat_inference._task_path), ignore_errors=True)" in pipeline
+    assert "shutil.rmtree(training_path, ignore_errors=True)" in pipeline
+    assert "shutil.rmtree(Path(cfg.featurization._task_path)" not in pipeline
+    assert "shutil.rmtree(Path(cfg.transformation._task_path)" not in pipeline
 
 
 def test_non_tgn_batching_avoids_full_edge_message_copies():

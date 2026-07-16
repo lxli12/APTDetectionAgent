@@ -51,7 +51,10 @@ if [[ -z "${PIDS_DB_PASSWORD:-}" ]]; then
 fi
 
 mkdir -p "${OUTPUT_ROOT}" "${LOG_ROOT}"
-mapfile -t CONFIGS < <(python -m pidsmaker_adapter.main list-configs --plain)
+python -m pidsmaker_adapter.main list-configs --plain > "${LOG_ROOT}/configurations.txt"
+cp pidsmaker_adapter/config/configuration_space_v1.yaml \
+  "${LOG_ROOT}/configuration_space_v1.yaml"
+mapfile -t CONFIGS < "${LOG_ROOT}/configurations.txt"
 if [[ "${#CONFIGS[@]}" -eq 0 ]]; then
   echo "No legal configurations found" >&2
   exit 2

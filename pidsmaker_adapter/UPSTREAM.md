@@ -43,6 +43,12 @@ Material changes:
   and tuning YAML paths; alternate values are restricted to those declared grids.
 - removed PIDSMaker's import-time NLTK download; runtime imports are offline and
   the environment must provide the pinned tokenizer data before experiments start.
+- expanded the finite space from hand-written baseline variants to explicit
+  upstream-anchored value domains with exhaustive validated combinations and
+  coupled model-capacity options.
+- persist R-CAID's pruned batching representation and reclaim its consumed wide
+  feature-inference input so optimizer variants reuse preprocessing without a
+  second full edge-feature copy.
 
 Production adapter code does not import the installed `pidsmaker` package or invoke
 its CLI. The submodule remains an unchanged reference oracle.

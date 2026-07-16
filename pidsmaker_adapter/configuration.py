@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import math
 from dataclasses import dataclass
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ class LegalConfiguration:
     base_model: str
     scoring: str
     overrides: dict[str, Any]
+    decision_values: dict[str, Any]
     source_files: tuple[str, ...]
 
 
@@ -35,12 +37,156 @@ class ConfigurationSpace:
     time_window_minutes: int
     threshold_quantiles: tuple[float, ...]
     configurations: tuple[LegalConfiguration, ...]
+    decision_spaces: dict[str, Any]
 
     def get(self, config_id: str) -> LegalConfiguration:
         matches = [item for item in self.configurations if item.config_id == config_id]
         if len(matches) != 1:
             raise ValueError(f"Unknown configuration {config_id!r}")
         return matches[0]
+
+
+def _source_files(
+    source_keys: list[str], source_sets: dict[str, Any], config_id: str
+) -> tuple[str, ...]:
+    if not source_keys:
+        raise ValueError(f"{config_id} must declare hyperparameter source keys")
+    source_files: list[str] = []
+    for source_key in source_keys:
+        paths = source_sets.get(source_key)
+        if not isinstance(paths, list) or not paths:
+            raise ValueError(f"Unknown hyperparameter source {source_key!r}")
+        for source_path in paths:
+            if not (
+                isinstance(source_path, str)
+                and source_path.startswith("PIDSMaker/")
+                and source_path.endswith((".yml", ".yaml", ".md"))
+            ):
+                raise ValueError(f"Invalid hyperparameter source path {source_path!r}")
+            if source_path not in source_files:
+                source_files.append(source_path)
+    return tuple(source_files)
+
+
+def _validate_numeric_domain(name: str, values: list[Any]) -> None:
+    numeric = [
+        value
+        for value in values
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    if numeric and len(numeric) == len(values) and not 3 <= len(set(numeric)) <= 5:
+        raise ValueError(f"Numeric decision field {name} must expose 3-5 distinct values")
+
+
+def _expand_pids_spaces(
+    raw_spaces: dict[str, Any], source_sets: dict[str, Any]
+) -> list[LegalConfiguration]:
+    items: list[LegalConfiguration] = []
+    seen_ids: set[str] = set()
+    for pids, spec in raw_spaces.items():
+        if spec.get("coverage") != "full_factorial":
+            raise ValueError(f"{pids} must use full_factorial coverage")
+        scoring = spec.get("scoring")
+        if scoring not in ALLOWED_SCORING:
+            raise ValueError(f"Illegal scoring rule for {pids}: {scoring!r}")
+        fixed = dict(spec.get("fixed_overrides", {}))
+        base_values = dict(spec.get("base_values", {}))
+        dimensions: list[tuple[str, list[dict[str, Any]]]] = []
+
+        for unit_name, unit in spec.get("coupled_parameters", {}).items():
+            options = unit.get("values")
+            if not isinstance(options, list) or not options:
+                raise ValueError(f"{pids}.{unit_name} must declare values")
+            normalized: list[dict[str, Any]] = []
+            field_values: dict[str, list[Any]] = {}
+            for option in options:
+                option_id = option.get("id")
+                overrides = option.get("overrides")
+                if not (
+                    isinstance(option_id, str)
+                    and isinstance(overrides, dict)
+                    and overrides
+                ):
+                    raise ValueError(f"Invalid coupled option in {pids}.{unit_name}")
+                for field, value in overrides.items():
+                    field_values.setdefault(field, []).append(value)
+                normalized.append(
+                    {
+                        "marker": option_id,
+                        "overrides": dict(overrides),
+                        "decision_values": dict(overrides),
+                    }
+                )
+            for field, values in field_values.items():
+                _validate_numeric_domain(f"{pids}.{unit_name}.{field}", values)
+            dimensions.append((unit_name, normalized))
+
+        for field, parameter in spec.get("parameters", {}).items():
+            values = parameter.get("values")
+            if not isinstance(values, list) or not values:
+                raise ValueError(f"{pids}.{field} must declare values")
+            _validate_numeric_domain(f"{pids}.{field}", values)
+            conditional = parameter.get("conditional_overrides", {})
+            normalized = []
+            for value in values:
+                overrides = dict(conditional.get(str(value), {}))
+                if base_values.get(field) != value:
+                    overrides[field] = value
+                normalized.append(
+                    {
+                        "marker": value,
+                        "overrides": overrides,
+                        "decision_values": {field: value},
+                    }
+                )
+            dimensions.append((field, normalized))
+
+        aliases: dict[tuple[tuple[str, Any], ...], str] = {}
+        for alias, markers in spec.get("aliases", {}).items():
+            signature = tuple(sorted(markers.items()))
+            if signature in aliases:
+                raise ValueError(f"Duplicate alias signature for {pids}")
+            aliases[signature] = alias
+
+        sources = _source_files(list(spec.get("sources", [])), source_sets, pids)
+        for selected in product(*(options for _, options in dimensions)):
+            markers = {
+                dimension_name: option["marker"]
+                for (dimension_name, _), option in zip(dimensions, selected)
+            }
+            overrides = dict(fixed)
+            decision_values: dict[str, Any] = {}
+            for option in selected:
+                overrides.update(option["overrides"])
+                decision_values.update(option["decision_values"])
+            signature = tuple(sorted(markers.items()))
+            config_id = aliases.get(signature)
+            if config_id is None:
+                tokens = []
+                for dimension_name, _ in dimensions:
+                    marker = markers[dimension_name]
+                    label = {
+                        "model_capacity": "capacity",
+                        "training.lr": "lr",
+                        "featurization.used_method": "featurization",
+                    }.get(dimension_name, dimension_name.replace(".", "-"))
+                    tokens.append(f"{label}-{format_number(marker)}")
+                config_id = f"{pids}__" + "__".join(tokens)
+            if config_id in seen_ids:
+                raise ValueError(f"Duplicate generated configuration id: {config_id}")
+            seen_ids.add(config_id)
+            items.append(
+                LegalConfiguration(
+                    config_id=config_id,
+                    pids=pids,
+                    base_model=str(spec["base_model"]),
+                    scoring=scoring,
+                    overrides=overrides,
+                    decision_values=decision_values,
+                    source_files=sources,
+                )
+            )
+    return items
 
 
 def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
@@ -62,7 +208,12 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
     source_sets = raw.get("hyperparameter_sources", {})
     if not isinstance(source_sets, dict) or not source_sets:
         raise ValueError("Configuration space must declare hyperparameter_sources")
-    seen: set[str] = set()
+    pids_spaces = raw.get("pids_spaces")
+    if pids_spaces is not None:
+        if not isinstance(pids_spaces, dict) or not pids_spaces:
+            raise ValueError("pids_spaces must be a non-empty mapping")
+        items = _expand_pids_spaces(pids_spaces, source_sets)
+    seen: set[str] = {item.config_id for item in items}
     for item in raw.get("configurations", ()):
         config_id = item.get("id")
         if not isinstance(config_id, str) or not config_id or config_id in seen:
@@ -74,23 +225,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
         overrides = item.get("overrides")
         if not isinstance(overrides, dict) or not overrides:
             raise ValueError(f"{config_id} must declare a finite override tuple")
-        source_keys = item.get("sources")
-        if not isinstance(source_keys, list) or not source_keys:
-            raise ValueError(f"{config_id} must declare hyperparameter source keys")
-        source_files: list[str] = []
-        for source_key in source_keys:
-            paths = source_sets.get(source_key)
-            if not isinstance(paths, list) or not paths:
-                raise ValueError(f"Unknown hyperparameter source {source_key!r}")
-            for source_path in paths:
-                if not (
-                    isinstance(source_path, str)
-                    and source_path.startswith("PIDSMaker/config/")
-                    and source_path.endswith(".yml")
-                ):
-                    raise ValueError(f"Invalid hyperparameter source path {source_path!r}")
-                if source_path not in source_files:
-                    source_files.append(source_path)
+        source_files = _source_files(item.get("sources", []), source_sets, config_id)
         items.append(
             LegalConfiguration(
                 config_id=config_id,
@@ -98,11 +233,17 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
                 base_model=str(item["base_model"]),
                 scoring=scoring,
                 overrides=overrides,
-                source_files=tuple(source_files),
+                decision_values=dict(overrides),
+                source_files=source_files,
             )
         )
     if not items:
         raise ValueError("The configuration space cannot be empty")
+    expected_count = raw.get("expected_configuration_count")
+    if expected_count is not None and expected_count != len(items):
+        raise ValueError(
+            f"Expected {expected_count} legal configurations, generated {len(items)}"
+        )
     return ConfigurationSpace(
         schema_version=raw["schema_version"],
         dataset=raw["dataset"],
@@ -110,6 +251,7 @@ def load_configuration_space(path: Path = DEFAULT_SPACE) -> ConfigurationSpace:
         time_window_minutes=window,
         threshold_quantiles=tuple(float(q) for q in quantiles),
         configurations=tuple(items),
+        decision_spaces=dict(pids_spaces or {}),
     )
 
 
@@ -193,10 +335,10 @@ def resolve_runtime_config(
         raise ValueError("Synthetic attacks are excluded")
     if getattr(cfg.featurization, "training_split", None) not in (None, "train"):
         cfg.featurization.training_split = "train"
-    # R-CAID's full edge-embedding corpus is too large to duplicate in the
-    # persistent batching cache. Other supported models use the cache so that
-    # train/validation/test publication can reuse the same preprocessing.
-    cfg.batching.save_on_disk = legal.base_model != "rcaid"
+    # Persist the compact, reindexed batching artifact for every system. R-CAID
+    # drops its wide edge inputs during reindexing, so this artifact is now the
+    # reusable training frontier instead of a second full edge-embedding copy.
+    cfg.batching.save_on_disk = True
     cfg.evaluation.used_method = "node_evaluation"
     cfg.evaluation.node_evaluation.use_kmeans = False
     cfg.training.decoder.use_few_shot = False
@@ -226,6 +368,7 @@ def format_number(value: Any) -> str:
 
 def checkpoint_slug(legal: LegalConfiguration) -> str:
     aliases = {
+        "featurization.used_method": "featurization",
         "featurization.emb_dim": "embedding_dim",
         "featurization.epochs": "featurization_epochs",
         "training.node_hid_dim": "hidden_dim",
