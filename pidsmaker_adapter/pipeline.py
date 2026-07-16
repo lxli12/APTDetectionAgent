@@ -302,9 +302,11 @@ def prepare_checkpoint(
         cfg=cfg,
         signature=signatures["batching"],
         run=lambda: batching.main(cfg),
-        artifact_paths=lambda: [
-            str(Path(cfg.batching._preprocessed_graphs_dir) / "torch_graphs.pkl")
-        ],
+        artifact_paths=lambda: (
+            [str(Path(cfg.batching._preprocessed_graphs_dir) / "torch_graphs.pkl")]
+            if cfg.batching.save_on_disk
+            else [cfg.batching._task_path]
+        ),
     )
 
     training_path = Path(cfg.training._task_path)

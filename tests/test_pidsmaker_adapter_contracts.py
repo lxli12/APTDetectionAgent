@@ -173,3 +173,40 @@ def test_rcaid_doc2vec_corpus_streams_transformed_graphs():
     assert "for path in log_tqdm(sorted_paths" in function
     assert "G = torch.load(path)" in function
     assert "del G" in function
+
+
+def test_rcaid_preserves_non_persistent_batching(tmp_path):
+    from pidsmaker_adapter.configuration import (
+        load_configuration_space,
+        resolve_runtime_config,
+    )
+
+    configuration = load_configuration_space()
+    cfg = resolve_runtime_config(
+        configuration.get("rcaid_base"),
+        configuration,
+        tmp_path,
+        {
+            "host": "localhost",
+            "port": "5432",
+            "user": "postgres",
+            "password": "",
+            "name": "clearscope_e3",
+        },
+    )
+
+    assert cfg.batching.save_on_disk is False
+
+    flash = resolve_runtime_config(
+        configuration.get("flash_base"),
+        configuration,
+        tmp_path,
+        {
+            "host": "localhost",
+            "port": "5432",
+            "user": "postgres",
+            "password": "",
+            "name": "clearscope_e3",
+        },
+    )
+    assert flash.batching.save_on_disk is True

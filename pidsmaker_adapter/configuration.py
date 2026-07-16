@@ -171,7 +171,10 @@ def resolve_runtime_config(
         raise ValueError("Synthetic attacks are excluded")
     if getattr(cfg.featurization, "training_split", None) not in (None, "train"):
         cfg.featurization.training_split = "train"
-    cfg.batching.save_on_disk = True
+    # R-CAID's full edge-embedding corpus is too large to duplicate in the
+    # persistent batching cache. Other supported models use the cache so that
+    # train/validation/test publication can reuse the same preprocessing.
+    cfg.batching.save_on_disk = legal.base_model != "rcaid"
     cfg.evaluation.used_method = "node_evaluation"
     cfg.evaluation.node_evaluation.use_kmeans = False
     cfg.training.decoder.use_few_shot = False
